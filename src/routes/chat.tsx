@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { Crown, Loader2, Eye } from "lucide-react";
+import { Crown, Loader2, Eye, Mic, MicOff, Square } from "lucide-react";
 import { ChefMascot } from "@/components/chef-mascot";
 import { CookingInput } from "@/components/cooking-input";
 import { useMia } from "@/hooks/use-mia";
@@ -50,6 +50,9 @@ function ChatPage() {
   const mia = useMia();
   const { turns, busy } = mia;
   const [visualMode, setVisualMode] = useState(false);
+  const voiceActive = ["loading", "waiting", "listening", "thinking", "speaking"].includes(
+    mia.voice.state,
+  );
   useEffect(() => {
     if (turns.length) endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [turns, busy]);
@@ -70,6 +73,54 @@ function ChatPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-10">
+      <section
+        className={`mia-chat-hero ${voiceActive ? "is-active" : ""}`}
+        aria-label="Mia voice conversation"
+      >
+        <div className="mia-chat-orb" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="mia-chat-hero-copy">
+          <p className="mia-chat-kicker">Your kitchen companion</p>
+          <h2>{voiceActive ? "I’m right here." : "Talk it through with Mia."}</h2>
+          <p>
+            {mia.voice.error ||
+              (voiceActive
+                ? mia.voice.state === "speaking"
+                  ? "Mia is speaking — tap the square to interrupt."
+                  : mia.voice.state === "thinking"
+                    ? "Mia is thinking about your ingredients…"
+                    : "Listening for your next cooking question."
+                : "Ask by voice or type below for friendly, practical help.")}
+          </p>
+        </div>
+        <div className="mia-chat-controls">
+          <button
+            type="button"
+            className={`mia-chat-voice-button ${voiceActive ? "active" : ""}`}
+            onClick={() => (voiceActive ? mia.stopVoice() : mia.startVoice())}
+            aria-label={
+              voiceActive ? "Mute Mia voice conversation" : "Start Mia voice conversation"
+            }
+          >
+            {voiceActive ? <Square /> : <Mic />}
+            <span>{voiceActive ? "End voice" : "Start voice"}</span>
+          </button>
+          {voiceActive && (
+            <button
+              type="button"
+              className="mia-chat-end-button"
+              onClick={mia.endConversation}
+              aria-label="End current Mia conversation"
+            >
+              <MicOff />
+            </button>
+          )}
+        </div>
+      </section>
       {turns.length === 0 ? (
         <div className="flex flex-col items-center py-6 text-center">
           <ChefMascot animate className="h-48 w-48" />

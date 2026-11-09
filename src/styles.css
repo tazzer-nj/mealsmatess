@@ -1674,6 +1674,42 @@ html[data-mia-controls="visible"] #app-scroll {
   padding-top: calc(var(--app-header-h, 0px) + var(--mia-controls-h, 50px) + 16px);
 }
 
+/* Mia voice studio */
+.mia-chat-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 26px;
+  padding: 18px;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--primary) 18%, var(--border));
+  border-radius: 28px;
+  background: linear-gradient(135deg, color-mix(in oklab, var(--primary) 12%, var(--background)), var(--card));
+  box-shadow: 0 16px 40px -28px color-mix(in oklab, var(--primary) 45%, transparent);
+}
+.mia-chat-hero-copy { min-width: 0; }
+.mia-chat-kicker { margin: 0 0 4px; color: var(--primary); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.mia-chat-hero h2 { margin: 0; font-size: clamp(1.05rem, 4vw, 1.45rem); }
+.mia-chat-hero-copy > p:last-child { margin: 5px 0 0; color: var(--muted-foreground); font-size: 12px; line-height: 1.45; }
+.mia-chat-orb { position: relative; display: grid; width: 76px; height: 76px; place-items: center; flex: 0 0 auto; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #fff 0 8%, var(--primary) 28%, color-mix(in oklab, var(--primary) 54%, #412f99) 100%); box-shadow: 0 10px 26px -12px var(--primary); animation: mia-orb-breathe 3.5s ease-in-out infinite; }
+.mia-chat-orb::after { content: ""; position: absolute; inset: 8px; border: 1px solid rgb(255 255 255 / 55%); border-radius: inherit; }
+.mia-chat-orb span { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: rgb(255 255 255 / 75%); animation: mia-orb-wave 1.8s ease-in-out infinite; }
+.mia-chat-orb span:nth-child(1) { transform: translateX(-16px); animation-delay: -0.45s; }
+.mia-chat-orb span:nth-child(2) { transform: translateX(-5px); animation-delay: -0.25s; }
+.mia-chat-orb span:nth-child(3) { transform: translateX(7px); animation-delay: -0.05s; }
+.mia-chat-orb span:nth-child(4) { transform: translateX(18px); animation-delay: .15s; }
+.mia-chat-hero.is-active .mia-chat-orb { animation-duration: 1.5s; }
+.mia-chat-controls { display: flex; align-items: center; gap: 8px; }
+.mia-chat-voice-button, .mia-chat-end-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; border-radius: 999px; padding: 0 13px; background: var(--primary); color: var(--primary-foreground); font-size: 12px; font-weight: 700; }
+.mia-chat-voice-button svg, .mia-chat-end-button svg { width: 16px; }
+.mia-chat-end-button { width: 40px; padding: 0; background: var(--muted); color: var(--foreground); }
+@keyframes mia-orb-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes mia-orb-wave { 0%, 100% { opacity: .35; transform: translateY(4px) scale(.75); } 50% { opacity: 1; transform: translateY(-4px) scale(1.15); } }
+@media (max-width: 560px) { .mia-chat-hero { grid-template-columns: auto 1fr; } .mia-chat-controls { grid-column: 1 / -1; } .mia-chat-voice-button { flex: 1; } }
+@media (prefers-reduced-motion: reduce) { .mia-chat-orb, .mia-chat-orb span { animation: none; } }
+
 @import "./styles-onboarding-override.css";
 
 @import "./styles-paywall-override.css";

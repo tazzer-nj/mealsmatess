@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   ChevronRight,
+  Mic,
   DollarSign,
   FileText,
   Globe,
@@ -392,6 +393,23 @@ function SettingsPage() {
 
       <ThemePicker />
       <Section title="Profile" items={profileItems} />
+      <Section
+        title="Mia voice"
+        items={[
+          {
+            label: "Voice kitchen",
+            description: "Start a real microphone conversation with Mia",
+            icon: Mic,
+            to: "/chat",
+          },
+          {
+            label: "Voice permissions",
+            description: "Microphone access is requested only when you enable hands-free Mia",
+            icon: Shield,
+            to: "/chat",
+          },
+        ]}
+      />
       <Section title="Account" items={accountItems} />
 
       <Section
