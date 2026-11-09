@@ -65,7 +65,7 @@ export function AppHeader() {
   return (
     <header
       id="app-header"
-      className="fixed inset-x-0 top-0 z-40 bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur supports-[backdrop-filter]:bg-background/80"
+      className="fixed inset-x-0 top-0 z-40 border-b border-border/70 bg-white/95 pt-[env(safe-area-inset-top)] shadow-[0_8px_24px_-24px_rgba(21,24,39,0.35)] backdrop-blur supports-[backdrop-filter]:bg-white/85"
     >
       <div className="mx-auto grid h-16 max-w-3xl grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 px-5">
         <Button asChild variant="ghost" size="icon" className="size-11 rounded-full">

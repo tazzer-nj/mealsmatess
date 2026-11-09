@@ -57,7 +57,7 @@ export function BottomNav() {
     <nav
       id="app-nav"
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-background/80"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-20px_rgba(21,24,39,0.35)] backdrop-blur supports-[backdrop-filter]:bg-white/85"
     >
       <div className="mx-auto grid max-w-3xl grid-cols-[1fr_1fr_64px_1fr_1fr] items-end px-2">
         {LEFT_TABS.map((t) => (

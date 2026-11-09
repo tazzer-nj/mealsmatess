@@ -256,18 +256,18 @@ function Index() {
       <section className="grid grid-cols-2 gap-3 px-4 pt-6">
         <Link
           to="/scan"
-          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-ink p-5 text-background"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-border bg-white p-5 text-foreground shadow-[0_16px_40px_-28px_rgba(21,24,39,0.45)]"
         >
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-background/60">
+            <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               AI Kitchen Scan
             </p>
             <h2 className="mt-2 font-display text-2xl leading-tight">What's in your kitchen?</h2>
-            <p className="mt-2 text-xs leading-relaxed text-background/70">
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
               Point your camera at the fridge or pantry — we'll log every ingredient automatically.
             </p>
           </div>
-          <span className="pointer-events-none absolute right-4 top-4 flex h-14 w-14 items-center justify-center rounded-full border border-background/20">
+          <span className="pointer-events-none absolute right-4 top-4 flex h-14 w-14 items-center justify-center rounded-full border border-primary/20">
             <Camera className="h-5 w-5" />
           </span>
           <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-background px-4 py-2 text-xs font-semibold text-foreground">
@@ -280,11 +280,11 @@ function Index() {
           type="button"
           onClick={handleSurprise}
           disabled={busy !== null}
-          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-gradient-to-br from-ink via-ink to-primary/40 p-5 text-left text-background"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-primary/15 bg-[#f0f0ff] p-5 text-left text-foreground shadow-[0_16px_40px_-28px_rgba(119,123,255,0.55)]"
         >
           <div>
             <h2 className="mt-2 font-display text-2xl leading-tight text-primary">Surprise Me</h2>
-            <p className="mt-2 text-xs leading-relaxed text-background/70">
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
               Get a random recipe made just for you!
             </p>
           </div>
@@ -485,7 +485,7 @@ function Index() {
                 {continueCooking.calories && <span>{continueCooking.calories} cal</span>}
               </div>
             </div>
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-ink text-background">
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
               <Play className="h-3.5 w-3.5 fill-current" />
             </span>
           </Link>
@@ -496,7 +496,7 @@ function Index() {
       <Link
         to="/chat"
         aria-label="AI Assistant"
-        className="fixed bottom-24 right-4 z-40 flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-full bg-ink text-background shadow-lg"
+        className="fixed bottom-24 right-4 z-40 flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-full bg-primary text-primary-foreground shadow-lg"
       >
         <MessageCircleQuestion className="h-4 w-4" />
         <span className="text-[8px] font-medium leading-none">AI</span>
