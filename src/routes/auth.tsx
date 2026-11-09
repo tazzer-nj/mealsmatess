@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { MealMateLogo } from "@/components/mealmate-logo";
+import { Mascot } from "@/components/mascot";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
@@ -256,6 +257,16 @@ function AuthPage() {
   return (
     <main className={isHub ? "hub-auth auth-redesign" : "auth-redesign"}>
       <div className="auth-ambient" aria-hidden="true" />
+      <div className="auth-mia auth-mia-left" aria-hidden="true">
+        <Mascot size={72} mood="happy" />
+        <span>Hi, I&apos;m Mia</span>
+      </div>
+      <div className="auth-mia auth-mia-right" aria-hidden="true">
+        <Mascot size={58} mood="celebrate" />
+      </div>
+      <div className="auth-mia auth-mia-bottom" aria-hidden="true">
+        <Mascot size={48} mood="thinking" />
+      </div>
       <div className="auth-shell">
         <header className="auth-brand">
           <MealMateLogo className="auth-logo" imageClassName="size-12 rounded-2xl" showName />

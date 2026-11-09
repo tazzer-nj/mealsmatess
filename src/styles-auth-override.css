@@ -16,7 +16,58 @@
   background: var(--auth-bg);
   color: var(--auth-text);
   overflow: hidden;
+  }
+
+.auth-redesign .auth-mia {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--auth-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  animation: auth-mia-drift 5s ease-in-out infinite;
+  }
+
+.auth-redesign .auth-mia-left {
+  top: 17%;
+  left: max(1.25rem, calc(50% - 25rem));
+  flex-direction: column;
+  align-items: flex-start;
+  }
+
+.auth-redesign .auth-mia-right {
+  top: 27%;
+  right: max(1.25rem, calc(50% - 24rem));
+  animation-delay: -1.8s;
+  }
+
+.auth-redesign .auth-mia-bottom {
+  right: max(2rem, calc(50% - 20rem));
+  bottom: 10%;
+  animation-delay: -3.2s;
+  }
+
+@keyframes auth-mia-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-2deg); }
+  50% { transform: translate3d(0, -12px, 0) rotate(2deg); }
+  }
+
+@media (max-width: 48rem) {
+  .auth-redesign .auth-mia-right,
+  .auth-redesign .auth-mia-bottom { display: none; }
+  .auth-redesign .auth-mia-left {
+    top: 5.25rem;
+    left: 1.25rem;
+    transform: scale(0.78);
+    transform-origin: left center;
+  }
+  .auth-redesign .auth-mia-left span { display: none; }
 }
+
 .auth-redesign .auth-ambient {
   pointer-events: none;
   position: absolute;
