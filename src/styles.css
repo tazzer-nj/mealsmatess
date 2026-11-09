@@ -522,6 +522,49 @@ img {
   }
 }
 
+/* Sleek Method consumer foundation: deep navy surfaces with restrained periwinkle accents. */
+:root {
+  --sleek-navy: oklch(0.16 0.035 265);
+  --sleek-navy-soft: oklch(0.22 0.04 265);
+  --sleek-periwinkle: oklch(0.72 0.12 275);
+  --sleek-periwinkle-bright: oklch(0.8 0.1 275);
+  --sleek-cream: oklch(0.97 0.018 95);
+}
+html:not(.dark):not([data-surface="hub"]) {
+  --background: oklch(0.965 0.012 270);
+  --foreground: oklch(0.16 0.025 265);
+  --card: oklch(0.985 0.008 270);
+  --card-foreground: oklch(0.16 0.025 265);
+  --secondary: oklch(0.925 0.025 270);
+  --secondary-foreground: oklch(0.23 0.035 265);
+  --muted: oklch(0.925 0.022 270);
+  --muted-foreground: oklch(0.43 0.035 265);
+  --accent: oklch(0.9 0.035 275);
+  --accent-foreground: oklch(0.2 0.03 265);
+  --border: oklch(0.88 0.025 270);
+  --input: oklch(0.87 0.025 270);
+  --primary: oklch(0.55 0.12 275);
+  --primary-foreground: oklch(0.99 0.01 270);
+  --ring: oklch(0.62 0.13 275);
+}
+html.dark:not([data-surface="hub"]) {
+  --background: var(--sleek-navy);
+  --foreground: oklch(0.95 0.012 270);
+  --card: var(--sleek-navy-soft);
+  --card-foreground: oklch(0.96 0.012 270);
+  --secondary: oklch(0.26 0.04 265);
+  --secondary-foreground: oklch(0.95 0.012 270);
+  --muted: oklch(0.24 0.035 265);
+  --muted-foreground: oklch(0.72 0.035 270);
+  --accent: oklch(0.3 0.06 275);
+  --accent-foreground: oklch(0.96 0.012 270);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --primary: var(--sleek-periwinkle);
+  --primary-foreground: oklch(0.15 0.03 265);
+  --ring: var(--sleek-periwinkle-bright);
+}
+
 /* ---------- Mascot themes: accent-only on top of the black & white core ---------- */
 :root {
   --brand: oklch(0.12 0 0);

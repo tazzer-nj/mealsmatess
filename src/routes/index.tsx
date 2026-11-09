@@ -181,9 +181,9 @@ function Index() {
   }
 
   return (
-    <main className="flex-1">
+    <main className="flex-1 pb-4">
       {/* Greeting header */}
-      <div className="flex items-center justify-between px-4 pt-6">
+      <div className="flex items-center justify-between px-5 pt-7">
         <div>
           <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             {greeting()}
@@ -212,7 +212,7 @@ function Index() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search recipes, ingredients, cuisines…"
             maxLength={200}
-            className="h-14 rounded-full border-none bg-card pl-11 pr-14 text-base shadow-sm"
+            className="h-14 rounded-2xl border border-border/70 bg-card pl-11 pr-14 text-base shadow-[0_10px_30px_-24px_rgba(25,28,65,0.7)]"
           />
           <button
             type="submit"
@@ -256,7 +256,7 @@ function Index() {
       <section className="grid grid-cols-2 gap-3 px-4 pt-6">
         <Link
           to="/scan"
-          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-ink p-5 text-background"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-[1.75rem] bg-[#181c3b] p-5 text-white shadow-[0_18px_45px_-26px_rgba(24,28,59,0.9)]"
         >
           <div>
             <p className="text-[11px] font-medium uppercase tracking-widest text-background/60">
@@ -280,7 +280,7 @@ function Index() {
           type="button"
           onClick={handleSurprise}
           disabled={busy !== null}
-          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-gradient-to-br from-ink via-ink to-primary/40 p-5 text-left text-background"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-[#181c3b] via-[#242956] to-[#6d72b5] p-5 text-left text-white shadow-[0_18px_45px_-26px_rgba(24,28,59,0.9)]"
         >
           <div>
             <h2 className="mt-2 font-display text-2xl leading-tight text-primary">Surprise Me</h2>
