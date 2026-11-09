@@ -1,12 +1,12 @@
 /* Auth redesign — dark editorial, matches onboarding / paywall */
 .auth-redesign {
-  --auth-bg: #070809;
-  --auth-card: #12141a;
-  --auth-border: #2a2e38;
-  --auth-text: #f6f5f2;
-  --auth-muted: #9a9aa3;
-  --auth-leaf: #6fbf4a;
-  --auth-cream: #f3efe6;
+  --auth-bg: #080d1b;
+  --auth-card: #151e33;
+  --auth-border: #2b3855;
+  --auth-text: #ffffff;
+  --auth-muted: #a1aabd;
+  --auth-leaf: #a5a9ff;
+  --auth-cream: #777bff;
   position: relative;
   min-height: 100dvh;
   display: flex;
@@ -66,6 +66,27 @@
   color: var(--auth-muted);
   line-height: 1.45;
 }
+.auth-redesign .auth-methods {
+  display: grid;
+  gap: 0.75rem;
+}
+.auth-redesign .auth-method-note {
+  margin: 0.25rem 0 0;
+  color: var(--auth-muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+.auth-redesign .auth-back {
+  border: 0;
+  background: transparent;
+  color: var(--auth-muted);
+  padding: 0;
+  margin: 0 0 1rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  text-align: left;
+}
+.auth-redesign .auth-back:hover { color: var(--auth-text); }
 .auth-redesign .auth-form {
   display: flex;
   flex-direction: column;

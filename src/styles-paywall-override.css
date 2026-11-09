@@ -1,12 +1,12 @@
 /* Dark editorial paywall redesign */
 .paywall-redesign {
-  --pw-bg: #070809;
-  --pw-card: #101214;
-  --pw-text: #f5f0e8;
-  --pw-muted: rgba(245, 240, 232, 0.68);
-  --pw-green: #7ab84a;
-  --pw-green-dim: rgba(122, 184, 74, 0.22);
-  --pw-cream: #f3ebe0;
+  --pw-bg: #080d1b;
+  --pw-card: #151e33;
+  --pw-text: #ffffff;
+  --pw-muted: #a1aabd;
+  --pw-green: #a5a9ff;
+  --pw-green-dim: rgba(119, 123, 255, 0.2);
+  --pw-cream: #777bff;
   min-height: 100dvh;
   background: var(--pw-bg);
   color: var(--pw-text);

@@ -116,8 +116,10 @@ function AuthPage() {
   const search = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup">(search.mode ?? "signin");
   const [showPassword, setShowPassword] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(search.mode !== undefined);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -187,6 +189,14 @@ function AuthPage() {
       }
 
       if (mode === "signup") {
+        if (!displayName.trim()) {
+          toast.error("Enter your name to create your MealMate account.");
+          return;
+        }
+        if (password !== confirmPassword) {
+          toast.error("Passwords do not match.");
+          return;
+        }
         try {
           const cred = await signUpWithFirebaseEmail(normalizedEmail, password, displayName);
           if (cred?.user) {
@@ -276,44 +286,60 @@ function AuthPage() {
               ? "Recipes, plans, and Mia — ready when you are."
               : "Set up once. Eat well every day."}
           </p>
-          <form onSubmit={handleSubmit} className="auth-form">
-            {mode === "signup" && (
-              <div className="auth-field">
-                <Label htmlFor="name">Display name</Label>
-                <Input id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Chef Thabo" className="auth-input" />
-              </div>
-            )}
-            <div className="auth-field">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="auth-input" />
+          {!emailOpen ? (
+            <div className="auth-methods">
+              <button type="button" className="auth-google" disabled={busy} onClick={signInWithGoogle}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue with Google"}
+              </button>
+              <button type="button" className="auth-primary" onClick={() => setEmailOpen(true)}>
+                Continue with Email
+              </button>
+              <p className="auth-method-note">Secure sign-in with your existing MealMate account.</p>
             </div>
-            <div className="auth-field">
-              <Label htmlFor="password">Password</Label>
-              <div className="auth-password-wrap">
-                <Input id="password" type={showPassword ? "text" : "password"} required minLength={6} autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="auth-input auth-input-password" />
-                <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Hide password" : "Show password"} className="auth-password-toggle">
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          ) : (
+            <>
+              <button type="button" className="auth-back" onClick={() => setEmailOpen(false)}>← All sign-in options</button>
+              <form onSubmit={handleSubmit} className="auth-form">
+                {mode === "signup" && (
+                  <div className="auth-field">
+                    <Label htmlFor="name">Full name</Label>
+                    <Input id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your name" className="auth-input" />
+                  </div>
+                )}
+                <div className="auth-field">
+                  <Label htmlFor="email">Email address</Label>
+                  <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="auth-input" />
+                </div>
+                <div className="auth-field">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="auth-password-wrap">
+                    <Input id="password" type={showPassword ? "text" : "password"} required minLength={6} autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" className="auth-input auth-input-password" />
+                    <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Hide password" : "Show password"} className="auth-password-toggle">
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                {mode === "signup" && (
+                  <div className="auth-field">
+                    <Label htmlFor="confirm-password">Confirm password</Label>
+                    <Input id="confirm-password" type={showPassword ? "text" : "password"} required minLength={6} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repeat your password" className="auth-input" />
+                  </div>
+                )}
+                <button type="submit" className="auth-primary" disabled={busy}>
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "signin" ? "Sign in" : "Create account"}
                 </button>
-              </div>
-              {mode === "signup" && <p className="auth-hint">At least 6 characters.</p>}
-            </div>
-            <button type="submit" className="auth-primary" disabled={busy}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "signin" ? "Sign in" : "Create account"}
-            </button>
-            <div className="auth-divider"><span>or continue with</span></div>
-            <button type="button" className="auth-google" disabled={busy} onClick={signInWithGoogle}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue with Google"}
-            </button>
-            {mode === "signin" && (
-              <button type="button" className="auth-forgot" disabled={busy} onClick={async () => {
-                if (!email) { toast.error("Enter your email first, then tap forgot password."); return; }
-                setBusy(true);
-                try { await sendFirebasePasswordReset(email.trim().toLowerCase()); toast.success("Check your inbox for a reset link."); }
-                catch { toast.error("Could not send the reset email. Please check the address and try again."); }
-                finally { setBusy(false); }
-              }}>Forgot password?</button>
-            )}
-          </form>
+                {mode === "signin" && (
+                  <button type="button" className="auth-forgot" disabled={busy} onClick={async () => {
+                    if (!email) { toast.error("Enter your email first, then tap forgot password."); return; }
+                    setBusy(true);
+                    try { await sendFirebasePasswordReset(email.trim().toLowerCase()); toast.success("Check your inbox for a reset link."); }
+                    catch { toast.error("Could not send the reset email. Please check the address and try again."); }
+                    finally { setBusy(false); }
+                  }}>Forgot password?</button>
+                )}
+              </form>
+            </>
+          )}
           <p className="auth-switch">
             {mode === "signin" ? "New here?" : "Already have an account?"}{" "}
             <button type="button" onClick={() => setMode(mode === "signin" ? "signup" : "signin")}>

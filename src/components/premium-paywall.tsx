@@ -18,10 +18,12 @@ import {
 import { RecipeImage } from "@/components/recipe-image";
 
 const BENEFITS = [
-  "Recipes you’ll actually cook",
-  "A calmer week of meal plans",
-  "Dinner ideas from what’s in the pantry",
-  "Mia — hands-free help in the kitchen",
+  "Unlimited AI recipe discovery",
+  "Personalized meal planning",
+  "Smart pantry management",
+  "Mia — your AI cooking assistant",
+  "Smart grocery lists",
+  "Advanced food personalization",
 ] as const;
 
 export function PremiumPaywall() {
@@ -175,12 +177,12 @@ export function PremiumPaywall() {
       <section className="paywall-content">
         <p className="premium-eyebrow">MealMate Premium</p>
         <h1>
-          Good food.
+          Make every
           <br />
-          <span>Every day.</span>
+          <span>meal better.</span>
         </h1>
         <p className="premium-description">
-          Unlock planning, pantry ideas, and Mia — everything in one calm place.
+          Discover more, plan smarter and cook with confidence.
         </p>
         <ul className="premium-benefits">
           {BENEFITS.map((benefit) => (
