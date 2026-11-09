@@ -113,10 +113,7 @@ async function configureStore(identity: Identity): Promise<BillingStore> {
         kind,
         price: product.price.formattedPrice,
         period: periodLabel(iso),
-        trialDays: sevenDayTrial(
-          product.freeTrialPhase?.periodDuration,
-          !!product.introPricePhase,
-        ),
+        trialDays: sevenDayTrial(product.freeTrialPhase?.periodDuration, !!product.introPricePhase),
         purchase: () => sdk.purchase({ rcPackage: pkg, skipSuccessPage: true }),
       },
     ];

@@ -72,8 +72,7 @@ export function PremiumPaywall() {
       })
       .catch((error) => {
         if (!active) return;
-        const raw =
-          error instanceof Error ? error.message : typeof error === "string" ? error : "";
+        const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
         if (/unavailable|temporarily|not available|plans|not configured|REVENUECAT/i.test(raw))
           setMessage(raw);
         else if (/forbidden|401|403|unauthorized/i.test(raw))
@@ -331,7 +330,11 @@ export function PremiumPaywall() {
           )}
         </div>
         <div className="premium-recovery">
-          <button type="button" onClick={() => void perform("restore")} disabled={busy || loading || !online}>
+          <button
+            type="button"
+            onClick={() => void perform("restore")}
+            disabled={busy || loading || !online}
+          >
             Restore purchases
           </button>
           {!userId && (

@@ -15,7 +15,8 @@ const steps = [
   {
     label: "Discover",
     title: "Your next favourite meal starts here.",
-    description: "Explore recipes you will actually cook — everyday favourites and something new when you want it.",
+    description:
+      "Explore recipes you will actually cook — everyday favourites and something new when you want it.",
     dish: "Greek chicken salad",
     icon: Utensils,
     detail: "Fresh inspiration, every day",
@@ -23,7 +24,8 @@ const steps = [
   {
     label: "Plan",
     title: "A delicious week, already planned.",
-    description: "Meals, recipes and groceries in one place so dinner is one less thing to think about.",
+    description:
+      "Meals, recipes and groceries in one place so dinner is one less thing to think about.",
     dish: "Creamy chicken alfredo",
     icon: CalendarDays,
     detail: "Make space for what matters",

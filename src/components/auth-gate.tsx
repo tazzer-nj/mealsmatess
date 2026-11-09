@@ -10,14 +10,7 @@ import { toast } from "sonner";
 
 // MealMate entry: auth → onboarding → paywall → app.
 // Only these routes are reachable without a signed-in, verified user.
-const PUBLIC_PREFIXES = [
-  "/auth",
-  "/premium",
-  "/reset-password",
-  "/legal",
-  "/about",
-  "/support",
-];
+const PUBLIC_PREFIXES = ["/auth", "/premium", "/reset-password", "/legal", "/about", "/support"];
 
 // Inactive sessions are signed out after this window.
 const INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes

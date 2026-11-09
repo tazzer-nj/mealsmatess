@@ -280,38 +280,98 @@ function AuthPage() {
             {mode === "signup" && (
               <div className="auth-field">
                 <Label htmlFor="name">Display name</Label>
-                <Input id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Chef Thabo" className="auth-input" />
+                <Input
+                  id="name"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Chef Thabo"
+                  className="auth-input"
+                />
               </div>
             )}
             <div className="auth-field">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="auth-input" />
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="auth-input"
+              />
             </div>
             <div className="auth-field">
               <Label htmlFor="password">Password</Label>
               <div className="auth-password-wrap">
-                <Input id="password" type={showPassword ? "text" : "password"} required minLength={6} autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="auth-input auth-input-password" />
-                <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? "Hide password" : "Show password"} className="auth-password-toggle">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  minLength={6}
+                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="auth-input auth-input-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="auth-password-toggle"
+                >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               {mode === "signup" && <p className="auth-hint">At least 6 characters.</p>}
             </div>
             <button type="submit" className="auth-primary" disabled={busy}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "signin" ? "Sign in" : "Create account"}
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : mode === "signin" ? (
+                "Sign in"
+              ) : (
+                "Create account"
+              )}
             </button>
-            <div className="auth-divider"><span>or continue with</span></div>
-            <button type="button" className="auth-google" disabled={busy} onClick={signInWithGoogle}>
+            <div className="auth-divider">
+              <span>or continue with</span>
+            </div>
+            <button
+              type="button"
+              className="auth-google"
+              disabled={busy}
+              onClick={signInWithGoogle}
+            >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue with Google"}
             </button>
             {mode === "signin" && (
-              <button type="button" className="auth-forgot" disabled={busy} onClick={async () => {
-                if (!email) { toast.error("Enter your email first, then tap forgot password."); return; }
-                setBusy(true);
-                try { await sendFirebasePasswordReset(email.trim().toLowerCase()); toast.success("Check your inbox for a reset link."); }
-                catch { toast.error("Could not send the reset email. Please check the address and try again."); }
-                finally { setBusy(false); }
-              }}>Forgot password?</button>
+              <button
+                type="button"
+                className="auth-forgot"
+                disabled={busy}
+                onClick={async () => {
+                  if (!email) {
+                    toast.error("Enter your email first, then tap forgot password.");
+                    return;
+                  }
+                  setBusy(true);
+                  try {
+                    await sendFirebasePasswordReset(email.trim().toLowerCase());
+                    toast.success("Check your inbox for a reset link.");
+                  } catch {
+                    toast.error(
+                      "Could not send the reset email. Please check the address and try again.",
+                    );
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                Forgot password?
+              </button>
             )}
           </form>
           <p className="auth-switch">
@@ -321,7 +381,8 @@ function AuthPage() {
             </button>
           </p>
           <p className="auth-legal">
-            By continuing you agree to our <Link to="/legal/terms">Terms</Link> and <Link to="/legal/privacy">Privacy Policy</Link>.
+            By continuing you agree to our <Link to="/legal/terms">Terms</Link> and{" "}
+            <Link to="/legal/privacy">Privacy Policy</Link>.
           </p>
         </div>
       </div>

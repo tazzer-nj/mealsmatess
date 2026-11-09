@@ -19,10 +19,7 @@ const ONBOARDING_COPY = [
     "Make MealMate yours.",
     "Tell us a little about your taste. Everything is optional and easy to change later.",
   ],
-  [
-    "Stay in the loop.",
-    "Get useful product updates on this device — only if you want them.",
-  ],
+  ["Stay in the loop.", "Get useful product updates on this device — only if you want them."],
   [
     "You’re ready to cook.",
     "Fresh inspiration, simpler planning, and Mia when you need her. Welcome in.",

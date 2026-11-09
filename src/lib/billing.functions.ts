@@ -82,8 +82,7 @@ export const redeemPromoCode = createServerFn({ method: "POST" })
     }
 
     const isVipEmail = !!email && service.FREE_PREMIUM_EMAILS.has(email);
-    const codeOk =
-      service.LIFETIME_PROMO_CODES.has(code) || service.FREE_PREMIUM_EMAILS.has(code);
+    const codeOk = service.LIFETIME_PROMO_CODES.has(code) || service.FREE_PREMIUM_EMAILS.has(code);
 
     // VIP account: signed-in VIP always gets free access.
     if (isVipEmail) {
