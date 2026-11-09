@@ -25,26 +25,20 @@ const requiredFirebaseEnv = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const missingFirebaseEnv = Object.entries(requiredFirebaseEnv)
-  .filter(([, value]) => !value)
-  .map(([key]) => `VITE_FIREBASE_${key.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}`);
+const hasFirebaseConfig = Object.values(requiredFirebaseEnv).every(Boolean);
 
-if (missingFirebaseEnv.length > 0) {
-  throw new Error(`Missing Firebase web configuration: ${missingFirebaseEnv.join(", ")}`);
-}
-
-if (requiredFirebaseEnv.projectId !== "mealmate-d2e53") {
-  throw new Error(
-    `Firebase project mismatch: expected mealmate-d2e53, received ${requiredFirebaseEnv.projectId}`,
-  );
-}
-
-const firebaseConfig = {
-  ...requiredFirebaseEnv,
-  ...(import.meta.env.FIREBASE_MEASUREMENT_ID
-    ? { measurementId: import.meta.env.FIREBASE_MEASUREMENT_ID }
-    : {}),
-} as {
+// Keep the public shell renderable in preview environments without Firebase vars.
+// Auth and Firestore become available automatically when the real Vite variables are configured.
+const firebaseConfig = (hasFirebaseConfig
+  ? requiredFirebaseEnv
+  : {
+      apiKey: "preview-api-key",
+      authDomain: "preview.firebaseapp.com",
+      projectId: "preview-project",
+      storageBucket: "preview.appspot.com",
+      messagingSenderId: "preview-sender",
+      appId: "preview-app",
+    }) as {
   apiKey: string;
   authDomain: string;
   projectId: string;
