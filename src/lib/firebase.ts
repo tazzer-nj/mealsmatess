@@ -29,16 +29,18 @@ const hasFirebaseConfig = Object.values(requiredFirebaseEnv).every(Boolean);
 
 // Keep the public shell renderable in preview environments without Firebase vars.
 // Auth and Firestore become available automatically when the real Vite variables are configured.
-const firebaseConfig = (hasFirebaseConfig
-  ? requiredFirebaseEnv
-  : {
-      apiKey: "preview-api-key",
-      authDomain: "preview.firebaseapp.com",
-      projectId: "preview-project",
-      storageBucket: "preview.appspot.com",
-      messagingSenderId: "preview-sender",
-      appId: "preview-app",
-    }) as {
+const firebaseConfig = (
+  hasFirebaseConfig
+    ? requiredFirebaseEnv
+    : {
+        apiKey: "preview-api-key",
+        authDomain: "preview.firebaseapp.com",
+        projectId: "preview-project",
+        storageBucket: "preview.appspot.com",
+        messagingSenderId: "preview-sender",
+        appId: "preview-app",
+      }
+) as {
   apiKey: string;
   authDomain: string;
   projectId: string;
