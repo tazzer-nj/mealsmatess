@@ -1,4 +1,4 @@
-/* Dark luxury paywall redesign — periwinkle & dark navy accents */
+/* Dark luxury paywall redesign — ReciMe-inspired with periwinkle & dark navy accents */
 .paywall-redesign {
   --pw-bg: #05070a;
   --pw-card: #0c1017;
@@ -18,7 +18,7 @@
 
 .paywall-redesign .paywall-photo {
   position: relative;
-  height: min(38vh, 290px);
+  height: min(34vh, 260px);
   overflow: hidden;
 }
 
@@ -26,7 +26,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: brightness(0.7) saturate(1.1);
+  filter: brightness(0.68) saturate(1.15);
 }
 
 .paywall-redesign .paywall-photo::after {
@@ -61,6 +61,25 @@
   margin: 0 auto;
 }
 
+/* ReciMe Social Proof */
+.recime-social-proof {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.recime-stars {
+  display: flex;
+  gap: 2px;
+}
+
+.recime-rating-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
 .paywall-redesign .premium-eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.15em;
@@ -70,8 +89,8 @@
   margin-bottom: 0.4rem;
 }
 
-.paywall-redesign h1 {
-  font-size: 2rem;
+.paywall-redesign h1.recime-title {
+  font-size: 2.1rem;
   line-height: 1.15;
   font-weight: 800;
   letter-spacing: -0.025em;
@@ -79,7 +98,7 @@
   color: #ffffff;
 }
 
-.paywall-redesign h1 span {
+.paywall-redesign h1.recime-title span {
   color: var(--pw-periwinkle-light);
 }
 
@@ -136,13 +155,79 @@
   line-height: 1.35;
 }
 
+/* ReciMe Trial Timeline */
+.recime-trial-timeline {
+  background: rgba(129, 140, 248, 0.05);
+  border: 1px solid rgba(165, 180, 252, 0.22);
+  border-radius: 16px;
+  padding: 1rem 1.15rem;
+  margin-bottom: 1.25rem;
+}
+
+.recime-timeline-heading {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.85rem;
+  letter-spacing: -0.01em;
+}
+
+.recime-timeline-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  position: relative;
+}
+
+.recime-timeline-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.recime-timeline-bullet {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--pw-card-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pw-muted);
+  flex-shrink: 0;
+}
+
+.recime-timeline-bullet.active {
+  background: var(--pw-periwinkle);
+  border-color: transparent;
+  color: #070913;
+}
+
+.recime-timeline-info {
+  flex: 1;
+}
+
+.recime-timeline-day {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.recime-timeline-text {
+  font-size: 0.75rem;
+  color: var(--pw-muted);
+  line-height: 1.35;
+  margin-top: 0.1rem;
+}
+
 /* Plans */
 .paywall-redesign .premium-plans {
   border: none;
   padding: 0;
   margin: 0 0 1.15rem;
   display: grid;
-  gap: 0.6rem;
+  gap: 0.65rem;
 }
 
 .paywall-redesign .premium-plan {
@@ -150,7 +235,7 @@
   grid-template-columns: auto 1fr auto;
   gap: 0.35rem 0.75rem;
   align-items: center;
-  padding: 0.9rem 1rem;
+  padding: 0.95rem 1rem;
   border-radius: 16px;
   border: 1px solid var(--pw-card-border);
   background: var(--pw-card);
@@ -160,8 +245,8 @@
 
 .paywall-redesign .premium-plan.selected {
   border-color: var(--pw-periwinkle);
-  background: rgba(129, 140, 248, 0.06);
-  box-shadow: 0 0 0 1px var(--pw-periwinkle), 0 0 20px rgba(129, 140, 248, 0.2);
+  background: rgba(129, 140, 248, 0.08);
+  box-shadow: 0 0 0 1.5px var(--pw-periwinkle), 0 0 24px rgba(129, 140, 248, 0.25);
 }
 
 .paywall-redesign .premium-plan.unavailable {
@@ -171,6 +256,12 @@
 
 .paywall-redesign .premium-plan input {
   accent-color: var(--pw-periwinkle);
+}
+
+.recime-plan-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
 }
 
 .paywall-redesign .plan-name {
@@ -192,9 +283,8 @@
 }
 
 .paywall-redesign .plan-price {
-  grid-column: 2 / 3;
-  font-weight: 600;
-  font-size: 0.95rem;
+  font-weight: 700;
+  font-size: 0.98rem;
   color: #ffffff;
 }
 
@@ -204,8 +294,7 @@
 }
 
 .paywall-redesign .plan-trial {
-  grid-column: 2 / -1;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--pw-periwinkle-light);
   font-weight: 600;
 }
@@ -214,9 +303,9 @@
   width: 100%;
   border: none;
   border-radius: 999px;
-  padding: 0.95rem 1.25rem;
+  padding: 1rem 1.25rem;
   font-weight: 800;
-  font-size: 1rem;
+  font-size: 1.05rem;
   background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 100%);
   color: #070913;
   display: inline-flex;

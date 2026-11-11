@@ -11,6 +11,10 @@ import {
   Utensils,
   CalendarCheck,
   Refrigerator,
+  Star,
+  BellRing,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import {
@@ -31,23 +35,23 @@ import { RecipeImage } from "@/components/recipe-image";
 const VALUE_BENEFITS = [
   {
     icon: Bot,
-    title: "AI-Powered Mia Assistant",
-    desc: "Hands-free voice and interactive chat assistance directly in the kitchen.",
+    title: "Unlimited AI Mia Chef",
+    desc: "Hands-free voice cooking assistant and personalized instant chef tips.",
   },
   {
     icon: Utensils,
-    title: "Personalized Recipe Engine",
-    desc: "Authentic meals tailored to your dietary restrictions, household and preferences.",
+    title: "AI Recipe Engine & Scaler",
+    desc: "Generate unlimited custom dishes tailored to your taste, allergens and pantry.",
   },
   {
     icon: CalendarCheck,
-    title: "AI Weekly Meal Planning",
-    desc: "Automated, waste-free schedules that sync directly with smart shopping lists.",
+    title: "Smart Weekly Meal Plans",
+    desc: "Effortless planning that auto-generates your consolidated grocery list.",
   },
   {
     icon: Refrigerator,
-    title: "Pantry & Fridge Cooking",
-    desc: "Snap a photo of ingredients to unlock delicious recipes with what you have on hand.",
+    title: "Fridge & Pantry Scanner",
+    desc: "Zero-waste cooking — snap your ingredients to find instant delicious meals.",
   },
 ];
 
@@ -212,27 +216,37 @@ export function PremiumPaywall() {
   const plan = store?.plans.find((p) => p.kind === selected);
 
   return (
-    <main className="premium-flow paywall paywall-redesign">
+    <main className="premium-flow paywall paywall-redesign recime-paywall">
       <div className="paywall-photo" aria-hidden="true">
         <RecipeImage recipe={{ name: "Creamy chicken alfredo" }} size="hero" priority />
         <div className="paywall-photo-badge">
           <Sparkles size={14} className="text-periwinkle" aria-hidden="true" />
-          <span>MealMate Premium</span>
+          <span>MealMate Pro</span>
         </div>
       </div>
 
       <section className="paywall-content">
-        <p className="premium-eyebrow">Unlock Full Access</p>
-        <h1>
-          Elevate your cooking.
+        {/* ReciMe-style Social Proof & Headline */}
+        <div className="recime-social-proof">
+          <div className="recime-stars">
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} size={14} className="fill-amber-400 text-amber-400" />
+            ))}
+          </div>
+          <span className="recime-rating-text">4.9/5 from 10,000+ passionate home cooks</span>
+        </div>
+
+        <p className="premium-eyebrow">Cook smarter every day</p>
+        <h1 className="recime-title">
+          Your All-In-One
           <br />
-          <span>Every single day.</span>
+          <span>Kitchen Companion.</span>
         </h1>
         <p className="premium-description">
-          Experience personal AI chef Mia, tailored recipes, automated grocery planning, and smart pantry management.
+          Organize recipes from everywhere, plan weeks in seconds, and cook hands-free with Mia AI.
         </p>
 
-        {/* Feature Cards Grid */}
+        {/* Feature Highlights Grid */}
         <div className="paywall-features-grid">
           {VALUE_BENEFITS.map((item) => (
             <div key={item.title} className="paywall-feature-card">
@@ -247,14 +261,53 @@ export function PremiumPaywall() {
           ))}
         </div>
 
-        <fieldset className="premium-plans" disabled={busy || loading}>
+        {/* ReciMe-style How Free Trial Works (Timeline) */}
+        {plan?.trialDays === 7 && (
+          <div className="recime-trial-timeline">
+            <h3 className="recime-timeline-heading">How your 7-day free trial works</h3>
+            <div className="recime-timeline-steps">
+              <div className="recime-timeline-step">
+                <div className="recime-timeline-bullet active">
+                  <Unlock size={14} />
+                </div>
+                <div className="recime-timeline-info">
+                  <div className="recime-timeline-day">Today</div>
+                  <div className="recime-timeline-text">Instant full access to all recipes, AI Chef Mia, and meal planner.</div>
+                </div>
+              </div>
+
+              <div className="recime-timeline-step">
+                <div className="recime-timeline-bullet">
+                  <BellRing size={14} />
+                </div>
+                <div className="recime-timeline-info">
+                  <div className="recime-timeline-day">Day 5</div>
+                  <div className="recime-timeline-text">We'll send a reminder that your free trial is ending soon.</div>
+                </div>
+              </div>
+
+              <div className="recime-timeline-step">
+                <div className="recime-timeline-bullet">
+                  <Lock size={14} />
+                </div>
+                <div className="recime-timeline-info">
+                  <div className="recime-timeline-day">Day 7</div>
+                  <div className="recime-timeline-text">Subscription begins at {plan.price} / {plan.period}. Cancel anytime before.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ReciMe Plan Selector Cards */}
+        <fieldset className="premium-plans recime-plans" disabled={busy || loading}>
           <legend className="sr-only">Choose a subscription plan</legend>
           {(["monthly", "yearly", "family"] as const).map((kind) => {
             const option = store?.plans.find((p) => p.kind === kind);
             return (
               <label
                 key={kind}
-                className={`premium-plan ${selected === kind && option ? "selected" : ""} ${!option ? "unavailable" : ""}`}
+                className={`premium-plan recime-plan-card ${selected === kind && option ? "selected" : ""} ${!option ? "unavailable" : ""}`}
               >
                 <input
                   type="radio"
@@ -264,10 +317,17 @@ export function PremiumPaywall() {
                   disabled={!option}
                   onChange={() => setSelected(kind)}
                 />
-                <span className="plan-name">
-                  {kind[0].toUpperCase() + kind.slice(1)}
-                  {kind === "yearly" && option && <span className="plan-badge">Best value</span>}
-                </span>
+                <div className="recime-plan-main">
+                  <span className="plan-name">
+                    {kind[0].toUpperCase() + kind.slice(1)}
+                    {kind === "yearly" && option && <span className="plan-badge">Save 50%</span>}
+                  </span>
+                  {option?.trialDays === 7 && (
+                    <span className="plan-trial">
+                      7 days free, then {option.price} / {option.period}
+                    </span>
+                  )}
+                </div>
                 <span className="plan-price">
                   {loading ? (
                     "Loading…"
@@ -280,11 +340,6 @@ export function PremiumPaywall() {
                     "Currently unavailable"
                   )}
                 </span>
-                {option?.trialDays === 7 && (
-                  <span className="plan-trial">
-                    7 days free, then {option.price} / {option.period}
-                  </span>
-                )}
               </label>
             );
           })}
@@ -314,7 +369,7 @@ export function PremiumPaywall() {
         {pendingVerification ? (
           <button
             type="button"
-            className="premium-primary"
+            className="premium-primary recime-cta"
             disabled={busy || !online}
             onClick={() => void perform("verify")}
           >
@@ -323,7 +378,7 @@ export function PremiumPaywall() {
         ) : (
           <button
             type="button"
-            className="premium-primary"
+            className="premium-primary recime-cta"
             disabled={loading || busy || !online || !plan}
             onClick={() => void perform("purchase")}
           >
