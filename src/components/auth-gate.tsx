@@ -12,7 +12,6 @@ import { toast } from "sonner";
 // Only these routes are reachable without a signed-in, verified user.
 const PUBLIC_PREFIXES = [
   "/auth",
-  "/premium",
   "/reset-password",
   "/legal",
   "/about",
