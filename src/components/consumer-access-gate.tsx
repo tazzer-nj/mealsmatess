@@ -1,31 +1,38 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useSession } from "@/hooks/use-session";
-import { usePremium } from "@/hooks/use-premium";
-import { hasSeenTour, markTourSeen } from "@/lib/preferences";
-import { completeIntro, getIntroCompletion } from "@/lib/billing.functions";
-import { getMyPreferences } from "@/lib/preferences.functions";
+import { useFlowController } from "@/lib/flow-controller";
+import { Loader2 } from "lucide-react";
 
-function isPublicConsumerPath(path: string) {
-  return [
-    "/welcome",
-    "/onboarding",
-    "/premium",
-    "/auth",
-    "/reset-password",
-    "/legal",
-    "/support",
-    "/about",
-  ].some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+const ALLOWED_UNAUTH_PREFIXES = [
+  "/auth",
+  "/reset-password",
+  "/legal",
+  "/support",
+  "/about",
+];
+
+function isPublicPath(pathname: string) {
+  return ALLOWED_UNAUTH_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
 }
-/** Guard the entire Consumer shell. Protected children never mount before verification. */
+
+/**
+ * ConsumerAccessGate enforces the strict flow order:
+ * AUTH (1) -> ONBOARDING (2) -> PREMIUM PAYWALL (3) -> APP TOUR (4) -> HOME (5)
+ *
+ * Rules:
+ * IF unauthenticated: -> /auth
+ * IF authenticated but onboarding incomplete: -> /onboarding
+ * IF onboarding complete but no premium: -> /premium
+ * IF onboarding complete & premium active, but tour incomplete: -> /welcome
+ * IF all complete: allow access to protected application routes
+ */
 export function ConsumerAccessGate({ children }: { children: ReactNode }) {
-  const path = useRouterState({ select: (state) => state.location.pathname });
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { user, loading } = useSession();
-  const userId = user?.id;
   const [online, setOnline] = useState(true);
+
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
     update();
@@ -36,51 +43,53 @@ export function ConsumerAccessGate({ children }: { children: ReactNode }) {
       window.removeEventListener("offline", update);
     };
   }, []);
-  const access = usePremium();
-  const preferences = useQuery({
-    queryKey: ["intro-completion", user?.id],
-    queryFn: async () =>
-      (await getIntroCompletion()) || !!(await getMyPreferences())?.onboarding_completed,
-    enabled: !!user,
-    retry: false,
-  });
-  const publicPath = isPublicConsumerPath(path);
+
+  const { state, user, access } = useFlowController();
+  const isPublic = isPublicPath(pathname);
+
   useEffect(() => {
-    if (!userId || !hasSeenTour()) return;
-    void completeIntro().catch(() => undefined);
-  }, [userId]);
-  useEffect(() => {
-    if (loading || publicPath || (userId && access.loading)) return;
-    if (!online) return;
-    if (userId && access.error) return;
-    if (userId && access.isPremium) return;
-    if (userId && preferences.isPending) return;
-    // Entry sequence: auth → onboarding → paywall → app (strict).
-    // Only server-backed onboarding completion counts so local flags cannot skip the flow.
-    const onboardingDone = !!preferences.data;
-    if (onboardingDone) markTourSeen();
-    void navigate({ to: onboardingDone ? "/premium" : "/onboarding", replace: true });
-  }, [
-    loading,
-    online,
-    publicPath,
-    userId,
-    access.loading,
-    access.isPremium,
-    access.error,
-    preferences.isPending,
-    preferences.data,
-    navigate,
-  ]);
-  if (publicPath) return <>{children}</>;
-  if (!online)
+    if (state === "loading" || !online) return;
+
+    if (state === "unauthenticated") {
+      if (!isPublic) {
+        void navigate({ to: "/auth", replace: true });
+      }
+      return;
+    }
+
+    // Authenticated states
+    if (state === "onboarding_required") {
+      if (pathname !== "/onboarding" && !isPublic) {
+        void navigate({ to: "/onboarding", replace: true });
+      }
+    } else if (state === "paywall_required") {
+      if (pathname !== "/premium" && !isPublic) {
+        void navigate({ to: "/premium", replace: true });
+      }
+    } else if (state === "app_tour_required") {
+      if (pathname !== "/welcome" && !isPublic) {
+        void navigate({ to: "/welcome", replace: true });
+      }
+    } else if (state === "application_ready") {
+      // If user visits auth/onboarding/welcome/premium when fully completed, redirect to home
+      if (pathname === "/auth" || pathname === "/onboarding" || pathname === "/welcome") {
+        void navigate({ to: "/", replace: true });
+      }
+    }
+  }, [state, pathname, isPublic, online, navigate]);
+
+  if (isPublic) return <>{children}</>;
+
+  if (!online) {
     return (
       <main className="premium-gate" role="status">
         <h1>You’re offline</h1>
         <p>Connect to verify your subscription and continue.</p>
       </main>
     );
-  if (userId && access.error)
+  }
+
+  if (user && access.error) {
     return (
       <main className="premium-gate">
         <h1>Let’s check your subscription</h1>
@@ -93,12 +102,30 @@ export function ConsumerAccessGate({ children }: { children: ReactNode }) {
         </button>
       </main>
     );
-  if (loading || !user || access.loading || !access.isPremium)
+  }
+
+  // During flow stages, allow the corresponding flow route to render
+  if (state === "onboarding_required" && pathname === "/onboarding") {
+    return <>{children}</>;
+  }
+  if (state === "paywall_required" && pathname === "/premium") {
+    return <>{children}</>;
+  }
+  if (state === "app_tour_required" && pathname === "/welcome") {
+    return <>{children}</>;
+  }
+
+  if (state !== "application_ready") {
     return (
       <main className="premium-gate" role="status">
         <span className="premium-eyebrow">MEALMATE</span>
-        <p>Checking your access…</p>
+        <div className="flex items-center justify-center gap-2 mt-4 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Checking your access…</span>
+        </div>
       </main>
     );
+  }
+
   return <>{children}</>;
 }

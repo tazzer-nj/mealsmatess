@@ -1,0 +1,219 @@
+/* App tour styles — dark luxury editorial with periwinkle accents */
+.app-tour-shell {
+  --tour-bg: #05070a;
+  --tour-card: #0c1017;
+  --tour-border: rgba(165, 180, 252, 0.16);
+  --tour-text: #f8fafc;
+  --tour-muted: #94a3b8;
+  --tour-periwinkle: #818cf8;
+  --tour-periwinkle-light: #a5b4fc;
+  --tour-periwinkle-dim: rgba(129, 140, 248, 0.12);
+
+  background:
+    radial-gradient(ellipse at 50% 0%, #111827 0%, var(--tour-bg) 75%),
+    var(--tour-bg);
+  color: var(--tour-text);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1rem 2rem;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.tour-header {
+  margin-bottom: 1rem;
+}
+
+.tour-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.tour-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--tour-border);
+  color: var(--tour-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tour-back-btn:hover:not(:disabled) {
+  background: var(--tour-periwinkle-dim);
+  border-color: var(--tour-periwinkle);
+}
+
+.tour-brand-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.tour-step-counter {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--tour-periwinkle-light);
+  letter-spacing: 0.05em;
+}
+
+.tour-progressbar {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.35rem;
+  height: 4px;
+}
+
+.tour-progressbar span {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.25s ease;
+}
+
+.tour-progressbar span.complete {
+  background: linear-gradient(90deg, #818cf8, #a5b4fc);
+  box-shadow: 0 0 10px rgba(129, 140, 248, 0.35);
+}
+
+.tour-step-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.tour-photo-wrapper {
+  position: relative;
+  height: min(34vh, 260px);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--tour-border);
+  margin-bottom: 1.25rem;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6);
+}
+
+.tour-photo-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.7) saturate(1.15);
+}
+
+.tour-photo-badge {
+  position: absolute;
+  left: 0.85rem;
+  right: 0.85rem;
+  bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(12, 16, 23, 0.85);
+  border: 1px solid rgba(165, 180, 252, 0.3);
+  backdrop-filter: blur(10px);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.tour-copy-body {
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+  padding-bottom: 1rem;
+}
+
+.tour-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--tour-periwinkle);
+  margin: 0 0 0.4rem;
+}
+
+.tour-heading {
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+  margin: 0 0 0.65rem;
+}
+
+.tour-description {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--tour-muted);
+  margin: 0 0 1rem;
+}
+
+.tour-ui-highlight {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(129, 140, 248, 0.08);
+  border: 1px solid rgba(165, 180, 252, 0.2);
+}
+
+.tour-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: auto;
+}
+
+.tour-primary-btn {
+  width: 100%;
+  height: 3rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 100%);
+  color: #070913;
+  font-weight: 800;
+  font-size: 0.98rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 8px 24px rgba(129, 140, 248, 0.28);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.tour-primary-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(129, 140, 248, 0.38);
+}
+
+.tour-primary-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tour-legal {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--tour-muted);
+  text-align: center;
+  margin: 0;
+}
+
+.tour-legal a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

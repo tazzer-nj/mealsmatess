@@ -1,13 +1,24 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Check, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Check,
+  Loader2,
+  ShieldCheck,
+  Sparkles,
+  Bot,
+  Utensils,
+  CalendarCheck,
+  Refrigerator,
+} from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import {
   createPurchaseSession,
   redeemPromoCode,
   verifyCheckout,
   verifyMyPremium,
+  getIntroCompletion,
 } from "@/lib/billing.functions";
 import {
   loadBillingStore,
@@ -17,12 +28,28 @@ import {
 } from "@/lib/billing-client";
 import { RecipeImage } from "@/components/recipe-image";
 
-const BENEFITS = [
-  "Recipes you’ll actually cook",
-  "A calmer week of meal plans",
-  "Dinner ideas from what’s in the pantry",
-  "Mia — hands-free help in the kitchen",
-] as const;
+const VALUE_BENEFITS = [
+  {
+    icon: Bot,
+    title: "AI-Powered Mia Assistant",
+    desc: "Hands-free voice and interactive chat assistance directly in the kitchen.",
+  },
+  {
+    icon: Utensils,
+    title: "Personalized Recipe Engine",
+    desc: "Authentic meals tailored to your dietary restrictions, household and preferences.",
+  },
+  {
+    icon: CalendarCheck,
+    title: "AI Weekly Meal Planning",
+    desc: "Automated, waste-free schedules that sync directly with smart shopping lists.",
+  },
+  {
+    icon: Refrigerator,
+    title: "Pantry & Fridge Cooking",
+    desc: "Snap a photo of ingredients to unlock delicious recipes with what you have on hand.",
+  },
+];
 
 export function PremiumPaywall() {
   const { user, loading: sessionLoading } = useSession();
@@ -40,6 +67,7 @@ export function PremiumPaywall() {
   const [promoBusy, setPromoBusy] = useState(false);
   const lock = useRef(false);
   const userId = user?.id;
+
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
     update();
@@ -50,6 +78,20 @@ export function PremiumPaywall() {
       window.removeEventListener("offline", update);
     };
   }, []);
+
+  async function routeNext() {
+    if (!userId) {
+      await navigate({ to: "/auth", replace: true });
+      return;
+    }
+    const introDone = await getIntroCompletion().catch(() => false);
+    if (!introDone) {
+      await navigate({ to: "/welcome", replace: true });
+    } else {
+      await navigate({ to: "/", replace: true });
+    }
+  }
+
   useEffect(() => {
     if (sessionLoading) return;
     let active = true;
@@ -60,7 +102,7 @@ export function PremiumPaywall() {
       .then(async (identity) => {
         if (!active) return null;
         if (identity.isActive) {
-          await navigate({ to: userId ? "/" : "/auth", replace: true });
+          await routeNext();
           return null;
         }
         return loadBillingStore(identity);
@@ -98,7 +140,10 @@ export function PremiumPaywall() {
       const access = userId ? await verifyMyPremium() : await verifyCheckout();
       if (access.isPremium) {
         await queryClient.invalidateQueries({ queryKey: ["entitlement"] });
-        await navigate({ to: userId ? "/" : "/auth", replace: true });
+        if (userId) {
+          await queryClient.invalidateQueries({ queryKey: ["user-flow-progress", userId] });
+        }
+        await routeNext();
         return;
       }
       if (i < 2) await new Promise((resolve) => window.setTimeout(resolve, 1000));
@@ -122,8 +167,9 @@ export function PremiumPaywall() {
       const access = await redeemPromoCode({ data: { code: promoCode.trim() } });
       if (access.isPremium) {
         await queryClient.invalidateQueries({ queryKey: ["entitlement"] });
+        await queryClient.invalidateQueries({ queryKey: ["user-flow-progress", userId] });
         setMessage("Promo applied — Premium is unlocked.");
-        await navigate({ to: "/", replace: true });
+        await routeNext();
         return;
       }
       setMessage("Promo could not be applied. Try again.");
@@ -162,36 +208,45 @@ export function PremiumPaywall() {
       setBusy(false);
     }
   }
+
   const plan = store?.plans.find((p) => p.kind === selected);
+
   return (
     <main className="premium-flow paywall paywall-redesign">
       <div className="paywall-photo" aria-hidden="true">
         <RecipeImage recipe={{ name: "Creamy chicken alfredo" }} size="hero" priority />
         <div className="paywall-photo-badge">
-          <Sparkles size={14} aria-hidden="true" />
-          <span>Premium access</span>
+          <Sparkles size={14} className="text-periwinkle" aria-hidden="true" />
+          <span>MealMate Premium</span>
         </div>
       </div>
+
       <section className="paywall-content">
-        <p className="premium-eyebrow">MealMate Premium</p>
+        <p className="premium-eyebrow">Unlock Full Access</p>
         <h1>
-          Good food.
+          Elevate your cooking.
           <br />
-          <span>Every day.</span>
+          <span>Every single day.</span>
         </h1>
         <p className="premium-description">
-          Unlock planning, pantry ideas, and Mia — everything in one calm place.
+          Experience personal AI chef Mia, tailored recipes, automated grocery planning, and smart pantry management.
         </p>
-        <ul className="premium-benefits">
-          {BENEFITS.map((benefit) => (
-            <li key={benefit}>
-              <span className="benefit-check" aria-hidden="true">
-                <Check size={14} strokeWidth={2.5} />
-              </span>
-              {benefit}
-            </li>
+
+        {/* Feature Cards Grid */}
+        <div className="paywall-features-grid">
+          {VALUE_BENEFITS.map((item) => (
+            <div key={item.title} className="paywall-feature-card">
+              <div className="paywall-feature-icon">
+                <item.icon size={18} className="text-periwinkle" />
+              </div>
+              <div className="paywall-feature-text">
+                <div className="paywall-feature-title">{item.title}</div>
+                <div className="paywall-feature-desc">{item.desc}</div>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
+
         <fieldset className="premium-plans" disabled={busy || loading}>
           <legend className="sr-only">Choose a subscription plan</legend>
           {(["monthly", "yearly", "family"] as const).map((kind) => {
@@ -234,6 +289,7 @@ export function PremiumPaywall() {
             );
           })}
         </fieldset>
+
         {!online && (
           <p role="alert" className="premium-notice">
             You’re offline. Connect to verify your subscription or make a purchase.
@@ -254,6 +310,7 @@ export function PremiumPaywall() {
             Try again
           </button>
         )}
+
         {pendingVerification ? (
           <button
             type="button"
@@ -274,12 +331,13 @@ export function PremiumPaywall() {
               <Loader2 className="animate-spin" size={20} />
             ) : (
               <>
-                {plan?.trialDays === 7 ? "Start 7-day free trial" : "Subscribe"}
+                <span>{plan?.trialDays === 7 ? "Start 7-day free trial" : "Subscribe"}</span>
                 <ArrowRight size={18} aria-hidden="true" />
               </>
             )}
           </button>
         )}
+
         {plan && (
           <p className="premium-terms">
             {plan.trialDays === 7
@@ -289,6 +347,7 @@ export function PremiumPaywall() {
             settings. Trial eligibility and final taxes are confirmed at checkout.
           </p>
         )}
+
         <div className="premium-promo">
           <label className="premium-promo-label" htmlFor="promo-code">
             Have a promo code?
@@ -330,9 +389,14 @@ export function PremiumPaywall() {
             </p>
           )}
         </div>
+
         <div className="premium-recovery">
-          <button type="button" onClick={() => void perform("restore")} disabled={busy || loading || !online}>
-            Restore purchases
+          <button
+            type="button"
+            onClick={() => void perform("restore")}
+            disabled={busy || loading || !online}
+          >
+            Restore Purchases
           </button>
           {!userId && (
             <Link to="/auth" search={{ mode: "signin" }}>
@@ -340,9 +404,11 @@ export function PremiumPaywall() {
             </Link>
           )}
         </div>
+
         <p className="premium-assurance">
           <ShieldCheck size={14} aria-hidden="true" /> Secure checkout · Access after confirmation
         </p>
+
         <p className="premium-legal">
           <Link to="/legal/terms">Terms</Link>
           <span>·</span>

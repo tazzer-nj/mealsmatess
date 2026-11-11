@@ -274,8 +274,14 @@ export function assertBillingOrigin(request: Request) {
   if (site === "cross-site") {
     throw new Response("Forbidden", { status: 403 });
   }
-  if (site === "same-origin" || site === "same-site") return;
+  if (site === "same-origin") return;
+  if (!origin && !site) {
+    throw new Response("Forbidden", { status: 403 });
+  }
   if (origin && origin !== requestOrigin) {
+    throw new Response("Forbidden", { status: 403 });
+  }
+  if (site === "same-site" && origin !== requestOrigin) {
     throw new Response("Forbidden", { status: 403 });
   }
 }
