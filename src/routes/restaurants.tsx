@@ -344,7 +344,7 @@ function RestaurantsPage() {
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search restaurants, dishes"
               aria-label="Search restaurants and dishes"
-              className="h-13 rounded-2xl border-border bg-card pl-12 pr-12 text-base shadow-none focus-visible:ring-2"
+              className="h-12 rounded-xl border-border bg-card pl-12 pr-12 text-[15px] shadow-none focus-visible:border-white/40 focus-visible:ring-0"
             />
             <Button
               size="icon"
@@ -410,8 +410,13 @@ function RestaurantsPage() {
             <Button
               key={item.key}
               size="sm"
-              variant={filter === item.key ? "default" : "outline"}
-              className="h-9 shrink-0 rounded-full px-4 shadow-none"
+              variant="ghost"
+              className={cn(
+                "h-9 shrink-0 gap-1.5 rounded-full border px-4 text-[13px] font-medium shadow-none transition-colors duration-150",
+                filter === item.key
+                  ? "border-white bg-white text-black hover:bg-white hover:text-black"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground",
+              )}
               onClick={() => setFilter(item.key)}
             >
               <SlidersHorizontal className={cn("h-3.5 w-3.5", item.key !== "all" && "hidden")} />

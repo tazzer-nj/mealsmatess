@@ -235,7 +235,7 @@ function RecipePage() {
 
         <div className="mt-4 grid gap-8 md:grid-cols-2">
           <div>
-            <div className="overflow-hidden rounded-3xl bg-muted">
+            <div className="overflow-hidden rounded-[20px] border border-border bg-muted">
               <RecipeImage
                 recipe={r}
                 size="hero"
@@ -255,7 +255,7 @@ function RecipePage() {
               {r.country && <span>· {r.country}</span>}
               {r.category && <span>· {r.category}</span>}
             </div>
-            <h1 className="mt-2 font-display text-4xl md:text-5xl">{r.name}</h1>
+            <h1 className="mt-2 text-[34px] font-medium leading-[1.1] tracking-[-0.03em] md:text-[44px]">{r.name}</h1>
             {r.description && <p className="mt-3 text-lg text-muted-foreground">{r.description}</p>}
 
             {r.diet_tags && r.diet_tags.length > 0 && (
@@ -339,7 +339,7 @@ function RecipePage() {
 
         <div className="mt-10 grid gap-10 md:grid-cols-[1fr_1.5fr]">
           <section>
-            <h2 className="font-display text-2xl">Ingredients</h2>
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Ingredients</h2>
             <ul className="mt-4 space-y-2">
               {ingredients.map((ing, i) => (
                 <li
@@ -359,7 +359,7 @@ function RecipePage() {
           </section>
 
           <section>
-            <h2 className="font-display text-2xl">Method</h2>
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Instructions</h2>
             <ol className="mt-4 space-y-4">
               {steps.map((step, i) => (
                 <li key={i} className="flex gap-4">
