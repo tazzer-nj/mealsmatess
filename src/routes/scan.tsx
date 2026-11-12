@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Camera, CalendarDays, Flame, Loader2, Plus, Utensils } from "lucide-react";
+import { Camera, CalendarDays, Flame, ImagePlus, Loader2, Plus, Sparkles, Utensils, X } from "lucide-react";
 import { scanKitchen, scanDish, type ScannedDish } from "@/lib/ai.functions";
 import { useSession } from "@/hooks/use-session";
 import { firebaseData } from "@/lib/firebase-data";
@@ -100,6 +100,8 @@ function ScanPage() {
   );
   const [planDate, setPlanDate] = useState(() => isoLocal(new Date()));
   const [mealType, setMealType] = useState("Lunch");
+  const [newItem, setNewItem] = useState("");
+  const galleryRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", replace: true });
@@ -109,7 +111,9 @@ function ScanPage() {
     setItems(null);
     setDish(null);
     setPreview(null);
+    setNewItem("");
     if (inputRef.current) inputRef.current.value = "";
+    if (galleryRef.current) galleryRef.current.value = "";
   }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -188,7 +192,7 @@ function ScanPage() {
     }
   }
 
-  async function addAllToPantry() {
+  async function addAllToPantry(options: { thenFindRecipes?: boolean } = {}) {
     if (!items || !user || saving) return;
     setSaving(true);
     try {
@@ -204,7 +208,11 @@ function ScanPage() {
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["pantry"] });
       toast.success(`Added ${items.length} item${items.length === 1 ? "" : "s"} to your pantry`);
-      reset();
+      if (options.thenFindRecipes) {
+        navigate({ to: "/pantry" });
+      } else {
+        reset();
+      }
     } catch (err) {
       toast.error("Couldn't save to pantry", {
         description: err instanceof Error ? err.message : undefined,
@@ -225,19 +233,16 @@ function ScanPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
-      <div className="flex items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-ink text-background">
-          <Camera className="h-5 w-5" />
-        </span>
-        <div>
-          <h1 className="font-display text-3xl leading-tight">Food Scanner</h1>
-          <p className="text-sm text-muted-foreground">
-            Point your camera at a dish — we'll name it, count the nutrition, and plan it.
-          </p>
-        </div>
-      </div>
+      <header>
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Scan</p>
+        <h1 className="mt-1 font-display text-3xl leading-tight tracking-tight">Scan your food</h1>
+        <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+          Point your camera at a dish or at your ingredients. We'll identify them, count the nutrition
+          and save them for you.
+        </p>
+      </header>
 
-      <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-muted p-1 text-sm">
+      <div className="mt-6 grid grid-cols-2 gap-1 rounded-xl border border-border bg-card p-1 text-sm">
         {(
           [
             { id: "dish", label: "Identify dish", icon: Utensils },
@@ -251,8 +256,10 @@ function ScanPage() {
               setMode(m.id);
               reset();
             }}
-            className={`flex items-center justify-center gap-2 rounded-full px-3 py-2 font-medium transition-colors ${
-              mode === m.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+            className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 font-medium transition-colors ${
+              mode === m.id
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <m.icon className="h-4 w-4" />
@@ -269,38 +276,77 @@ function ScanPage() {
         className="hidden"
         onChange={handleFile}
       />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFile}
+      />
 
       {!preview ? (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="mt-6 flex w-full flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-border bg-card py-16 text-center transition-colors hover:bg-muted"
-        >
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-ink text-background">
+        <div className="mt-6 rounded-2xl border border-dashed border-border bg-card px-5 py-12 text-center">
+          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <Camera className="h-7 w-7" />
           </span>
-          <span className="font-medium">Tap to scan now</span>
-          <span className="max-w-xs text-sm text-muted-foreground">
+          <p className="mt-4 text-base font-medium">Scan with your camera</p>
+          <p className="mx-auto mt-1 max-w-xs text-sm leading-relaxed text-muted-foreground">
             {mode === "dish"
               ? "Snap a plated meal to identify it and get calories and macros."
               : "Take or upload a photo of your ingredients or groceries."}
-          </span>
-        </button>
+          </p>
+          <div className="mx-auto mt-6 flex max-w-xs flex-col gap-2">
+            <Button className="h-12 rounded-xl" onClick={() => inputRef.current?.click()}>
+              <Camera className="mr-2 h-4 w-4" />
+              Open camera
+            </Button>
+            <Button
+              variant="secondary"
+              className="h-12 rounded-xl"
+              onClick={() => galleryRef.current?.click()}
+            >
+              <ImagePlus className="mr-2 h-4 w-4" />
+              Choose from gallery
+            </Button>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            We'll ask for camera access the first time you scan.
+          </p>
+        </div>
       ) : (
-        <div className="mt-6 overflow-hidden rounded-3xl border border-border bg-card">
-          <img src={preview} alt="Scanned food" className="max-h-64 w-full object-cover" />
+        <div className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-card">
+          <img src={preview} alt="Scanned food" className="max-h-72 w-full object-cover" />
+          {busy && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/70 backdrop-blur-sm">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <p className="text-sm font-medium">
+                {mode === "dish" ? "Looking at your dish…" : "Looking at your ingredients…"}
+              </p>
+              <span className="h-px w-24 animate-pulse bg-foreground/60" />
+            </div>
+          )}
+          {!busy && (
+            <button
+              type="button"
+              onClick={reset}
+              aria-label="Close"
+              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-lg bg-background/80 text-foreground backdrop-blur transition-colors hover:bg-background"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
       )}
 
-      {busy && (
-        <div className="mt-6 flex items-center justify-center gap-2 text-muted-foreground">
+      {busy && !preview && (
+        <div className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          {mode === "dish" ? "Identifying your dish…" : "Identifying ingredients…"}
+          Preparing your photo…
         </div>
       )}
 
       {dish && (
-        <section className="mt-6 rounded-3xl border border-border bg-card p-5">
+        <section className="mt-6 rounded-2xl border border-border bg-card p-6">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="font-display text-2xl">{dish.name}</h2>
@@ -314,7 +360,7 @@ function ScanPage() {
           </div>
           {dish.description && <p className="mt-2 text-sm">{dish.description}</p>}
 
-          <div className="mt-4 flex items-center gap-3 rounded-2xl bg-primary px-4 py-3 text-primary-foreground">
+          <div className="mt-5 flex items-center gap-3 rounded-xl bg-primary px-4 py-4 text-primary-foreground">
             <Flame className="h-6 w-6" />
             <div>
               <div className="font-display text-2xl leading-none">{dish.calories ?? "–"}</div>
@@ -324,7 +370,7 @@ function ScanPage() {
 
           <dl className="mt-3 grid grid-cols-4 gap-2">
             {macros.map((m) => (
-              <div key={m.label} className="rounded-2xl bg-muted px-2 py-3 text-center">
+              <div key={m.label} className="rounded-xl border border-border bg-background px-2 py-3 text-center">
                 <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
                   {m.label}
                 </dt>
@@ -341,7 +387,7 @@ function ScanPage() {
               {dish.ingredients.map((ing, i) => (
                 <li
                   key={`${ing}-${i}`}
-                  className="rounded-full border border-border px-3 py-1 text-xs"
+                  className="rounded-lg border border-border px-2.5 py-1 text-xs"
                 >
                   {ing}
                 </li>
@@ -391,7 +437,7 @@ function ScanPage() {
               </Select>
             </div>
             <div className="mt-3 flex gap-3">
-              <Button onClick={saveDishToPlanner} disabled={saving} className="rounded-full">
+              <Button onClick={saveDishToPlanner} disabled={saving} className="h-12 rounded-xl">
                 {saving ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -399,7 +445,7 @@ function ScanPage() {
                 )}
                 Add to planner
               </Button>
-              <Button variant="secondary" className="rounded-full" onClick={reset}>
+              <Button variant="secondary" className="h-12 rounded-xl" onClick={reset}>
                 <Camera className="mr-2 h-4 w-4" />
                 Scan again
               </Button>
@@ -409,34 +455,83 @@ function ScanPage() {
       )}
 
       {items && items.length > 0 && (
-        <section className="mt-6">
-          <h2 className="font-display text-xl">Found {items.length} ingredients</h2>
-          <ul className="mt-3 flex flex-wrap gap-2">
+        <section className="mt-6 rounded-2xl border border-border bg-card p-6">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-display text-xl">Found {items.length} ingredients</h2>
+            <span className="text-xs text-muted-foreground">Review before saving</span>
+          </div>
+
+          <ul className="mt-4 divide-y divide-border">
             {items.map((item, i) => (
               <li
                 key={`${item.name}-${i}`}
-                className="rounded-full border border-border bg-card px-3 py-1.5 text-sm"
+                className="flex items-center justify-between gap-3 py-2.5"
               >
-                {item.name}
-                {item.quantity ? (
-                  <span className="text-muted-foreground"> · {item.quantity}</span>
-                ) : null}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{item.name}</p>
+                  {item.quantity ? (
+                    <p className="text-xs text-muted-foreground">{item.quantity}</p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Remove ${item.name}`}
+                  onClick={() => setItems((prev) => (prev ?? []).filter((_, idx) => idx !== i))}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </li>
             ))}
           </ul>
-          <div className="mt-6 flex gap-3">
-            <Button onClick={addAllToPantry} disabled={saving} className="rounded-full">
+
+          <form
+            className="mt-4 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const name = newItem.trim();
+              if (!name) return;
+              setItems((prev) => [...(prev ?? []), { name }]);
+              setNewItem("");
+            }}
+          >
+            <input
+              value={newItem}
+              onChange={(e) => setNewItem(e.target.value)}
+              placeholder="Add an ingredient"
+              className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring"
+            />
+            <Button type="submit" variant="secondary" className="h-11 shrink-0 rounded-xl px-4">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </form>
+
+          <div className="mt-5 flex flex-col gap-2">
+            <Button
+              className="h-12 w-full rounded-xl"
+              disabled={saving || items.length === 0}
+              onClick={() => addAllToPantry({ thenFindRecipes: true })}
+            >
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Plus className="mr-2 h-4 w-4" />
+                <Sparkles className="mr-2 h-4 w-4" />
               )}
-              Add all to pantry
+              Find recipes with these ingredients
             </Button>
-            <Button variant="secondary" className="rounded-full" onClick={reset}>
-              <Camera className="mr-2 h-4 w-4" />
-              Scan again
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                variant="secondary"
+                className="h-12 flex-1 rounded-xl"
+                disabled={saving}
+                onClick={() => addAllToPantry()}
+              >
+                Add to pantry
+              </Button>
+              <Button variant="secondary" className="h-12 flex-1 rounded-xl" onClick={reset}>
+                Scan again
+              </Button>
+            </div>
           </div>
         </section>
       )}
