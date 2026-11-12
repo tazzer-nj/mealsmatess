@@ -646,7 +646,7 @@ function SettingsPage() {
       </section>
 
       {user && (
-        <Button variant="danger" onClick={signOut} className="mt-8 w-full">
+        <Button variant="destructive" onClick={signOut} className="mt-8 w-full">
           <LogOut className="mr-2 h-[17px] w-[17px]" strokeWidth={1.75} />
           Sign out
         </Button>
