@@ -2,7 +2,7 @@ import { o as __toESM } from "../_runtime.mjs";
 import { u as require_react } from "../_libs/@floating-ui/react-dom+[...].mjs";
 import { S as useNavigate } from "../_libs/@tanstack/react-router+[...].mjs";
 import { n as CheckboxIndicator, p as require_jsx_runtime, t as Checkbox$1 } from "../_libs/@radix-ui/react-checkbox+[...].mjs";
-import { I as Plus, Lt as Check, h as Trash2, w as ShoppingCart } from "../_libs/lucide-react.mjs";
+import { L as Plus, Vt as Check, h as Trash2, w as ShoppingCart } from "../_libs/lucide-react.mjs";
 import { t as cn } from "./utils-C_uf36nf.mjs";
 import { t as Button } from "./button-BCTXbxsJ.mjs";
 import { n as useSession } from "./use-session-DD4jPZEV.mjs";

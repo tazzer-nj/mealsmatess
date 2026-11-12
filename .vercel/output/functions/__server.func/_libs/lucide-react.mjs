@@ -692,6 +692,21 @@ var Clock = createLucideIcon("clock", [["circle", {
 * This source code is licensed under the ISC license.
 * See the LICENSE file in the root directory of this source tree.
 */
+var Compass = createLucideIcon("compass", [["circle", {
+	cx: "12",
+	cy: "12",
+	r: "10",
+	key: "1mglay"
+}], ["path", {
+	d: "m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z",
+	key: "9ktpf1"
+}]]);
+/**
+* @license lucide-react v0.575.0 - ISC
+*
+* This source code is licensed under the ISC license.
+* See the LICENSE file in the root directory of this source tree.
+*/
 var Crown = createLucideIcon("crown", [["path", {
 	d: "M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z",
 	key: "1vdc57"
@@ -898,6 +913,19 @@ var Film = createLucideIcon("film", [
 var Flame = createLucideIcon("flame", [["path", {
 	d: "M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4",
 	key: "1slcih"
+}]]);
+/**
+* @license lucide-react v0.575.0 - ISC
+*
+* This source code is licensed under the ISC license.
+* See the LICENSE file in the root directory of this source tree.
+*/
+var Gauge = createLucideIcon("gauge", [["path", {
+	d: "m12 14 4-4",
+	key: "9kzdfg"
+}], ["path", {
+	d: "M3.34 19a10 10 0 1 1 17.32 0",
+	key: "19p75a"
 }]]);
 /**
 * @license lucide-react v0.575.0 - ISC
@@ -1144,6 +1172,34 @@ var Link2 = createLucideIcon("link-2", [
 		y1: "12",
 		y2: "12",
 		key: "1jonct"
+	}]
+]);
+/**
+* @license lucide-react v0.575.0 - ISC
+*
+* This source code is licensed under the ISC license.
+* See the LICENSE file in the root directory of this source tree.
+*/
+var ListChecks = createLucideIcon("list-checks", [
+	["path", {
+		d: "M13 5h8",
+		key: "a7qcls"
+	}],
+	["path", {
+		d: "M13 12h8",
+		key: "h98zly"
+	}],
+	["path", {
+		d: "M13 19h8",
+		key: "c3s6r1"
+	}],
+	["path", {
+		d: "m3 17 2 2 4-4",
+		key: "1jhpwq"
+	}],
+	["path", {
+		d: "m3 7 2 2 4-4",
+		key: "1obspn"
 	}]
 ]);
 /**
@@ -1617,6 +1673,34 @@ var Salad = createLucideIcon("salad", [
 	["path", {
 		d: "M10.9 7.25A3.99 3.99 0 0 0 4 10c0 .73.2 1.41.54 2",
 		key: "1p4srx"
+	}]
+]);
+/**
+* @license lucide-react v0.575.0 - ISC
+*
+* This source code is licensed under the ISC license.
+* See the LICENSE file in the root directory of this source tree.
+*/
+var ScanLine = createLucideIcon("scan-line", [
+	["path", {
+		d: "M3 7V5a2 2 0 0 1 2-2h2",
+		key: "aa7l1z"
+	}],
+	["path", {
+		d: "M17 3h2a2 2 0 0 1 2 2v2",
+		key: "4qcy5o"
+	}],
+	["path", {
+		d: "M21 17v2a2 2 0 0 1-2 2h-2",
+		key: "6vwrx8"
+	}],
+	["path", {
+		d: "M7 21H5a2 2 0 0 1-2-2v-2",
+		key: "ioqczr"
+	}],
+	["path", {
+		d: "M7 12h10",
+		key: "b7w52i"
 	}]
 ]);
 /**
@@ -2345,4 +2429,4 @@ var Zap = createLucideIcon("zap", [["path", {
 	key: "1xq2db"
 }]]);
 //#endregion
-export { LogOut as $, ArrowLeftRight as $t, Send as A, CircleQuestionMark as At, PenLine as B, Camera as Bt, SlidersHorizontal as C, Database as Ct, ShieldCheck as D, ClipboardList as Dt, Shield as E, Clock3 as Et, RefreshCw as F, ChevronDown as Ft, Mic as G, Bot as Gt, Moon as H, CalendarDays as Ht, Plus as I, ChefHat as It, MessageCircleQuestionMark as J, Bell as Jt, MicOff as K, BookMarked as Kt, Play as L, Check as Lt, Salad as M, ChevronUp as Mt, RotateCcw as N, ChevronRight as Nt, Share2 as O, Circle as Ot, Refrigerator as P, ChevronLeft as Pt, MailWarning as Q, ArrowLeft as Qt, Phone as R, CheckCheck as Rt, SlidersVertical as S, DollarSign as St, ShoppingBag as T, Clock as Tt, Monitor as U, CalendarClock as Ut, Pause as V, Calendar as Vt, Minus as W, CalendarCheck as Wt, MapPin as X, ArrowUpRight as Xt, Megaphone as Y, ArrowUp as Yt, Mail as Z, ArrowRight as Zt, Target as _, FileText as _t, Utensils as a, KeyRound as at, Star as b, ExternalLink as bt, User as c, Images as ct, Trophy as d, Heart as dt, Activity as en, Lock as et, TriangleAlert as f, HeartPulse as ft, Timer as g, Film as gt, Trash2 as h, Flame as ht, Volume2 as i, Lightbulb as it, Search as j, CircleCheck as jt, Settings as k, CircleX as kt, UserRound as l, ImagePlus as lt, TrendingDown as m, Gem as mt, X as n, LoaderCircle as nt, UtensilsCrossed as o, Info as ot, TrendingUp as p, Globe as pt, MessageCircle as q, Bike as qt, VolumeX as r, Link2 as rt, Users as s, Image as st, Zap as t, LocateFixed as tt, UserCog as u, House as ut, Sun as v, Eye as vt, ShoppingCart as w, Crown as wt, Sparkles as x, Download as xt, Store as y, EyeOff as yt, Pencil as z, ChartColumn as zt };
+export { MailWarning as $, ArrowUp as $t, Send as A, Clock3 as At, Pencil as B, ChefHat as Bt, SlidersHorizontal as C, ExternalLink as Ct, ShieldCheck as D, Crown as Dt, Shield as E, Database as Et, Refrigerator as F, CircleCheck as Ft, Minus as G, Calendar as Gt, Pause as H, CheckCheck as Ht, RefreshCw as I, ChevronUp as It, MessageCircle as J, CalendarCheck as Jt, Mic as K, CalendarDays as Kt, Plus as L, ChevronRight as Lt, ScanLine as M, Circle as Mt, Salad as N, CircleX as Nt, Share2 as O, Compass as Ot, RotateCcw as P, CircleQuestionMark as Pt, Mail as Q, Bell as Qt, Play as R, ChevronLeft as Rt, SlidersVertical as S, EyeOff as St, ShoppingBag as T, DollarSign as Tt, Moon as U, ChartColumn as Ut, PenLine as V, Check as Vt, Monitor as W, Camera as Wt, Megaphone as X, BookMarked as Xt, MessageCircleQuestionMark as Y, Bot as Yt, MapPin as Z, Bike as Zt, Target as _, Gauge as _t, Utensils as a, Link2 as at, Star as b, FileText as bt, User as c, Info as ct, Trophy as d, ImagePlus as dt, ArrowUpRight as en, LogOut as et, TriangleAlert as f, House as ft, Timer as g, Gem as gt, Trash2 as h, Globe as ht, Volume2 as i, Activity as in, ListChecks as it, Search as j, ClipboardList as jt, Settings as k, Clock as kt, UserRound as l, Image as lt, TrendingDown as m, HeartPulse as mt, X as n, ArrowLeft as nn, LocateFixed as nt, UtensilsCrossed as o, Lightbulb as ot, TrendingUp as p, Heart as pt, MicOff as q, CalendarClock as qt, VolumeX as r, ArrowLeftRight as rn, LoaderCircle as rt, Users as s, KeyRound as st, Zap as t, ArrowRight as tn, Lock as tt, UserCog as u, Images as ut, Sun as v, Flame as vt, ShoppingCart as w, Download as wt, Sparkles as x, Eye as xt, Store as y, Film as yt, Phone as z, ChevronDown as zt };

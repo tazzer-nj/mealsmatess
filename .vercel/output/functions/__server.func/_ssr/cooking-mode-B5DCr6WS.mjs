@@ -1,7 +1,7 @@
 import { o as __toESM } from "../_runtime.mjs";
 import { u as require_react } from "../_libs/@floating-ui/react-dom+[...].mjs";
 import { p as require_jsx_runtime } from "../_libs/@radix-ui/react-checkbox+[...].mjs";
-import { Nt as ChevronRight, Pt as ChevronLeft, g as Timer, n as X } from "../_libs/lucide-react.mjs";
+import { Lt as ChevronRight, Rt as ChevronLeft, g as Timer, n as X } from "../_libs/lucide-react.mjs";
 import { t as Button } from "./button-BCTXbxsJ.mjs";
 import { r as useOptionalMia } from "./use-mia-9WMlFWqd.mjs";
 //#region node_modules/.nitro/vite/services/ssr/assets/cooking-mode-B5DCr6WS.js
