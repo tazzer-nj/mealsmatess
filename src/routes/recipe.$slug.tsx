@@ -10,8 +10,13 @@ import {
   ChefHat,
   Lightbulb,
   Loader2,
-  Image,
+  Image as ImageIcon,
   Play,
+  Check,
+  Share2,
+  MessageCircle,
+  ArrowLeft,
+  Timer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { recipeBySlugQuery, myFavoritesQuery } from "@/lib/queries";
@@ -92,6 +97,7 @@ function RecipePage() {
   const [addingList, setAddingList] = useState(false);
   const [regen, setRegen] = useState(false);
   const [cookingOpen, setCookingOpen] = useState(false);
+  const [checked, setChecked] = useState<Set<number>>(new Set());
   const cookingModeEnabled = useFeatureFlag("cooking_mode", true);
   const [makingImage, setMakingImage] = useState(false);
 
@@ -168,13 +174,19 @@ function RecipePage() {
   const ingredients = (Array.isArray(r.ingredients) ? r.ingredients : []) as Ingredient[];
   const steps = (Array.isArray(r.steps) ? r.steps : []) as string[];
   const isFav = favorites?.some((f) => f.recipe_id === r.id) ?? false;
+  const prepMinutes = (r as { prep_time_minutes?: number | null }).prep_time_minutes ?? null;
 
   const stats = [
-    r.cooking_time_minutes && { icon: Clock, label: `${r.cooking_time_minutes} min` },
-    r.servings && { icon: Users, label: `${r.servings} servings` },
-    r.calories && { icon: Flame, label: `${r.calories} kcal (est.)` },
-    r.difficulty && { icon: ChefHat, label: r.difficulty },
-  ].filter(Boolean) as { icon: typeof Clock; label: string }[];
+    r.cooking_time_minutes && {
+      icon: Clock,
+      label: "Cooking",
+      value: `${r.cooking_time_minutes} min`,
+    },
+    prepMinutes && { icon: Timer, label: "Preparation", value: `${prepMinutes} min` },
+    r.servings && { icon: Users, label: "Serves", value: `${r.servings}` },
+    r.difficulty && { icon: ChefHat, label: "Difficulty", value: r.difficulty },
+    r.calories && { icon: Flame, label: "Energy", value: `${r.calories} kcal` },
+  ].filter(Boolean) as { icon: typeof Clock; label: string; value: string }[];
 
   async function toggleFavorite() {
     if (!user || !r) {
@@ -190,7 +202,7 @@ function RecipePage() {
       }
       await queryClient.invalidateQueries({ queryKey: ["favorites"] });
     } catch {
-      toast.error("Couldn't update favorites");
+      toast.error("Couldn't update favourites");
     } finally {
       setSavingFav(false);
     }
@@ -223,167 +235,224 @@ function RecipePage() {
     }
   }
 
+  async function shareRecipe() {
+    if (!r) return;
+    const url = `${window.location.origin}/recipe/${r.slug}`;
+    const data = {
+      title: r.name,
+      text: r.description ?? `Cook ${r.name} with MealMate.`,
+      url,
+    };
+    try {
+      if (navigator.share) await navigator.share(data);
+      else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Recipe link copied");
+      }
+    } catch {
+      /* user cancelled */
+    }
+  }
+
   return (
-    <main className="flex-1">
-      <div className="mx-auto max-w-5xl px-4 py-8">
-        <Link
-          to="/recipes"
-          className="text-sm font-medium text-muted-foreground hover:text-foreground"
-        >
-          ← Back to recipes
-        </Link>
+    <main className="mm-page mm-page--wide">
+      <Link
+        to="/recipes"
+        className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="size-3.5" strokeWidth={1.8} />
+        All recipes
+      </Link>
 
-        <div className="mt-4 grid gap-8 md:grid-cols-2">
-          <div>
-            <div className="overflow-hidden rounded-3xl bg-muted">
-              <RecipeImage
-                recipe={r}
-                size="hero"
-                priority
-                generating={makingImage}
-                className="aspect-square w-full object-cover"
-              />
-            </div>
-            <div>
-              <ImageCredit source={r.image_source} attribution={r.image_attribution} />
-            </div>
+      <div className="mt-4 grid gap-8 md:grid-cols-2 md:items-start">
+        <div>
+          <div className="recipe-hero">
+            <RecipeImage
+              recipe={r}
+              size="hero"
+              priority
+              generating={makingImage}
+              className="h-full w-full object-cover"
+            />
           </div>
-
-          <div className="flex flex-col">
-            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              {r.cuisine && <span>{r.cuisine}</span>}
-              {r.country && <span>· {r.country}</span>}
-              {r.category && <span>· {r.category}</span>}
-            </div>
-            <h1 className="mt-2 font-display text-4xl md:text-5xl">{r.name}</h1>
-            {r.description && <p className="mt-3 text-lg text-muted-foreground">{r.description}</p>}
-
-            {r.diet_tags && r.diet_tags.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {r.diet_tags.map((t: string) => (
-                  <span
-                    key={t}
-                    className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground"
-                  >
-                    {t}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {stats.map((s) => (
-                <div
-                  key={s.label}
-                  className="flex flex-col items-center gap-1 rounded-xl border border-border bg-card p-3 text-center"
-                >
-                  <s.icon className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-medium">{s.label}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button
-                onClick={toggleFavorite}
-                variant={isFav ? "default" : "secondary"}
-                disabled={savingFav}
-              >
-                {savingFav ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Heart className={`mr-2 h-4 w-4 ${isFav ? "fill-current" : ""}`} />
-                )}
-                {isFav ? "Saved" : "Save"}
-              </Button>
-              <Button onClick={addToGrocery} variant="outline" disabled={addingList}>
-                {addingList ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                )}
-                Add to list
-              </Button>
-              {cookingModeEnabled && steps.length > 0 && (
-                <Button onClick={() => setCookingOpen(true)} variant="default">
-                  <Play className="mr-2 h-4 w-4" />
-                  Start cooking
-                </Button>
-              )}
-              <Button onClick={regenerateImage} variant="outline" disabled={regen}>
-                {regen ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Image className="mr-2 h-4 w-4" />
-                )}
-                {isPremium ? "Regenerate image" : "AI image (Premium)"}
-              </Button>
-            </div>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <ImageCredit source={r.image_source} attribution={r.image_attribution} />
+            <ChangeImageButton recipe={r} userId={user?.id} />
           </div>
         </div>
 
-        {(r.protein_g || r.carbs_g || r.fat_g) && (
-          <div className="mt-8 grid grid-cols-3 gap-3 rounded-2xl border border-border bg-card p-4">
-            {[
-              { label: "Protein (est.)", value: r.protein_g },
-              { label: "Carbs (est.)", value: r.carbs_g },
-              { label: "Fat (est.)", value: r.fat_g },
-            ].map((m) => (
-              <div key={m.label} className="text-center">
-                <div className="font-display text-2xl">{m.value ?? "–"}g</div>
-                <div className="text-xs text-muted-foreground">{m.label}</div>
+        <div className="flex flex-col">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+            {r.cuisine ? <span>{r.cuisine}</span> : null}
+            {r.category ? <span>· {r.category}</span> : null}
+          </div>
+          <h1 className="mm-h1 mt-3">{r.name}</h1>
+          {r.description ? <p className="mm-lead mt-3">{r.description}</p> : null}
+
+          {r.diet_tags && r.diet_tags.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {r.diet_tags.map((t: string) => (
+                <span key={t} className="mm-tag">
+                  {t}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {stats.map((s) => (
+              <div key={s.label} className="recipe-stat">
+                <s.icon strokeWidth={1.7} aria-hidden="true" />
+                <span className="mm-meta">{s.label}</span>
+                <span className="text-[13px] font-medium leading-tight">{s.value}</span>
               </div>
             ))}
           </div>
-        )}
 
-        <div className="mt-10 grid gap-10 md:grid-cols-[1fr_1.5fr]">
-          <section>
-            <h2 className="font-display text-2xl">Ingredients</h2>
-            <ul className="mt-4 space-y-2">
-              {ingredients.map((ing, i) => (
+          <div className="mt-6 flex flex-wrap gap-2">
+            <Button onClick={() => void toggleFavorite()} disabled={savingFav}>
+              {savingFav ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Heart className={isFav ? "fill-current" : ""} />
+              )}
+              {isFav ? "Saved" : "Save recipe"}
+            </Button>
+            <Button variant="secondary" onClick={() => void addToGrocery()} disabled={addingList}>
+              {addingList ? <Loader2 className="animate-spin" /> : <ShoppingCart />}
+              Add to list
+            </Button>
+            <Button asChild variant="secondary">
+              <Link to="/chat" search={{ q: `How do I cook ${r.name}?` }}>
+                <MessageCircle />
+                Ask Mia
+              </Link>
+            </Button>
+            <Button variant="ghost" onClick={() => void shareRecipe()}>
+              <Share2 />
+              Share
+            </Button>
+          </div>
+
+          {cookingModeEnabled && steps.length > 0 ? (
+            <Button
+              className="mt-3 w-full"
+              variant="secondary"
+              onClick={() => setCookingOpen(true)}
+            >
+              <Play />
+              Start cooking mode
+            </Button>
+          ) : null}
+
+          {!isPremium ? (
+            <button
+              type="button"
+              onClick={() => void regenerateImage()}
+              className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ImageIcon className="size-3.5" />
+              New AI photo with Premium
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {(r.protein_g || r.carbs_g || r.fat_g) && (
+        <div className="mt-8 grid grid-cols-3 gap-2 rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
+          {[
+            { label: "Protein", value: r.protein_g },
+            { label: "Carbs", value: r.carbs_g },
+            { label: "Fat", value: r.fat_g },
+          ].map((m) => (
+            <div key={m.label} className="text-center">
+              <div className="text-xl font-medium tracking-[-0.02em]">{m.value ?? "–"}g</div>
+              <div className="mm-meta mt-1">{m.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-10 grid gap-10 md:grid-cols-[0.9fr_1.1fr]">
+        <section aria-labelledby="ingredients-heading">
+          <h2 id="ingredients-heading" className="mm-h2">
+            Ingredients
+          </h2>
+          <p className="mm-meta mt-1">Tap an ingredient to tick it off while you cook.</p>
+          <ul className="mt-3">
+            {ingredients.map((ing, i) => {
+              const isChecked = checked.has(i);
+              return (
                 <li
-                  key={i}
-                  className="flex items-baseline justify-between gap-3 border-b border-border/60 pb-2 text-sm"
+                  key={`${ing.name}-${i}`}
+                  className="ing-row"
+                  data-checked={isChecked}
+                  role="checkbox"
+                  aria-checked={isChecked}
+                  tabIndex={0}
+                  onClick={() =>
+                    setChecked((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(i)) next.delete(i);
+                      else next.add(i);
+                      return next;
+                    })
+                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      (e.currentTarget as HTMLElement).click();
+                    }
+                  }}
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="ing-check" aria-hidden="true">
+                    <Check className="size-3.5" strokeWidth={2.4} />
+                  </span>
+                  <span className="ing-name flex-1">
                     {ing.name}
                     <SubstitutionsButton ingredient={ing.name} recipeName={r.name} />
                   </span>
-                  {ing.quantity && (
-                    <span className="shrink-0 text-muted-foreground">{ing.quantity}</span>
-                  )}
+                  {ing.quantity ? (
+                    <span className="flex-none text-[13px] text-muted-foreground">
+                      {ing.quantity}
+                    </span>
+                  ) : null}
                 </li>
-              ))}
-            </ul>
-          </section>
+              );
+            })}
+          </ul>
+        </section>
 
-          <section>
-            <h2 className="font-display text-2xl">Method</h2>
-            <ol className="mt-4 space-y-4">
-              {steps.map((step, i) => (
-                <li key={i} className="flex gap-4">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                    {i + 1}
-                  </span>
-                  <p className="pt-0.5 text-sm leading-relaxed">{step}</p>
-                </li>
-              ))}
-            </ol>
-          </section>
-        </div>
-
-        {r.fun_fact && (
-          <div className="mt-10 flex gap-3 rounded-2xl bg-secondary p-5">
-            <Lightbulb className="h-5 w-5 shrink-0 text-primary" />
-            <p className="text-sm text-secondary-foreground">
-              <strong>Did you know?</strong> {r.fun_fact}
-            </p>
-          </div>
-        )}
-
-        <RecipeRatings recipeId={r.id} />
+        <section aria-labelledby="method-heading">
+          <h2 id="method-heading" className="mm-h2">
+            Instructions
+          </h2>
+          <p className="mm-meta mt-1">
+            {steps.length} step{steps.length === 1 ? "" : "s"}
+            {r.cooking_time_minutes ? ` · about ${r.cooking_time_minutes} minutes` : ""}
+          </p>
+          <ol className="mt-2">
+            {steps.map((step, i) => (
+              <li key={i} className="step-row">
+                <span className="step-index">{i + 1}</span>
+                <p className="step-text">{step}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
       </div>
+
+      {r.fun_fact ? (
+        <div className="mt-8 flex gap-3 rounded-2xl border border-[#1e1e1e] bg-[#111111] p-5">
+          <Lightbulb className="size-5 shrink-0 text-muted-foreground" strokeWidth={1.7} />
+          <p className="mm-body">
+            <strong className="font-medium text-foreground">Did you know?</strong> {r.fun_fact}
+          </p>
+        </div>
+      ) : null}
+
+      <RecipeRatings recipeId={r.id} />
+
       {cookingOpen && (
         <Suspense fallback={null}>
           <CookingMode

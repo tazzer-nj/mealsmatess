@@ -1,5 +1,5 @@
 import { UtensilsCrossed } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   IMAGE_DIMENSIONS,
   NEUTRAL_RECIPE_PLACEHOLDER,
@@ -41,7 +41,15 @@ function RecipePhoto({
   const [useCurated, setUseCurated] = useState(false);
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState<string | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const { src, srcSet } = recipePhotoSources(recipe, size, useCurated);
+
+  // A cached image can finish before React attaches onLoad, so reconcile once
+  // after mount; otherwise the photo stays at opacity 0.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img?.complete && img.naturalWidth > 0) setLoaded(src);
+  }, [src]);
   const unavailable = failed || src === NEUTRAL_RECIPE_PLACEHOLDER;
   const creating = generating && unavailable;
 
@@ -78,6 +86,7 @@ function RecipePhoto({
           )}
           <img
             key={src}
+            ref={imgRef}
             src={src}
             srcSet={srcSet}
             sizes={
@@ -94,9 +103,6 @@ function RecipePhoto({
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
             decoding="async"
-            ref={(img) => {
-              if (img?.complete && img.naturalWidth > 0) setLoaded(src);
-            }}
             onLoad={() => setLoaded(src)}
             onError={() => {
               const curated = recipePhotoSources(recipe, size, true);

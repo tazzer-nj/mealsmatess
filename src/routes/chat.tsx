@@ -1,16 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { Crown, Loader2, Eye } from "lucide-react";
-import { ChefMascot } from "@/components/chef-mascot";
-import { CookingInput } from "@/components/cooking-input";
+import { ArrowUp, Camera, Crown, Eye, Loader2, Mic, RotateCcw, Sparkles } from "lucide-react";
 import { useMia } from "@/hooks/use-mia";
 // Heavy media player (images + audio narration) — only loaded when a visual answer exists.
 const VisualExplainer = lazy(() =>
   import("@/components/visual-explainer").then((m) => ({ default: m.VisualExplainer })),
 );
 import { usePremium } from "@/hooks/use-premium";
-import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/chat")({
   component: ChatPage,
@@ -18,16 +15,16 @@ export const Route = createFileRoute("/chat")({
     typeof search["q"] === "string" ? { q: search["q"].slice(0, 200) } : {},
   head: () => ({
     meta: [
-      { title: "AI Food Chat & Visual Mode — MealMate" },
+      { title: "Mia — your MealMate companion" },
       {
         name: "description",
         content:
-          "Ask MealMate anything about food and get an AI answer plus a narrated, animated visual explanation you can download.",
+          "Ask Mia anything about food and get a thoughtful answer, recipe guidance and hands-free help in the kitchen.",
       },
-      { property: "og:title", content: "AI Food Chat & Visual Mode — MealMate" },
+      { property: "og:title", content: "Mia — your MealMate companion" },
       {
         property: "og:description",
-        content: "AI answers with animated, narrated visual explanations for Premium members.",
+        content: "Ask Mia anything about food, cooking and what to make next.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -36,10 +33,10 @@ export const Route = createFileRoute("/chat")({
 });
 
 const SUGGESTIONS = [
-  "What can I cook with chicken and rice?",
-  "What can I substitute for buttermilk?",
-  "Give me a quick vegetarian dinner idea",
-  "What pairs well with bunny chow?",
+  "What can I cook?",
+  "Help me plan dinner.",
+  "Find a quick recipe.",
+  "What can I make with my ingredients?",
 ];
 
 function ChatPage() {
@@ -48,8 +45,9 @@ function ChatPage() {
   const [question, setQuestion] = useState(q ?? "");
   const endRef = useRef<HTMLDivElement>(null);
   const mia = useMia();
-  const { turns, busy } = mia;
+  const { turns, busy, voice } = mia;
   const [visualMode, setVisualMode] = useState(false);
+
   useEffect(() => {
     if (turns.length) endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [turns, busy]);
@@ -61,128 +59,163 @@ function ChatPage() {
     try {
       await mia.ask(question, { visual: isPremium && visualMode });
     } catch (error) {
-      toast.error("Couldn't answer that", {
+      toast.error("Mia couldn't answer that", {
         description:
           error instanceof Error ? error.message : "Mia is unavailable. Please try again.",
       });
     }
   }
 
+  const voiceActive = ["listening", "thinking", "speaking", "waiting", "loading"].includes(
+    voice.state,
+  );
+
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-10">
+    <main className="mia-shell">
       {turns.length === 0 ? (
-        <div className="flex flex-col items-center py-6 text-center">
-          <ChefMascot animate className="h-48 w-48" />
-          <h1 className="mt-6 font-display text-3xl">Your little kitchen companion.</h1>
-          <p className="mt-3 text-sm text-muted-foreground">What's cooking, Chef?</p>
-        </div>
-      ) : (
-        <h1 className="font-display text-2xl">MealMate Chef</h1>
-      )}
+        <div className="mia-welcome">
+          <span className="mia-orb">
+            <Sparkles className="size-5" strokeWidth={1.6} />
+          </span>
+          <h1 className="mm-display">Hey, I'm Mia.</h1>
+          <p className="mm-lead mt-1">What are we making today?</p>
 
-      <div className="mt-4 flex justify-center">
-        {isPremium ? (
-          <Button
-            variant="outline"
-            className="rounded-full"
-            aria-pressed={visualMode}
-            onClick={() => setVisualMode((v) => !v)}
-          >
-            <Eye /> Visual Mode {visualMode ? "on" : "off"}
-          </Button>
-        ) : (
-          <Button asChild variant="ghost" className="rounded-full text-muted-foreground">
-            <Link to="/premium">
-              <Crown /> Premium Visual Mode
-            </Link>
-          </Button>
-        )}
-      </div>
-
-      <div className="mt-8 flex-1 space-y-6">
-        {turns.length === 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="mt-8 flex w-full flex-col gap-2">
             {SUGGESTIONS.map((s) => (
-              <Button
-                variant="outline"
+              <button
                 key={s}
                 type="button"
                 onClick={() => ask(s)}
-                className="rounded-full border border-border bg-card px-4 py-2 text-left text-sm transition-colors hover:bg-muted"
+                disabled={busy}
+                className="mia-suggestion"
               >
                 {s}
-              </Button>
+                <ArrowUp className="size-4 rotate-45" strokeWidth={1.7} />
+              </button>
             ))}
           </div>
-        )}
-
-        {turns.map((t) => (
-          <div key={t.id} className="space-y-3">
-            <p className="ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
-              {t.question}
-            </p>
-            {t.answer && (
-              <p className="mr-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-card px-4 py-2.5 text-sm">
-                {t.answer}
-              </p>
-            )}
-            {t.error && (
-              <div
-                role="alert"
-                className="flex flex-wrap items-center gap-3 text-sm text-destructive"
-              >
-                <p>{t.error}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void mia.retry(t.id)}
-                  disabled={busy}
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center justify-between">
+            <h1 className="text-[17px] font-semibold tracking-[-0.02em]">Mia</h1>
+            <div className="flex items-center gap-1">
+              {isPremium ? (
+                <button
+                  type="button"
+                  aria-pressed={visualMode}
+                  onClick={() => setVisualMode((v) => !v)}
+                  className="mm-chip"
+                  data-active={visualMode}
                 >
-                  Try again
-                </Button>
-              </div>
-            )}
-            {t.visualLoading && (
-              <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Directing your animated explainer — illustrations + narration…
-              </div>
-            )}
-            {t.visualError && (
-              <p className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-xs text-muted-foreground">
-                Visual explanation unavailable: {t.visualError}
-              </p>
-            )}
-            {t.visual && (
-              <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-muted" />}>
-                <VisualExplainer data={t.visual} />
-              </Suspense>
-            )}
+                  <Eye className="size-3.5" strokeWidth={1.7} />
+                  Visual
+                </button>
+              ) : (
+                <Link to="/premium" className="mm-chip">
+                  <Crown className="size-3.5" strokeWidth={1.7} />
+                  Visual
+                </Link>
+              )}
+            </div>
           </div>
-        ))}
 
-        {busy && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Thinking…
+          <div className="mia-thread">
+            {turns.map((t) => (
+              <div key={t.id} className="mia-turn">
+                <p className="mia-ask">{t.question}</p>
+                {t.answer ? <p className="mia-answer">{t.answer}</p> : null}
+                {!t.answer && !t.error && busy ? (
+                  <div className="mia-typing" role="status" aria-label="Mia is thinking">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                ) : null}
+                {t.error ? (
+                  <div role="alert" className="mm-error">
+                    <p className="mm-body">{t.error}</p>
+                    <button
+                      type="button"
+                      onClick={() => void mia.retry(t.id)}
+                      disabled={busy}
+                      className="mm-btn mm-btn--secondary mm-btn--sm"
+                    >
+                      <RotateCcw />
+                      Try again
+                    </button>
+                  </div>
+                ) : null}
+                {t.visualLoading ? (
+                  <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" />
+                    Preparing your visual explanation…
+                  </div>
+                ) : null}
+                {t.visualError ? (
+                  <p className="mm-meta">Visual explanation unavailable: {t.visualError}</p>
+                ) : null}
+                {t.visual ? (
+                  <Suspense fallback={<div className="mm-skeleton h-40" />}>
+                    <VisualExplainer data={t.visual} />
+                  </Suspense>
+                ) : null}
+              </div>
+            ))}
+            <div ref={endRef} />
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      <div ref={endRef} />
-      <div className="chat-composer sticky bottom-3 mt-6 bg-background pb-2 pt-2">
-        <CookingInput
-          value={question}
-          onChange={setQuestion}
-          onSubmit={() => {
-            void ask(question);
-          }}
-          busy={busy}
-        />
+      <div className="mia-composer">
+        <div className="mia-input-shell">
+          <button
+            type="button"
+            className="mia-tool-btn"
+            aria-label={voiceActive ? "Mia voice is active" : "Start voice conversation"}
+            aria-pressed={voiceActive}
+            onClick={() => {
+              if (voiceActive) mia.stopVoice();
+              else mia.startVoice();
+            }}
+          >
+            <Mic className="size-[18px]" strokeWidth={1.7} />
+          </button>
+          <Link to="/scan" className="mia-tool-btn" aria-label="Scan ingredients">
+            <Camera className="size-[18px]" strokeWidth={1.7} />
+          </Link>
+          <textarea
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void ask(question);
+              }
+            }}
+            rows={1}
+            maxLength={2000}
+            placeholder="Ask Mia anything..."
+            aria-label="Message Mia"
+          />
+          <button
+            type="button"
+            className="mia-send"
+            aria-label="Send message"
+            disabled={busy || !question.trim()}
+            onClick={() => void ask(question)}
+          >
+            {busy ? (
+              <Loader2 className="size-[18px] animate-spin" />
+            ) : (
+              <ArrowUp className="size-[18px]" strokeWidth={2} />
+            )}
+          </button>
+        </div>
+        <p className="mt-2 text-center text-[11px] text-muted-foreground">
+          Mia can be wrong — check allergies and food safety yourself.
+        </p>
       </div>
-      <p className="mt-2 flex items-center justify-center gap-1 text-center text-xs text-muted-foreground">
-        AI answers can be wrong — use judgment for allergies and safety.
-      </p>
     </main>
   );
 }

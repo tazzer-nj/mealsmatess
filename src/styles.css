@@ -17,8 +17,8 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-  --font-serif: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --color-positive: var(--positive);
   --color-negative: var(--negative);
   --color-setup-mint: var(--setup-mint);
@@ -67,53 +67,55 @@
 }
 
 :root {
-  --positive: oklch(0.46 0.13 155);
-  --negative: oklch(0.52 0.19 25);
-  --setup-mint: oklch(0.9 0.1 155);
-  --setup-coral: oklch(0.88 0.09 25);
-  --setup-sky: oklch(0.91 0.065 230);
-  --setup-yellow: oklch(0.94 0.11 95);
-  --setup-ink: oklch(0.24 0.045 155);
-  --shadow-admin: 0 4px 20px -12px oklch(0.2 0.02 155 / 18%);
-  --app-header-h: calc(4rem + env(safe-area-inset-top, 0px));
-  --app-nav-h: calc(4rem + env(safe-area-inset-bottom, 0px));
+  /* MealMate mono palette — the single source of truth for the visual identity. */
+  --positive: #4ade80;
+  --negative: #e5484d;
+  --setup-mint: #e5e5e5;
+  --setup-coral: #d4d4d4;
+  --setup-sky: #c4c4c4;
+  --setup-yellow: #f5f5f5;
+  --setup-ink: #0a0a0a;
+  --shadow-admin: 0 4px 20px -12px rgb(0 0 0 / 60%);
+  --app-header-h: calc(3.75rem + env(safe-area-inset-top, 0px));
+  --app-nav-h: calc(4.25rem + env(safe-area-inset-bottom, 0px));
   --radius: 1rem;
-  /* MealMate logo palette: fresh green #4a9b2f, deep green #0d4423, warm orange #f5853c */
-  --cream: oklch(0.982 0.012 115);
-  --ink: oklch(0.3 0.055 152);
-  --ember: oklch(0.72 0.16 55);
-  --leaf: oklch(0.61 0.16 139);
-  --background: oklch(0.992 0.003 95);
-  --foreground: oklch(0.12 0 0);
-  --card: oklch(0.975 0.005 95);
-  --card-foreground: oklch(0.12 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.12 0 0);
-  --primary: oklch(0.12 0 0);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.94 0 0);
-  --secondary-foreground: oklch(0.12 0 0);
-  --muted: oklch(0.94 0 0);
-  --muted-foreground: oklch(0.42 0 0);
-  --accent: oklch(0.92 0 0);
-  --accent-foreground: oklch(0.12 0 0);
-  --border: oklch(0.91 0.003 95);
-  --input: oklch(0.89 0.003 95);
-  --ring: oklch(0.25 0 0);
-  --chart-1: oklch(0.61 0.16 139);
-  --chart-2: oklch(0.72 0.16 55);
-  --chart-3: oklch(0.82 0.13 100);
-  --chart-4: oklch(0.65 0.12 220);
-  --chart-5: oklch(0.68 0.15 15);
-  --sidebar: oklch(0.965 0.018 125);
-  --sidebar-foreground: oklch(0.3 0.055 152);
-  --sidebar-primary: oklch(0.61 0.16 139);
-  --sidebar-primary-foreground: oklch(0.99 0.004 120);
-  --sidebar-accent: oklch(0.94 0.03 132);
-  --sidebar-accent-foreground: oklch(0.34 0.07 152);
-  --sidebar-border: oklch(0.91 0.025 128);
-  --sidebar-ring: oklch(0.61 0.16 139);
-  --market-hero: oklch(0.98 0.01 120);
+  --cream: #111111;
+  --ink: #ffffff;
+  --ember: #a1a1aa;
+  --leaf: #ffffff;
+  --background: #080808;
+  --foreground: #ffffff;
+  --card: #141414;
+  --card-foreground: #ffffff;
+  --popover: #171717;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #080808;
+  --secondary: #111111;
+  --secondary-foreground: #ffffff;
+  --muted: #111111;
+  --muted-foreground: #a1a1aa;
+  --accent: #171717;
+  --accent-foreground: #ffffff;
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --border: #262626;
+  --input: #303030;
+  --ring: #ffffff;
+  --chart-1: #fafafa;
+  --chart-2: #d4d4d4;
+  --chart-3: #a1a1aa;
+  --chart-4: #71717a;
+  --chart-5: #3f3f46;
+  --sidebar: #0d0d0d;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #080808;
+  --sidebar-accent: #171717;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #262626;
+  --sidebar-ring: #ffffff;
+  --market-hero: #ffffff;
 }
 
 /* Dining's own dark look applies only with the Classic theme; other themes take over Dining too */
@@ -151,85 +153,81 @@ html[data-mascot="classic"] .marketplace-dark {
   }
 }
 
+/* The product lives in the dark mono palette; .dark simply re-affirms it. */
 .dark {
-  --positive: oklch(0.78 0.14 155);
-  --negative: oklch(0.78 0.13 25);
-  --cream: oklch(0.19 0.03 150);
-  --ink: oklch(0.95 0.015 125);
-  --ember: oklch(0.75 0.15 55);
-  --leaf: oklch(0.72 0.16 140);
-  --background: oklch(0.08 0 0);
-  --foreground: oklch(0.98 0 0);
-  --card: oklch(0.14 0 0);
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.14 0 0);
-  --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.98 0 0);
-  --primary-foreground: oklch(0.08 0 0);
-  --secondary: oklch(0.2 0 0);
-  --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.2 0 0);
-  --muted-foreground: oklch(0.72 0 0);
-  --accent: oklch(0.24 0 0);
-  --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.65 0.22 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.72 0.16 140);
-  --chart-1: oklch(0.72 0.16 140);
-  --chart-2: oklch(0.75 0.15 55);
-  --chart-3: oklch(0.84 0.13 100);
-  --chart-4: oklch(0.72 0.11 220);
-  --chart-5: oklch(0.72 0.14 15);
-  --sidebar: oklch(0.18 0.028 150);
-  --sidebar-foreground: oklch(0.95 0.015 125);
-  --sidebar-primary: oklch(0.72 0.16 140);
-  --sidebar-primary-foreground: oklch(0.16 0.04 150);
-  --sidebar-accent: oklch(0.27 0.035 150);
-  --sidebar-accent-foreground: oklch(0.95 0.015 125);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.72 0.16 140);
+  --positive: #4ade80;
+  --negative: #e5484d;
+  --cream: #111111;
+  --ink: #ffffff;
+  --ember: #a1a1aa;
+  --leaf: #ffffff;
+  --background: #080808;
+  --foreground: #ffffff;
+  --card: #141414;
+  --card-foreground: #ffffff;
+  --popover: #171717;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #080808;
+  --secondary: #111111;
+  --secondary-foreground: #ffffff;
+  --muted: #111111;
+  --muted-foreground: #a1a1aa;
+  --accent: #171717;
+  --accent-foreground: #ffffff;
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --border: #262626;
+  --input: #303030;
+  --ring: #ffffff;
+  --chart-1: #fafafa;
+  --chart-2: #d4d4d4;
+  --chart-3: #a1a1aa;
+  --chart-4: #71717a;
+  --chart-5: #3f3f46;
+  --sidebar: #0d0d0d;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #080808;
+  --sidebar-accent: #171717;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #262626;
+  --sidebar-ring: #ffffff;
 }
 
-/* Fun theme — bright, colorful, food-inspired. Green primary with orange/yellow/blue/pink accents. */
+/* Legacy "fun" class is kept for stored preferences but resolves to the mono palette. */
 .fun {
-  --cream: oklch(0.985 0.02 130);
-  --ink: oklch(0.22 0.08 150);
-  --ember: oklch(0.72 0.18 40);
-  --leaf: oklch(0.68 0.19 145);
-  --background: oklch(0.985 0.02 130);
-  --foreground: oklch(0.2 0.06 150);
-  --card: oklch(1 0.01 130);
-  --card-foreground: oklch(0.2 0.06 150);
-  --popover: oklch(1 0.01 130);
-  --popover-foreground: oklch(0.2 0.06 150);
-  --primary: oklch(0.62 0.19 145);
-  --primary-foreground: oklch(0.99 0.02 130);
-  --secondary: oklch(0.95 0.06 90);
-  --secondary-foreground: oklch(0.28 0.09 145);
-  --muted: oklch(0.95 0.04 130);
-  --muted-foreground: oklch(0.45 0.05 150);
-  --accent: oklch(0.85 0.15 55);
-  --accent-foreground: oklch(0.22 0.08 40);
-  --destructive: oklch(0.62 0.24 25);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.88 0.06 130);
-  --input: oklch(0.9 0.05 130);
-  --ring: oklch(0.62 0.19 145);
-  --chart-1: oklch(0.68 0.19 145); /* green */
-  --chart-2: oklch(0.75 0.18 55); /* orange */
-  --chart-3: oklch(0.85 0.17 95); /* yellow */
-  --chart-4: oklch(0.68 0.15 240); /* blue */
-  --chart-5: oklch(0.72 0.19 350); /* pink */
-  --sidebar: oklch(0.98 0.02 130);
-  --sidebar-foreground: oklch(0.2 0.06 150);
-  --sidebar-primary: oklch(0.62 0.19 145);
-  --sidebar-primary-foreground: oklch(0.99 0.02 130);
-  --sidebar-accent: oklch(0.9 0.1 55);
-  --sidebar-accent-foreground: oklch(0.25 0.08 145);
-  --sidebar-border: oklch(0.88 0.06 130);
-  --sidebar-ring: oklch(0.62 0.19 145);
+  --cream: #111111;
+  --ink: #ffffff;
+  --ember: #a1a1aa;
+  --leaf: #ffffff;
+  --background: #080808;
+  --foreground: #ffffff;
+  --card: #141414;
+  --card-foreground: #ffffff;
+  --popover: #171717;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #080808;
+  --secondary: #111111;
+  --secondary-foreground: #ffffff;
+  --muted: #111111;
+  --muted-foreground: #a1a1aa;
+  --accent: #171717;
+  --accent-foreground: #ffffff;
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --border: #262626;
+  --input: #303030;
+  --ring: #ffffff;
+  --sidebar: #0d0d0d;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #080808;
+  --sidebar-accent: #171717;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #262626;
+  --sidebar-ring: #ffffff;
 }
 
 @layer base {
@@ -1674,6 +1672,7 @@ html[data-mia-controls="visible"] #app-scroll {
   padding-top: calc(var(--app-header-h, 0px) + var(--mia-controls-h, 50px) + 16px);
 }
 
+@import "./styles-mealmate.css";
 @import "./styles-onboarding-override.css";
 @import "./styles-paywall-override.css";
 @import "./styles-auth-override.css";

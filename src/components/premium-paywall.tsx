@@ -3,14 +3,15 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
-  Check,
-  Loader2,
-  ShieldCheck,
-  Sparkles,
   Bot,
-  Utensils,
   CalendarCheck,
+  ChefHat,
+  Loader2,
+  Mic,
   Refrigerator,
+  ScanLine,
+  ShieldCheck,
+  Utensils,
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import {
@@ -26,30 +27,42 @@ import {
   type BillingStore,
   type PlanKind,
 } from "@/lib/billing-client";
+import { MealMateLogo } from "@/components/mealmate-logo";
 import { RecipeImage } from "@/components/recipe-image";
 
-const VALUE_BENEFITS = [
-  {
-    icon: Bot,
-    title: "AI-Powered Mia Assistant",
-    desc: "Hands-free voice and interactive chat assistance directly in the kitchen.",
-  },
-  {
-    icon: Utensils,
-    title: "Personalized Recipe Engine",
-    desc: "Authentic meals tailored to your dietary restrictions, household and preferences.",
-  },
-  {
-    icon: CalendarCheck,
-    title: "AI Weekly Meal Planning",
-    desc: "Automated, waste-free schedules that sync directly with smart shopping lists.",
-  },
-  {
-    icon: Refrigerator,
-    title: "Pantry & Fridge Cooking",
-    desc: "Snap a photo of ingredients to unlock delicious recipes with what you have on hand.",
-  },
+const BENEFITS = [
+  { icon: Bot, label: "Your personal food companion" },
+  { icon: ChefHat, label: "Intelligent recipe generation" },
+  { icon: ScanLine, label: "Smart ingredient scanning" },
+  { icon: CalendarCheck, label: "Personalised meal planning" },
+  { icon: Refrigerator, label: "Pantry assistance" },
+  { icon: Utensils, label: "Advanced food discovery" },
+  { icon: Mic, label: "Voice conversations with Mia" },
 ];
+
+const PLAN_LABEL: Record<PlanKind, string> = {
+  monthly: "Monthly",
+  yearly: "Yearly",
+  family: "Family",
+};
+
+const PLAN_NOTE: Record<PlanKind, string> = {
+  monthly: "Flexible, cancel anytime",
+  yearly: "One payment for the whole year",
+  family: "Share MealMate with your household",
+};
+
+/** Reads a formatted store price without assuming a currency or rounding rule. */
+function amountOf(price: string): number | null {
+  const match = /(\d[\d\s.,]*)/.exec(price);
+  if (!match) return null;
+  const raw = match[1].trim();
+  const decimals = /[.,](\d{2})$/.exec(raw);
+  const digits = raw.replace(/[^\d]/g, "");
+  if (!digits) return null;
+  if (decimals) return Number(`${digits.slice(0, digits.length - 2)}.${decimals[1]}`);
+  return Number(digits);
+}
 
 export function PremiumPaywall() {
   const { user, loading: sessionLoading } = useSession();
@@ -114,8 +127,7 @@ export function PremiumPaywall() {
       })
       .catch((error) => {
         if (!active) return;
-        const raw =
-          error instanceof Error ? error.message : typeof error === "string" ? error : "";
+        const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
         if (/unavailable|temporarily|not available|plans|not configured|REVENUECAT/i.test(raw))
           setMessage(raw);
         else if (/forbidden|401|403|unauthorized/i.test(raw))
@@ -210,155 +222,163 @@ export function PremiumPaywall() {
   }
 
   const plan = store?.plans.find((p) => p.kind === selected);
+  const monthly = store?.plans.find((p) => p.kind === "monthly");
+  const yearly = store?.plans.find((p) => p.kind === "yearly");
+  const monthlyAmount = monthly ? amountOf(monthly.price) : null;
+  const yearlyAmount = yearly ? amountOf(yearly.price) : null;
+  const savingPercent =
+    monthlyAmount && yearlyAmount && monthlyAmount * 12 > yearlyAmount
+      ? Math.round((1 - yearlyAmount / (monthlyAmount * 12)) * 100)
+      : null;
 
   return (
-    <main className="premium-flow paywall paywall-redesign">
-      <div className="paywall-photo" aria-hidden="true">
-        <RecipeImage recipe={{ name: "Creamy chicken alfredo" }} size="hero" priority />
-        <div className="paywall-photo-badge">
-          <Sparkles size={14} className="text-periwinkle" aria-hidden="true" />
-          <span>MealMate Premium</span>
+    <main className="paywall-redesign">
+      <div className="paywall-hero">
+        <RecipeImage
+          recipe={{ name: "Creamy chicken alfredo" }}
+          size="hero"
+          priority
+          className="paywall-hero-media"
+        />
+        <div className="paywall-hero-top">
+          <span className="paywall-brand">
+            <MealMateLogo imageClassName="size-6 rounded-md object-contain" showName={false} />
+            MealMate
+          </span>
         </div>
       </div>
 
       <section className="paywall-content">
-        <p className="premium-eyebrow">Unlock Full Access</p>
-        <h1>
-          Elevate your cooking.
-          <br />
-          <span>Every single day.</span>
-        </h1>
-        <p className="premium-description">
-          Experience personal AI chef Mia, tailored recipes, automated grocery planning, and smart pantry management.
+        <p className="premium-eyebrow">MealMate Premium</p>
+        <h1>Make every meal better.</h1>
+        <p className="paywall-description">
+          Unlock your personal food companion. Discover recipes, plan meals and cook smarter with
+          Mia.
         </p>
 
-        {/* Feature Cards Grid */}
-        <div className="paywall-features-grid">
-          {VALUE_BENEFITS.map((item) => (
-            <div key={item.title} className="paywall-feature-card">
-              <div className="paywall-feature-icon">
-                <item.icon size={18} className="text-periwinkle" />
-              </div>
-              <div className="paywall-feature-text">
-                <div className="paywall-feature-title">{item.title}</div>
-                <div className="paywall-feature-desc">{item.desc}</div>
-              </div>
-            </div>
+        <ul className="paywall-benefits">
+          {BENEFITS.map((benefit) => (
+            <li key={benefit.label} className="paywall-benefit">
+              <benefit.icon strokeWidth={1.7} aria-hidden="true" />
+              {benefit.label}
+            </li>
           ))}
-        </div>
+        </ul>
 
-        <fieldset className="premium-plans" disabled={busy || loading}>
+        <fieldset className="paywall-plans" disabled={busy || loading}>
           <legend className="sr-only">Choose a subscription plan</legend>
-          {(["monthly", "yearly", "family"] as const).map((kind) => {
-            const option = store?.plans.find((p) => p.kind === kind);
-            return (
-              <label
-                key={kind}
-                className={`premium-plan ${selected === kind && option ? "selected" : ""} ${!option ? "unavailable" : ""}`}
-              >
-                <input
-                  type="radio"
-                  name="subscription"
-                  value={kind}
-                  checked={!!option && selected === kind}
-                  disabled={!option}
-                  onChange={() => setSelected(kind)}
-                />
-                <span className="plan-name">
-                  {kind[0].toUpperCase() + kind.slice(1)}
-                  {kind === "yearly" && option && <span className="plan-badge">Best value</span>}
-                </span>
-                <span className="plan-price">
-                  {loading ? (
-                    "Loading…"
-                  ) : option ? (
-                    <>
-                      {option.price}
-                      <small> / {option.period}</small>
-                    </>
-                  ) : (
-                    "Currently unavailable"
-                  )}
-                </span>
-                {option?.trialDays === 7 && (
-                  <span className="plan-trial">
-                    7 days free, then {option.price} / {option.period}
-                  </span>
-                )}
-              </label>
-            );
-          })}
+          {loading
+            ? [0, 1].map((i) => <div key={i} className="paywall-plan-skeleton" />)
+            : (["yearly", "monthly", "family"] as const).map((kind) => {
+                const option = store?.plans.find((p) => p.kind === kind);
+                const isSelected = selected === kind && !!option;
+                return (
+                  <button
+                    key={kind}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    disabled={!option}
+                    className="paywall-plan"
+                    data-selected={isSelected}
+                    data-unavailable={!option}
+                    onClick={() => setSelected(kind)}
+                  >
+                    <span className="paywall-radio" aria-hidden="true" />
+                    <span className="paywall-plan-body">
+                      <span className="paywall-plan-name">
+                        {PLAN_LABEL[kind]}
+                        {kind === "yearly" && option && savingPercent ? (
+                          <span className="paywall-badge">Save {savingPercent}%</span>
+                        ) : null}
+                      </span>
+                      <span className="paywall-plan-note">
+                        {option
+                          ? option.trialDays === 7
+                            ? `7 days free, then billed ${option.period === "year" ? "yearly" : option.period}`
+                            : PLAN_NOTE[kind]
+                          : loading
+                            ? "Loading store prices…"
+                            : "Currently unavailable"}
+                      </span>
+                    </span>
+                    <span className="paywall-plan-price">
+                      <strong>{option ? option.price : "—"}</strong>
+                      <span>{option ? `per ${option.period}` : "not offered"}</span>
+                    </span>
+                  </button>
+                );
+              })}
         </fieldset>
 
-        {!online && (
-          <p role="alert" className="premium-notice">
+        {!online ? (
+          <p role="alert" className="paywall-notice">
             You’re offline. Connect to verify your subscription or make a purchase.
           </p>
-        )}
-        {message && (
-          <p role="status" className="premium-notice">
+        ) : null}
+        {message ? (
+          <p role="status" className="paywall-notice">
             {message}
           </p>
-        )}
-        {!store && !loading && (
+        ) : null}
+
+        {!store && !loading ? (
           <button
             type="button"
-            className="premium-secondary"
+            className="paywall-secondary"
             onClick={() => setAttempt((n) => n + 1)}
             disabled={busy || !online}
           >
             Try again
           </button>
-        )}
+        ) : null}
 
         {pendingVerification ? (
           <button
             type="button"
-            className="premium-primary"
+            className="paywall-cta"
             disabled={busy || !online}
             onClick={() => void perform("verify")}
           >
-            {busy ? <Loader2 className="animate-spin" size={20} /> : "Check subscription access"}
+            {busy ? <Loader2 className="size-5 animate-spin" /> : "Check subscription access"}
           </button>
         ) : (
           <button
             type="button"
-            className="premium-primary"
+            className="paywall-cta"
             disabled={loading || busy || !online || !plan}
             onClick={() => void perform("purchase")}
           >
             {busy || loading ? (
-              <Loader2 className="animate-spin" size={20} />
+              <Loader2 className="size-5 animate-spin" />
             ) : (
               <>
-                <span>{plan?.trialDays === 7 ? "Start 7-day free trial" : "Subscribe"}</span>
-                <ArrowRight size={18} aria-hidden="true" />
+                Unlock MealMate Premium
+                <ArrowRight className="size-4" aria-hidden="true" />
               </>
             )}
           </button>
         )}
 
-        {plan && (
-          <p className="premium-terms">
+        {plan ? (
+          <p className="paywall-fineprint">
             {plan.trialDays === 7
               ? `7 days free, then ${plan.price} every ${plan.period}.`
-              : `${plan.price} billed every ${plan.period}.`}{" "}
-            Auto-renews until cancelled. Cancel before renewal in your store or billing account
-            settings. Trial eligibility and final taxes are confirmed at checkout.
+              : `${plan.price} every ${plan.period}.`}{" "}
+            Auto-renews until cancelled. Cancel any time in your store or billing settings before
+            renewal. Final taxes and trial eligibility are confirmed at checkout.
           </p>
-        )}
+        ) : null}
 
-        <div className="premium-promo">
-          <label className="premium-promo-label" htmlFor="promo-code">
-            Have a promo code?
-          </label>
-          <div className="premium-promo-row">
+        <details className="paywall-promo">
+          <summary>Have a promo code?</summary>
+          <div className="mt-3 flex gap-2">
             <input
-              id="promo-code"
               type="text"
-              className="premium-promo-input"
+              className="paywall-promo-input"
               placeholder="Enter code"
               value={promoCode}
+              aria-label="Promo code"
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
@@ -373,48 +393,43 @@ export function PremiumPaywall() {
             />
             <button
               type="button"
-              className="premium-promo-apply"
+              className="mm-btn mm-btn--secondary mm-btn--sm"
               disabled={busy || promoBusy || !online || !promoCode.trim()}
               onClick={() => void applyPromo()}
             >
-              {promoBusy ? <Loader2 className="animate-spin" size={16} /> : "Apply"}
+              {promoBusy ? <Loader2 className="size-4 animate-spin" /> : "Apply"}
             </button>
           </div>
-          {!userId && (
-            <p className="premium-promo-hint">
-              <Link to="/auth" search={{ mode: "signin" }}>
+          {!userId ? (
+            <p className="mm-meta mt-2">
+              <Link to="/auth" search={{ mode: "signin" }} className="underline">
                 Sign in
               </Link>{" "}
               to redeem a code.
             </p>
-          )}
-        </div>
+          ) : null}
+        </details>
 
-        <div className="premium-recovery">
+        <div className="paywall-links">
           <button
             type="button"
             onClick={() => void perform("restore")}
             disabled={busy || loading || !online}
           >
-            Restore Purchases
+            Restore purchases
           </button>
-          {!userId && (
+          {!userId ? (
             <Link to="/auth" search={{ mode: "signin" }}>
               Already subscribed? Sign in
             </Link>
-          )}
+          ) : null}
+          <Link to="/legal/terms">Terms</Link>
+          <Link to="/legal/privacy">Privacy</Link>
         </div>
 
-        <p className="premium-assurance">
-          <ShieldCheck size={14} aria-hidden="true" /> Secure checkout · Access after confirmation
-        </p>
-
-        <p className="premium-legal">
-          <Link to="/legal/terms">Terms</Link>
-          <span>·</span>
-          <Link to="/legal/privacy">Privacy</Link>
-          <span>·</span>
-          <Link to="/support">Help</Link>
+        <p className="paywall-secure">
+          <ShieldCheck className="size-3.5" aria-hidden="true" />
+          Secure checkout · Access opens after confirmation
         </p>
       </section>
     </main>

@@ -104,6 +104,10 @@ export function MascotThemeProvider({ children }: { children: ReactNode }) {
   return <ThemeCtx.Provider value={value}>{children}</ThemeCtx.Provider>;
 }
 
+export function useOptionalMascotTheme() {
+  return useContext(ThemeCtx);
+}
+
 export function useMascotTheme() {
   const ctx = useContext(ThemeCtx);
   if (!ctx) throw new Error("useMascotTheme must be used inside <MascotThemeProvider>");

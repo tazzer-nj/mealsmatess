@@ -6,16 +6,19 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Search,
-  SlidersHorizontal,
   Camera,
+  Heart,
   Loader2,
   User as UserIcon,
-  MessageCircleQuestion,
-  ShoppingCart,
-  Calendar,
+  CalendarDays,
   ChevronRight,
   Play,
   HeartPulse,
+  ShoppingBasket,
+  Refrigerator,
+  Sparkles,
+  Clock,
+  ArrowUpRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -29,9 +32,6 @@ import { surpriseMe } from "@/lib/ai.functions";
 import { useSession } from "@/hooks/use-session";
 import { firebaseData } from "@/lib/firebase-data";
 import { getContinueCooking } from "@/lib/continue-cooking";
-import { TrendingCard } from "@/components/recipe-card";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlanStatusCard } from "@/components/plan-status-card";
 import { XpChip } from "@/components/xp-chip";
@@ -95,6 +95,93 @@ function greeting() {
   return "Good evening";
 }
 
+const DIFFICULTY_LEVEL: Record<string, number> = { Easy: 1, Medium: 2, Hard: 3 };
+
+function FeaturedRecipeCard({
+  recipe,
+  isFavorite,
+  onToggleFavorite,
+  priority,
+}: {
+  recipe: {
+    id: string;
+    slug: string;
+    name: string;
+    image_url: string | null;
+    image_source?: string | null;
+    cooking_time_minutes: number | null;
+    difficulty?: string | null;
+    diet_tags?: string[] | null;
+    cuisine?: string | null;
+  };
+  isFavorite: boolean;
+  onToggleFavorite: (id: string) => void;
+  priority?: boolean;
+}) {
+  const level = recipe.difficulty ? (DIFFICULTY_LEVEL[recipe.difficulty] ?? 1) : 0;
+  return (
+    <article className="mm-recipe-card">
+      <div className="mm-recipe-media">
+        <Link to="/recipe/$slug" params={{ slug: recipe.slug }} aria-label={recipe.name}>
+          <RecipeImage
+            recipe={recipe}
+            size="card"
+            sizes="200px"
+            priority={priority}
+            className="h-full w-full object-cover"
+          />
+        </Link>
+        <div className="mm-media-fade" aria-hidden="true" />
+        <button
+          type="button"
+          onClick={() => onToggleFavorite(recipe.id)}
+          aria-label={isFavorite ? "Remove from favourites" : "Add to favourites"}
+          aria-pressed={isFavorite}
+          className="mm-fav-btn"
+        >
+          <Heart className="size-4" strokeWidth={1.7} />
+        </button>
+        {recipe.cooking_time_minutes ? (
+          <span className="mm-pill absolute bottom-2.5 left-2.5">
+            <Clock className="size-3" strokeWidth={1.8} />
+            {recipe.cooking_time_minutes} min
+          </span>
+        ) : null}
+      </div>
+      <Link to="/recipe/$slug" params={{ slug: recipe.slug }} className="mt-3 block">
+        <h3 className="mm-h3 line-clamp-2">{recipe.name}</h3>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+          {recipe.cuisine ? <span>{recipe.cuisine}</span> : null}
+          {recipe.difficulty ? (
+            <span className="inline-flex items-center gap-1.5">
+              {recipe.cuisine ? "·" : null}
+              {recipe.difficulty}
+              <span className="flex items-center gap-0.5">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="size-1 rounded-full"
+                    style={{ background: i < level ? "#ffffff" : "#3f3f46" }}
+                  />
+                ))}
+              </span>
+            </span>
+          ) : null}
+        </div>
+      </Link>
+      {recipe.diet_tags && recipe.diet_tags.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {recipe.diet_tags.slice(0, 2).map((tag) => (
+            <span key={tag} className="mm-tag">
+              {tag}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 function Index() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -129,6 +216,7 @@ function Index() {
   const favoriteIds = new Set((favorites ?? []).map((f) => f.recipe_id));
 
   const firstName = user?.displayName?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "there";
+  const initial = firstName.slice(0, 1).toUpperCase();
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -165,7 +253,7 @@ function Index() {
 
   async function toggleFavorite(recipeId: string) {
     if (!user) {
-      toast.info("Sign in to save favorites");
+      toast.info("Sign in to save favourites");
       return;
     }
     if (favoriteIds.has(recipeId)) {
@@ -181,202 +269,117 @@ function Index() {
   }
 
   return (
-    <main className="flex-1">
-      {/* Greeting header */}
-      <div className="flex items-center justify-between px-4 pt-6">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            {greeting()}
-          </p>
-          <h1 className="font-display text-4xl leading-tight">Hi {firstName}</h1>
+    <main className="mm-page">
+      <header className="mm-hero-greeting">
+        <div className="min-w-0">
+          <p className="mm-eyebrow">{greeting()}</p>
+          <h1 className="mm-h1 mt-2">Hi {firstName} 👋</h1>
+          <p className="mm-lead mt-2">What are you craving today?</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-none items-center gap-2">
           <XpChip />
-          <ThemeToggle />
-          <Link
-            to="/profile"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80"
-            aria-label="Profile"
-          >
-            <UserIcon className="h-4 w-4" />
+          <Link to="/profile" aria-label="Settings and profile" className="mm-avatar">
+            {user ? initial : <UserIcon className="size-4" strokeWidth={1.7} />}
           </Link>
         </div>
-      </div>
+      </header>
 
-      {/* Search */}
-      <form onSubmit={handleSearch} className="px-4 pt-6">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+      <form onSubmit={handleSearch} className="mt-7" role="search">
+        <div className="mm-search">
+          <Search aria-hidden="true" />
+          <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search recipes, ingredients, cuisines…"
+            placeholder="Search recipes, ingredients..."
+            aria-label="Search recipes and ingredients"
             maxLength={200}
-            className="h-14 rounded-full border-none bg-card pl-11 pr-14 text-base shadow-sm"
+            className="mm-input"
           />
-          <button
-            type="submit"
-            disabled={busy !== null}
-            aria-label="Search"
-            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            {busy === "search" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <SlidersHorizontal className="h-4 w-4" />
-            )}
-          </button>
         </div>
       </form>
 
-      {/* Category pills */}
-      <section className="px-4 pt-5">
-        <div className="flex flex-wrap gap-2">
-          {CATEGORY_PILLS.map((c) => (
-            <Link
-              key={c.label}
-              to="/recipes"
-              search={c.search}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
-            >
-              {c.label}
-            </Link>
-          ))}
-          <Link
-            to="/recipes"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
-          >
-            <span aria-hidden>⊞⊞</span>
-            More
+      <div className="mm-chip-row mt-4" role="navigation" aria-label="Recipe categories">
+        {CATEGORY_PILLS.map((c) => (
+          <Link key={c.label} to="/recipes" search={c.search} className="mm-chip">
+            {c.label}
           </Link>
-        </div>
-      </section>
+        ))}
+      </div>
 
-      {/* Hero cards: AI Kitchen Scan + Surprise Me */}
-      <section className="grid grid-cols-2 gap-3 px-4 pt-6">
-        <Link
-          to="/scan"
-          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-ink p-5 text-background"
-        >
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-background/60">
-              AI Kitchen Scan
-            </p>
-            <h2 className="mt-2 font-display text-2xl leading-tight">What's in your kitchen?</h2>
-            <p className="mt-2 text-xs leading-relaxed text-background/70">
-              Point your camera at the fridge or pantry — we'll log every ingredient automatically.
-            </p>
-          </div>
-          <span className="pointer-events-none absolute right-4 top-4 flex h-14 w-14 items-center justify-center rounded-full border border-background/20">
-            <Camera className="h-5 w-5" />
-          </span>
-          <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-background px-4 py-2 text-xs font-semibold text-foreground">
-            <Camera className="h-3.5 w-3.5" />
-            Scan now
-          </span>
-        </Link>
-
+      <section className="mt-7 grid grid-cols-2 gap-3" aria-label="Kitchen shortcuts">
         <button
           type="button"
           onClick={handleSurprise}
           disabled={busy !== null}
-          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-gradient-to-br from-ink via-ink to-primary/40 p-5 text-left text-background"
+          className="mm-feature-card mm-feature-card--inverse text-left"
         >
-          <div>
-            <h2 className="mt-2 font-display text-2xl leading-tight text-primary">Surprise Me</h2>
-            <p className="mt-2 text-xs leading-relaxed text-background/70">
-              Get a random recipe made just for you!
-            </p>
-          </div>
-          <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-background px-4 py-2 text-xs font-semibold text-foreground">
-            {busy === "surprise" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Surprise me
+          <span className="grid size-10 place-items-center rounded-full border border-black/15 bg-black/5">
+            <Sparkles className="size-[18px]" strokeWidth={1.7} />
+          </span>
+          <span className="mt-auto">
+            <span className="mm-h2 block whitespace-nowrap">Surprise Me</span>
+            <span className="mm-meta mt-1 block">A recipe chosen for you.</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-medium">
+            {busy === "surprise" ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <ArrowUpRight className="size-3.5" />
+            )}
+            {busy === "surprise" ? "Cooking something up" : "Pick for me"}
           </span>
         </button>
+
+        <Link to="/scan" className="mm-feature-card">
+          <span className="grid size-10 place-items-center rounded-full border border-border bg-[#1d1d1d]">
+            <Camera className="size-[18px]" strokeWidth={1.7} />
+          </span>
+          <span className="mt-auto">
+            <span className="mm-h2 block">Scan your kitchen</span>
+            <span className="mm-meta mt-1 block">Log what you already have.</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground">
+            <Camera className="size-3.5" />
+            Open scanner
+          </span>
+        </Link>
       </section>
 
-      {/* Quick actions */}
-      <section className="grid grid-cols-4 gap-2 px-4 pt-6">
-        {[
-          {
-            to: "/coach",
-            icon: HeartPulse,
-            label: "Nutrition Coach",
-            sub: "Personalized food advice",
-          },
-          {
-            to: "/chat",
-            icon: MessageCircleQuestion,
-            label: "AI Chat",
-            sub: "Ask anything about food",
-          },
-          {
-            to: "/scan",
-            icon: Camera,
-            label: "Scan Ingredients",
-            sub: "Use your camera to scan items",
-          },
-          {
-            to: "/planner",
-            icon: Calendar,
-            label: "Meal Planner",
-            sub: "Plan your meals for the week",
-          },
-        ].map((a) => (
-          <Link
-            key={a.to}
-            to={a.to}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-2 py-4 text-center transition-colors hover:bg-muted"
-          >
-            <a.icon className="h-5 w-5" />
-            <span className="text-xs font-semibold leading-tight">{a.label}</span>
-            <span className="hidden text-[10px] leading-tight text-muted-foreground sm:block">
-              {a.sub}
-            </span>
-          </Link>
-        ))}
-      </section>
-
-      {/* Plan status + premium features */}
-      <section className="px-4 pt-6">
-        <PlanStatusCard />
-      </section>
-
-      {/* Sponsored (free plan only) */}
-      <section className="px-4 pt-6">
-        <AdSlot slot="home_feed" />
-      </section>
-
-      {/* Trending recipes */}
-      <section className="pt-8">
-        <div className="mb-3 flex items-end justify-between px-4">
-          <h2 className="font-display text-2xl">Trending Recipes</h2>
+      <section className="mm-section" aria-labelledby="featured-heading">
+        <div className="mm-section-head">
+          <h2 id="featured-heading" className="mm-h2">
+            Featured recipes
+          </h2>
           <Link
             to="/recipes"
-            className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
           >
-            View all <ChevronRight className="h-3.5 w-3.5" />
+            View all
+            <ChevronRight className="size-3.5" />
           </Link>
         </div>
 
         {trendingLoading ? (
-          <div className="flex gap-4 overflow-x-auto px-4 pb-1">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-40 w-40 flex-shrink-0 rounded-2xl" />
+          <div className="mm-recipe-rail">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="w-[200px] flex-none">
+                <Skeleton className="aspect-[4/3] w-full rounded-2xl bg-[#141414]" />
+                <Skeleton className="mt-3 h-4 w-4/5 rounded bg-[#141414]" />
+                <Skeleton className="mt-2 h-3 w-2/5 rounded bg-[#141414]" />
+              </div>
             ))}
           </div>
         ) : trendingError ? (
-          <div className="mx-4 rounded-2xl border border-dashed border-border p-10 text-center">
-            <p className="text-muted-foreground">
-              Recipes are temporarily unavailable. You can still use the rest of MealMate.
-            </p>
+          <div className="mm-error">
+            <p className="mm-body">Recipes are temporarily unavailable.</p>
+            <p className="mm-meta">You can still use the planner, pantry and Mia.</p>
           </div>
         ) : trending.length > 0 ? (
-          <div className="flex gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="mm-recipe-rail">
             {trending.map((r, i) => (
-              <TrendingCard
+              <FeaturedRecipeCard
                 key={r.id}
-                recipe={r as any}
+                recipe={r as never}
                 isFavorite={favoriteIds.has(r.id)}
                 onToggleFavorite={toggleFavorite}
                 priority={i < 2}
@@ -384,123 +387,184 @@ function Index() {
             ))}
           </div>
         ) : (
-          <div className="mx-4 rounded-2xl border border-dashed border-border p-10 text-center">
-            <p className="text-muted-foreground">
-              No recipes yet — hit <strong>Surprise me</strong> above to create the first one!
+          <div className="mm-empty">
+            <span className="mm-empty-icon">
+              <Sparkles className="size-5" strokeWidth={1.6} />
+            </span>
+            <h3 className="mm-h3">Nothing cooked yet</h3>
+            <p className="mm-meta max-w-[280px]">
+              Use Surprise Me to create your first recipe — it will appear here.
             </p>
           </div>
         )}
       </section>
 
-      {/* South African favourites */}
-      <section className="pt-8">
-        <div className="mb-3 flex items-end justify-between px-4">
-          <h2 className="font-display text-2xl">South African Favourites</h2>
-          <Link
-            to="/recipes"
-            search={{ c: "South African Favorites" }}
-            className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            View all <ChevronRight className="h-3.5 w-3.5" />
+      <section className="mm-section" aria-labelledby="kitchen-heading">
+        <div className="mm-section-head">
+          <div>
+            <h2 id="kitchen-heading" className="mm-h2">
+              What's in your kitchen?
+            </h2>
+            <p className="mm-lead mt-1">Turn your ingredients into something delicious.</p>
+          </div>
+        </div>
+        <div className="mm-stack">
+          <Link to="/scan" search={{ mode: "ingredients" }} className="mm-tile">
+            <span className="mm-tile-icon">
+              <Camera className="size-[17px]" strokeWidth={1.7} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">Scan ingredients</span>
+              <span className="mm-meta block">Use your camera to log what you have</span>
+            </span>
+            <ChevronRight className="size-4 flex-none text-muted-foreground" />
+          </Link>
+          <Link to="/pantry" className="mm-tile">
+            <span className="mm-tile-icon">
+              <Refrigerator className="size-[17px]" strokeWidth={1.7} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">View pantry</span>
+              <span className="mm-meta block">Everything ready for something delicious</span>
+            </span>
+            <ChevronRight className="size-4 flex-none text-muted-foreground" />
+          </Link>
+          <Link to="/pantry" className="mm-tile">
+            <span className="mm-tile-icon">
+              <ShoppingBasket className="size-[17px]" strokeWidth={1.7} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">Add ingredients</span>
+              <span className="mm-meta block">Keep your pantry current in a few taps</span>
+            </span>
+            <ChevronRight className="size-4 flex-none text-muted-foreground" />
           </Link>
         </div>
-
-        {southAfricanLoading ? (
-          <div className="flex gap-4 overflow-x-auto px-4 pb-1">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 w-24 flex-shrink-0 rounded-2xl" />
-            ))}
-          </div>
-        ) : southAfricanError ? (
-          <p className="px-4 text-sm text-muted-foreground">
-            This section is temporarily unavailable.
-          </p>
-        ) : southAfrican.length > 0 ? (
-          <div className="flex gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {southAfrican.map((r) => (
-              <Link
-                key={r.id}
-                to="/recipe/$slug"
-                params={{ slug: r.slug }}
-                className="w-24 flex-shrink-0 text-center"
-              >
-                <div className="aspect-square w-24 overflow-hidden rounded-2xl bg-muted">
-                  <RecipeImage recipe={r} size="thumb" className="h-full w-full object-cover" />
-                </div>
-                <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-tight">{r.name}</p>
-              </Link>
-            ))}
-          </div>
-        ) : southAfrican ? (
-          <div className="mx-4 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            South African recipes will show up here once you generate a few.
-          </div>
-        ) : (
-          <div className="flex gap-4 overflow-x-auto px-4 pb-1">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 w-24 flex-shrink-0 rounded-2xl" />
-            ))}
-          </div>
-        )}
       </section>
 
-      {/* Continue cooking */}
       {continueCooking && (
-        <section className="px-4 pt-8">
-          <div className="mb-3 flex items-end justify-between">
-            <h2 className="font-display text-2xl">Continue Cooking</h2>
-            <Link
-              to="/recipes"
-              className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              View all <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
+        <section className="mm-section" aria-labelledby="continue-heading">
+          <div className="mm-section-head">
+            <h2 id="continue-heading" className="mm-h2">
+              Continue cooking
+            </h2>
           </div>
-
           <Link
             to="/recipe/$slug"
             params={{ slug: continueCooking.slug }}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
+            className="mm-tile items-center"
           >
-            <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-muted">
+            <span className="size-14 flex-none overflow-hidden rounded-xl bg-[#1a1a1a]">
               <RecipeImage
                 recipe={continueCooking}
                 size="thumb"
                 className="h-full w-full object-cover"
               />
-            </div>
-            <div className="flex-1">
-              <p className="font-display text-lg leading-tight">{continueCooking.name}</p>
-              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary"
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">{continueCooking.name}</span>
+              <span className="mt-2 block h-1 w-full overflow-hidden rounded-full bg-[#262626]">
+                <span
+                  className="block h-full rounded-full bg-white"
                   style={{ width: `${continueCooking.progress}%` }}
                 />
-              </div>
-              <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground">
-                <span>{continueCooking.progress}% complete</span>
-                {continueCooking.cooking_time_minutes && (
-                  <span>{continueCooking.cooking_time_minutes} min</span>
-                )}
-                {continueCooking.calories && <span>{continueCooking.calories} cal</span>}
-              </div>
-            </div>
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-ink text-background">
-              <Play className="h-3.5 w-3.5 fill-current" />
+              </span>
+              <span className="mm-meta mt-1.5 block">
+                {continueCooking.progress}% complete
+                {continueCooking.cooking_time_minutes
+                  ? ` · ${continueCooking.cooking_time_minutes} min`
+                  : ""}
+              </span>
+            </span>
+            <span className="grid size-9 flex-none place-items-center rounded-full bg-white text-black">
+              <Play className="size-3.5 fill-current" />
             </span>
           </Link>
         </section>
       )}
 
-      {/* Floating AI assistant */}
-      <Link
-        to="/chat"
-        aria-label="AI Assistant"
-        className="fixed bottom-24 right-4 z-40 flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-full bg-ink text-background shadow-lg"
-      >
-        <MessageCircleQuestion className="h-4 w-4" />
-        <span className="text-[8px] font-medium leading-none">AI</span>
-      </Link>
+      <section className="mm-section" aria-labelledby="south-african-heading">
+        <div className="mm-section-head">
+          <h2 id="south-african-heading" className="mm-h2">
+            South African favourites
+          </h2>
+          <Link
+            to="/recipes"
+            search={{ c: "South African Favorites" }}
+            className="inline-flex items-center gap-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            View all
+            <ChevronRight className="size-3.5" />
+          </Link>
+        </div>
+
+        {southAfricanLoading ? (
+          <div className="mm-recipe-rail">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="size-[104px] flex-none rounded-2xl bg-[#141414]" />
+            ))}
+          </div>
+        ) : southAfricanError ? (
+          <p className="mm-meta">This section is temporarily unavailable.</p>
+        ) : southAfrican.length > 0 ? (
+          <div className="mm-recipe-rail">
+            {southAfrican.map((r) => (
+              <Link
+                key={r.id}
+                to="/recipe/$slug"
+                params={{ slug: r.slug }}
+                className="w-[104px] flex-none"
+              >
+                <span className="block aspect-square w-full overflow-hidden rounded-2xl bg-[#1a1a1a]">
+                  <RecipeImage recipe={r} size="thumb" className="h-full w-full object-cover" />
+                </span>
+                <span className="mt-2 line-clamp-2 block text-[12px] leading-snug text-muted-foreground">
+                  {r.name}
+                </span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="mm-empty">
+            <span className="mm-empty-icon">
+              <ChevronRight className="size-5" strokeWidth={1.6} />
+            </span>
+            <h3 className="mm-h3">Local classics, waiting</h3>
+            <p className="mm-meta max-w-[280px]">
+              South African recipes appear here once you generate a few.
+            </p>
+          </div>
+        )}
+      </section>
+
+      <section className="mm-section" aria-label="More from MealMate">
+        <div className="mm-section-head">
+          <h2 className="mm-h2">More from MealMate</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { to: "/coach", icon: HeartPulse, label: "Nutrition coach" },
+            { to: "/chat", icon: Sparkles, label: "Ask Mia" },
+            { to: "/planner", icon: CalendarDays, label: "Meal planner" },
+            { to: "/list", icon: ShoppingBasket, label: "Grocery list" },
+          ].map((action) => (
+            <Link key={action.to} to={action.to} className="mm-tile">
+              <span className="mm-tile-icon">
+                <action.icon className="size-[17px]" strokeWidth={1.7} />
+              </span>
+              <span className="text-[13px] font-medium">{action.label}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mm-section">
+        <PlanStatusCard />
+      </section>
+
+      <section className="mm-section">
+        <AdSlot slot="home_feed" />
+      </section>
     </main>
   );
 }

@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
-import { useMascotTheme } from "@/hooks/use-mascot-theme";
+import { useOptionalMascotTheme } from "@/hooks/use-mascot-theme";
+import { getTheme } from "@/lib/mascot-theme";
 
 /** The MealMate mascot artwork for the selected theme. */
 export function MascotMark({
@@ -9,7 +10,9 @@ export function MascotMark({
   className?: string | undefined;
   alt?: string;
 }) {
-  const { theme } = useMascotTheme();
+  // The mark also renders in isolated screens (auth, paywall, tests) without a
+  // provider, so fall back to the classic artwork instead of throwing.
+  const theme = useOptionalMascotTheme()?.theme ?? getTheme("classic");
   return (
     <img
       key={theme.id}

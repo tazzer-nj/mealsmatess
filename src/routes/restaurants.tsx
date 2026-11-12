@@ -117,10 +117,10 @@ function sectionTitle(title: string, subtitle?: string) {
   return (
     <div className="mb-3 flex items-end justify-between gap-4 px-4">
       <div className="min-w-0">
-        <h2 className="font-sans text-xl font-bold text-foreground">{title}</h2>
-        {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
+        <h2 className="mm-h2 text-foreground">{title}</h2>
+        {subtitle && <p className="mm-meta mt-1">{subtitle}</p>}
       </div>
-      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.7} />
     </div>
   );
 }
@@ -338,13 +338,16 @@ function RestaurantsPage() {
             </SheetContent>
           </Sheet>
           <div className="relative mt-2">
-            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <Search
+              className="absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground"
+              strokeWidth={1.7}
+            />
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search restaurants, dishes"
+              placeholder="Search restaurants, dishes..."
               aria-label="Search restaurants and dishes"
-              className="h-13 rounded-2xl border-border bg-card pl-12 pr-12 text-base shadow-none focus-visible:ring-2"
+              className="h-13 rounded-xl pl-11 pr-12"
             />
             <Button
               size="icon"
@@ -407,16 +410,19 @@ function RestaurantsPage() {
           className="no-scrollbar flex gap-2 overflow-x-auto px-4"
         >
           {FILTERS.map((item) => (
-            <Button
+            <button
               key={item.key}
-              size="sm"
-              variant={filter === item.key ? "default" : "outline"}
-              className="h-9 shrink-0 rounded-full px-4 shadow-none"
+              type="button"
+              aria-pressed={filter === item.key}
+              className="mm-chip"
               onClick={() => setFilter(item.key)}
             >
-              <SlidersHorizontal className={cn("h-3.5 w-3.5", item.key !== "all" && "hidden")} />
+              <SlidersHorizontal
+                className={cn("h-3.5 w-3.5", item.key !== "all" && "hidden")}
+                strokeWidth={1.7}
+              />
               {item.label}
-            </Button>
+            </button>
           ))}
         </section>
 
@@ -677,10 +683,7 @@ function DishSection({
               ? (cart.lines.find((line) => line.menu_item_id === dish.id)?.quantity ?? 0)
               : 0;
           return (
-            <article
-              key={dish.id}
-              className="w-44 shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card"
-            >
+            <article key={dish.id} className="dining-card w-44 shrink-0 snap-start">
               <Link to="/restaurant/$slug" params={{ slug: restaurant.slug }} className="block">
                 <div className="relative h-32 overflow-hidden bg-muted">
                   <img
@@ -767,7 +770,7 @@ function RestaurantSection({
           return (
             <article
               key={restaurant.id}
-              className="w-[82%] max-w-80 shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card"
+              className="dining-card w-[82%] max-w-80 shrink-0 snap-start"
             >
               <div className="relative h-40 overflow-hidden bg-muted">
                 <Link to="/restaurant/$slug" params={{ slug: restaurant.slug }}>
@@ -878,11 +881,13 @@ function MarketplaceSkeleton() {
 }
 function EmptyResults({ clear }: { clear: () => void }) {
   return (
-    <div className="mx-4 rounded-2xl border border-dashed border-border bg-card p-8 text-center">
-      <Search className="mx-auto h-9 w-9 text-muted-foreground" />
-      <h2 className="mt-3 font-sans text-lg font-bold">Nothing matches yet</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Try another dish, cuisine or filter.</p>
-      <Button className="mt-4 rounded-full" onClick={clear}>
+    <div className="mm-empty mx-4">
+      <span className="mm-empty-icon">
+        <Search className="size-5" strokeWidth={1.6} />
+      </span>
+      <h2 className="mm-h3">Nothing matches yet</h2>
+      <p className="mm-meta max-w-[280px]">Try another dish, cuisine or filter.</p>
+      <Button className="mt-2" size="sm" onClick={clear}>
         Clear filters
       </Button>
     </div>

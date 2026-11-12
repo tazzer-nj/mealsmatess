@@ -9,6 +9,7 @@ import { MiaVoiceSession, type MiaVoiceSnapshot } from "@/lib/mia/voice-session"
 import { openMiaMicrophone } from "@/lib/mia/microphone";
 import { speakMia } from "@/lib/mia/speech";
 import { MiaVoiceControls } from "@/components/mia-voice-controls";
+import { isMiaMuted } from "@/lib/mia/mute";
 
 /** Shared across Consumer routes; navigation never resets a hands-free conversation. */
 export function MiaProvider({ children }: { children: ReactNode }) {
@@ -270,6 +271,10 @@ export function MiaProvider({ children }: { children: ReactNode }) {
         voice,
         startVoice: () => {
           if (!allowedRef.current) return;
+          if (isMiaMuted()) {
+            session.current?.stop("paused", "Mia is muted in Settings.");
+            return;
+          }
           if (!nativeLifecycleReady.current) {
             session.current?.stop(
               "error",

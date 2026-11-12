@@ -1,7 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Refrigerator, Camera, ChefHat, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Refrigerator,
+  Camera,
+  ChefHat,
+  Loader2,
+  Search,
+  Pencil,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,9 +48,24 @@ function PantryPage() {
   const { data: items = [], isLoading, error } = useQuery({ ...myPantryQuery(), enabled: !!user });
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
+  const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editQuantity, setEditQuantity] = useState("");
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return items;
+    return items.filter(
+      (item) =>
+        item.name.toLowerCase().includes(term) ||
+        (item.quantity ?? "").toLowerCase().includes(term),
+    );
+  }, [items, search]);
+
   async function add() {
     if (!user || !name.trim() || busy) return;
     setBusy(true);
@@ -61,6 +86,7 @@ function PantryPage() {
       setBusy(false);
     }
   }
+
   async function remove(id: string) {
     if (!user) return;
     setRemoving(id);
@@ -78,6 +104,30 @@ function PantryPage() {
       setRemoving(null);
     }
   }
+
+  function startEdit(item: { id: string; name: string; quantity?: string | null }) {
+    setEditing(item.id);
+    setEditName(item.name);
+    setEditQuantity(item.quantity ?? "");
+  }
+
+  async function saveEdit(id: string) {
+    if (!user || !editName.trim()) return;
+    try {
+      const { error } = await firebaseData
+        .from("pantry_items")
+        .update({ name: editName.trim(), quantity: editQuantity.trim() || null })
+        .eq("id", id)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      setEditing(null);
+      await client.invalidateQueries({ queryKey: ["pantry"] });
+      toast.success("Ingredient updated");
+    } catch {
+      toast.error("Couldn't update that ingredient.");
+    }
+  }
+
   async function cook() {
     const query = pantryRecipeQuery(items.map((item) => item.name));
     if (!query || generating) return;
@@ -91,33 +141,45 @@ function PantryPage() {
       setGenerating(false);
     }
   }
+
   return (
-    <main className="w-full flex-1 px-5 py-8 sm:px-8">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+    <main className="mm-page">
+      <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-display text-3xl">Your pantry</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {items.length} ingredients, endless possibilities.
-          </p>
+          <h1 className="mm-h1">Your pantry.</h1>
+          <p className="mm-lead mt-2">Everything you have, ready for something delicious.</p>
         </div>
-        <Button
-          asChild
-          variant="outline"
-          size="icon"
-          className="size-11 rounded-full"
-          title="Scan ingredients"
+        <Link
+          to="/scan"
+          search={{ mode: "ingredients" }}
+          className="mm-icon-btn flex-none"
+          aria-label="Scan ingredients"
         >
-          <Link to="/scan" search={{ mode: "ingredients" }} aria-label="Scan ingredients">
-            <Camera />
+          <Camera className="size-[19px]" strokeWidth={1.7} />
+        </Link>
+      </header>
+
+      <div className="mt-6 flex items-center gap-2 text-[13px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1.5">
+          <Refrigerator className="size-3.5" strokeWidth={1.7} />
+          {items.length} {items.length === 1 ? "ingredient" : "ingredients"}
+        </span>
+        {items.length > 0 ? (
+          <Link
+            to="/list"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 transition-colors hover:text-foreground"
+          >
+            Shopping list
           </Link>
-        </Button>
+        ) : null}
       </div>
+
       <form
         onSubmit={(e) => {
           e.preventDefault();
           void add();
         }}
-        className="mt-8 grid grid-cols-[minmax(0,1fr)_80px_auto] gap-2"
+        className="mt-6 grid grid-cols-[minmax(0,1fr)_84px_48px] gap-2"
       >
         <Input
           aria-label="Ingredient"
@@ -125,7 +187,7 @@ function PantryPage() {
           value={name}
           maxLength={120}
           onChange={(e) => setName(e.target.value)}
-          className="h-11"
+          className="h-12"
           required
         />
         <Input
@@ -134,75 +196,185 @@ function PantryPage() {
           value={quantity}
           maxLength={60}
           onChange={(e) => setQuantity(e.target.value)}
-          className="h-11"
+          className="h-12"
         />
-        <Button
+        <button
           type="submit"
-          size="icon"
-          className="size-11 rounded-full"
+          className="grid size-12 place-items-center rounded-xl bg-white text-black transition-opacity disabled:opacity-40"
           aria-label="Add ingredient"
           disabled={busy || !name.trim()}
         >
-          {busy ? <Loader2 className="animate-spin" /> : <Plus />}
-        </Button>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+        </button>
       </form>
-      <div className="mt-8">
+
+      {items.length > 4 ? (
+        <div className="mm-search mt-3">
+          <Search aria-hidden="true" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search your pantry"
+            aria-label="Search your pantry"
+            className="mm-input"
+          />
+        </div>
+      ) : null}
+
+      <section className="mt-8" aria-live="polite">
         {isLoading ? (
-          <p className="py-12 text-center text-muted-foreground">Loading ingredients…</p>
+          <div className="mm-stack">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="mm-skeleton h-16" />
+            ))}
+          </div>
         ) : error ? (
-          <div className="py-10 text-center">
-            <p>Couldn't load your pantry.</p>
-            <Button
-              variant="ghost"
+          <div className="mm-error">
+            <p className="mm-body">We couldn't load your pantry.</p>
+            <button
+              type="button"
+              className="mm-btn mm-btn--secondary mm-btn--sm"
               onClick={() => client.invalidateQueries({ queryKey: ["pantry"] })}
             >
               Try again
-            </Button>
+            </button>
           </div>
         ) : !items.length ? (
-          <div className="py-16 text-center">
-            <Refrigerator className="mx-auto size-10 text-muted-foreground" />
-            <h2 className="mt-4 text-xl">A fresh start</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Your pantry is empty.</p>
+          <div className="mm-empty">
+            <span className="mm-empty-icon">
+              <Refrigerator className="size-5" strokeWidth={1.6} />
+            </span>
+            <h2 className="mm-h2">Your pantry is waiting.</h2>
+            <p className="mm-meta max-w-[300px]">
+              Add ingredients or scan your kitchen to get started.
+            </p>
+            <div className="mt-3 flex w-full max-w-[300px] flex-col gap-2">
+              <Link to="/scan" search={{ mode: "ingredients" }} className="mm-btn mm-btn--primary">
+                <Camera />
+                Scan your kitchen
+              </Link>
+              <button
+                type="button"
+                className="mm-btn mm-btn--secondary"
+                onClick={() => {
+                  const input = document.querySelector<HTMLInputElement>(
+                    'input[aria-label="Ingredient"]',
+                  );
+                  input?.focus();
+                }}
+              >
+                <Plus />
+                Add an ingredient
+              </button>
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="mm-empty">
+            <span className="mm-empty-icon">
+              <Search className="size-5" strokeWidth={1.6} />
+            </span>
+            <h2 className="mm-h3">No matches for “{search}”</h2>
+            <button
+              type="button"
+              className="mm-btn mm-btn--secondary mm-btn--sm"
+              onClick={() => setSearch("")}
+            >
+              Clear search
+            </button>
           </div>
         ) : (
-          <ul className="divide-y divide-border">
-            {items.map((item) => (
-              <li
-                key={item.id}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-4"
-              >
-                <div className="min-w-0">
-                  <p className="break-words font-medium">{item.name}</p>
-                  {item.quantity && (
-                    <p className="text-sm text-muted-foreground">{item.quantity}</p>
+          <ul className="mm-group px-4">
+            {filtered.map((item) => (
+              <li key={item.id}>
+                <div className="pantry-row">
+                  {editing === item.id ? (
+                    <div className="flex w-full flex-col gap-2">
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        aria-label={`Name for ${item.name}`}
+                        maxLength={120}
+                        className="h-11"
+                      />
+                      <div className="flex gap-2">
+                        <Input
+                          value={editQuantity}
+                          onChange={(e) => setEditQuantity(e.target.value)}
+                          aria-label="Quantity"
+                          placeholder="Quantity"
+                          maxLength={60}
+                          className="h-11"
+                        />
+                        <button
+                          type="button"
+                          className="mm-btn mm-btn--primary mm-btn--sm"
+                          onClick={() => void saveEdit(item.id)}
+                          disabled={!editName.trim()}
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className="mm-btn mm-btn--ghost mm-btn--sm"
+                          onClick={() => setEditing(null)}
+                          aria-label="Cancel editing"
+                        >
+                          <X />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="grid size-9 flex-none place-items-center rounded-lg border border-[#1e1e1e] bg-[#191919] text-[12px] font-medium uppercase text-muted-foreground">
+                        {item.name.slice(0, 1)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="break-words text-[15px] font-medium leading-snug">
+                          {item.name}
+                        </p>
+                        <p className="mm-meta">{item.quantity || "No quantity set"}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="grid size-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-[#191919] hover:text-foreground"
+                        aria-label={`Edit ${item.name}`}
+                        onClick={() => startEdit(item)}
+                      >
+                        <Pencil className="size-4" strokeWidth={1.7} />
+                      </button>
+                      <button
+                        type="button"
+                        className="grid size-9 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-[#191919] hover:text-[#e5484d]"
+                        aria-label={`Remove ${item.name}`}
+                        disabled={removing === item.id}
+                        onClick={() => remove(item.id)}
+                      >
+                        {removing === item.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-4" strokeWidth={1.7} />
+                        )}
+                      </button>
+                    </>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-11 rounded-full"
-                  aria-label={`Remove ${item.name}`}
-                  disabled={removing === item.id}
-                  onClick={() => remove(item.id)}
-                >
-                  {removing === item.id ? <Loader2 className="animate-spin" /> : <Trash2 />}
-                </Button>
               </li>
             ))}
           </ul>
         )}
-      </div>
-      <Button
-        className="mt-8 h-12 w-full rounded-full"
-        disabled={!items.length || generating}
-        onClick={cook}
-      >
-        {generating ? <Loader2 className="animate-spin" /> : <ChefHat />} Find a recipe
-      </Button>
-      <Button asChild variant="ghost" className="mt-3 h-11 w-full">
-        <Link to="/list">Shopping list</Link>
-      </Button>
+      </section>
+
+      {items.length > 0 ? (
+        <div className="mt-8">
+          <Button className="w-full rounded-xl" disabled={generating} onClick={() => void cook()}>
+            {generating ? <Loader2 className="animate-spin" /> : <ChefHat />}
+            Find recipes with these ingredients
+          </Button>
+          <p className="mm-meta mt-3 text-center">
+            Mia will suggest a recipe and tell you what's still missing.
+          </p>
+        </div>
+      ) : null}
     </main>
   );
 }

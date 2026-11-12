@@ -117,7 +117,7 @@ describe("onboarding and mandatory paywall", () => {
   it("keeps cancelled checkout on the paywall with no free exit", async () => {
     mocks.purchase.mockRejectedValue({ userCancelled: true });
     mount(<PremiumPaywall />);
-    fireEvent.click(await screen.findByRole("button", { name: "Start 7-day free trial" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Unlock MealMate Premium" }));
     await screen.findByText(/Checkout cancelled/);
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(mocks.verify).not.toHaveBeenCalled();
@@ -133,7 +133,7 @@ describe("onboarding and mandatory paywall", () => {
       }),
     );
     mount(<PremiumPaywall />);
-    fireEvent.click(await screen.findByRole("button", { name: "Start 7-day free trial" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Unlock MealMate Premium" }));
     await waitFor(() => expect(mocks.verify).toHaveBeenCalled());
     expect(mocks.navigate).not.toHaveBeenCalled();
     resolve({ isPremium: true });
@@ -145,10 +145,12 @@ describe("onboarding and mandatory paywall", () => {
   it("restores an existing account without another purchase", async () => {
     mocks.session.user = { id: "subscriber" };
     mount(<PremiumPaywall />);
-    const restore = await screen.findByRole("button", { name: "Restore Purchases" });
+    const restore = await screen.findByRole("button", { name: "Restore purchases" });
     await waitFor(() => expect(restore).not.toBeDisabled());
     fireEvent.click(restore);
-    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith({ to: "/welcome", replace: true }));
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({ to: "/welcome", replace: true }),
+    );
     expect(mocks.restore).toHaveBeenCalledOnce();
     expect(mocks.purchase).not.toHaveBeenCalled();
   });
@@ -156,7 +158,7 @@ describe("onboarding and mandatory paywall", () => {
   it("keeps failed verification retryable without opening the app", async () => {
     mocks.verify.mockRejectedValue(new Error("offline"));
     mount(<PremiumPaywall />);
-    fireEvent.click(await screen.findByRole("button", { name: "Start 7-day free trial" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Unlock MealMate Premium" }));
     await screen.findByText(/couldn’t confirm/);
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Check subscription access" })).toBeEnabled();
@@ -165,7 +167,7 @@ describe("onboarding and mandatory paywall", () => {
   it("keeps an inactive restored purchase on the paywall", async () => {
     mocks.verify.mockResolvedValue({ isPremium: false });
     mount(<PremiumPaywall />);
-    const restore = await screen.findByRole("button", { name: "Restore Purchases" });
+    const restore = await screen.findByRole("button", { name: "Restore purchases" });
     await waitFor(() => expect(restore).not.toBeDisabled());
     fireEvent.click(restore);
     await screen.findByText(/subscription isn’t confirmed/, {}, { timeout: 4000 });
@@ -175,7 +177,7 @@ describe("onboarding and mandatory paywall", () => {
 
   it("blocks checkout while offline", async () => {
     mount(<PremiumPaywall />);
-    const purchase = await screen.findByRole("button", { name: "Start 7-day free trial" });
+    const purchase = await screen.findByRole("button", { name: "Unlock MealMate Premium" });
     Object.defineProperty(navigator, "onLine", { value: false, configurable: true });
     fireEvent(window, new Event("offline"));
     expect(purchase).toBeDisabled();
@@ -189,7 +191,7 @@ describe("onboarding and mandatory paywall", () => {
     mocks.load.mockRejectedValue(new Error("unconfigured"));
     mount(<PremiumPaywall />);
     await screen.findByText(/couldn’t load/);
-    expect(screen.getByRole("button", { name: "Subscribe" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Unlock MealMate Premium" })).toBeDisabled();
     expect(screen.queryByText("7 days free")).not.toBeInTheDocument();
   });
 
