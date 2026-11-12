@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-NZYk81nU.js";var t=e(),n=()=>(0,t.jsx)(`div`,{className:`mx-auto max-w-md px-4 py-20 text-center`,children:(0,t.jsx)(`p`,{className:`text-sm text-muted-foreground`,children:`Restaurant not found.`})});export{n as notFoundComponent};

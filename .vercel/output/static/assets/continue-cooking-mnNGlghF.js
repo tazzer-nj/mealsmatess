@@ -1,0 +1,1 @@
+var e=`mealmate-continue-cooking`;function t(){if(typeof window>`u`)return null;try{let t=window.localStorage.getItem(e);return t?JSON.parse(t):null}catch{return null}}function n(n){if(typeof window>`u`)return;let r=t(),i=r?.slug===n.slug?Math.min(90,r.progress+15):20,a={...n,progress:i,updatedAt:Date.now()};window.localStorage.setItem(e,JSON.stringify(a))}export{n,t};

@@ -1,0 +1,1 @@
+import{t as e}from"./hub-home-BSh422m-.js";var t=e;export{t as component};

@@ -1,0 +1,1 @@
+import{n as e,t}from"./firebase-auth-middleware-DbGiTWG3.js";var n=e({type:`function`}).middleware([t]);export{n as t};

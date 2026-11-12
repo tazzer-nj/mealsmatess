@@ -1,0 +1,213 @@
+import { t as firebaseAdmin } from "./firebase-admin-ChN7VIWw.mjs";
+import { a as levelFor, n as ELITE_XP, r as XP_ACTIONS, t as ACHIEVEMENTS } from "./xp-CfZ9EY1i.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/xp.server-CgMG5d4k.js
+/** UTC day key, e.g. 2026-08-23 */
+function dayKey(d = /* @__PURE__ */ new Date()) {
+	return d.toISOString().slice(0, 10);
+}
+/** ISO-ish week key, e.g. 2026-W34 */
+function weekKey(d = /* @__PURE__ */ new Date()) {
+	const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+	const day = t.getUTCDay() || 7;
+	t.setUTCDate(t.getUTCDate() + 4 - day);
+	const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+	const week = Math.ceil(((t.getTime() - yearStart.getTime()) / 864e5 + 1) / 7);
+	return `${t.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+function monthKey(d = /* @__PURE__ */ new Date()) {
+	return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+async function unlock(userId, code) {
+	await firebaseAdmin.from("user_achievements").upsert({
+		user_id: userId,
+		code
+	}, { onConflict: "user_id,code" });
+}
+async function syncLevelAchievements(userId, totalXp) {
+	const map = [
+		[1, "first_xp"],
+		[5e3, "level_explorer"],
+		[15e3, "level_home_chef"],
+		[3e4, "level_mealmaster"],
+		[ELITE_XP, "level_elite"]
+	];
+	for (const [min, code] of map) if (totalXp >= min) await unlock(userId, code);
+}
+/** Update the daily streak; returns the new streak length. */
+async function touchStreak(userId) {
+	const today = dayKey();
+	const { data: stats } = await firebaseAdmin.from("user_stats").select("current_streak,longest_streak,last_active_date").eq("user_id", userId).maybeSingle();
+	if (stats?.last_active_date === today) return stats.current_streak;
+	const yesterday = dayKey(/* @__PURE__ */ new Date(Date.now() - 864e5));
+	const next = stats?.last_active_date === yesterday ? (stats.current_streak ?? 0) + 1 : 1;
+	const longest = Math.max(next, stats?.longest_streak ?? 0);
+	await firebaseAdmin.from("user_stats").upsert({
+		user_id: userId,
+		current_streak: next,
+		longest_streak: longest,
+		last_active_date: today,
+		updated_at: (/* @__PURE__ */ new Date()).toISOString()
+	}, { onConflict: "user_id" });
+	if (next >= 7) await unlock(userId, "streak_7");
+	if (next >= 30) await unlock(userId, "streak_30");
+	if (next > 0 && next % 7 === 0) await insertXp(userId, "streak_7", `streak:${userId}:${next}`, { streak: next });
+	return next;
+}
+async function insertXp(userId, action, dedupeKey, metadata = {}) {
+	const points = XP_ACTIONS[action].points;
+	const { error } = await firebaseAdmin.from("xp_events").insert({
+		user_id: userId,
+		action,
+		points,
+		dedupe_key: dedupeKey,
+		metadata
+	});
+	const code = error && "code" in error ? error.code : void 0;
+	if (error && code !== "23505") throw new Error(error.message);
+	return !error;
+}
+/** Advance challenge progress for an action and award challenge XP on completion. */
+async function progressChallenges(userId, action) {
+	const { data: challenges } = await firebaseAdmin.from("challenges").select("id,code,kind,action,goal,xp_reward").eq("is_active", true).eq("action", action);
+	for (const c of challenges ?? []) {
+		const period = c.kind === "weekly" ? weekKey() : monthKey();
+		const { data: existing } = await firebaseAdmin.from("user_challenges").select("id,progress,completed_at").eq("user_id", userId).eq("challenge_id", c.id).eq("period_key", period).maybeSingle();
+		if (existing?.completed_at) continue;
+		const progress = (existing?.progress ?? 0) + 1;
+		const completed = progress >= c.goal;
+		await firebaseAdmin.from("user_challenges").upsert({
+			...existing?.id ? { id: existing.id } : {},
+			user_id: userId,
+			challenge_id: c.id,
+			period_key: period,
+			progress,
+			completed_at: completed ? (/* @__PURE__ */ new Date()).toISOString() : null,
+			updated_at: (/* @__PURE__ */ new Date()).toISOString()
+		}, { onConflict: "user_id,challenge_id,period_key" });
+		if (completed) await insertXp(userId, c.kind === "weekly" ? "weekly_challenge" : "monthly_challenge", `challenge:${c.code}:${period}`, { challenge: c.code });
+	}
+}
+/**
+* Award XP for an action. `refKey` makes the award idempotent — the same
+* recipe cooked twice in a day, or a replayed request, never double-pays.
+*/
+async function awardXpFor(userId, action, refKey, metadata = {}) {
+	const awarded = await insertXp(userId, action, `${action}:${refKey}`, metadata);
+	await touchStreak(userId);
+	if (awarded) await progressChallenges(userId, action);
+	const { data: stats } = await firebaseAdmin.from("user_stats").select("total_xp").eq("user_id", userId).maybeSingle();
+	const totalXp = stats?.total_xp ?? 0;
+	await syncLevelAchievements(userId, totalXp);
+	if (action === "recipe_cooked") {
+		const { count } = await firebaseAdmin.from("xp_events").select("id", {
+			count: "exact",
+			head: true
+		}).eq("user_id", userId).eq("action", "recipe_cooked");
+		if ((count ?? 0) >= 1) await unlock(userId, "cook_1");
+		if ((count ?? 0) >= 10) await unlock(userId, "cook_10");
+	}
+	if (action === "weekly_plan_completed") await unlock(userId, "plan_1");
+	if (action === "grocery_list_completed") {
+		const { count } = await firebaseAdmin.from("xp_events").select("id", {
+			count: "exact",
+			head: true
+		}).eq("user_id", userId).eq("action", "grocery_list_completed");
+		if ((count ?? 0) >= 5) await unlock(userId, "grocery_5");
+	}
+	return {
+		awarded,
+		points: awarded ? XP_ACTIONS[action].points : 0,
+		totalXp,
+		level: levelFor(totalXp)
+	};
+}
+async function fetchGamification(userId) {
+	const [statsRes, eventsRes, achRes, challengeRes] = await Promise.all([
+		firebaseAdmin.from("user_stats").select("*").eq("user_id", userId).maybeSingle(),
+		firebaseAdmin.from("xp_events").select("action,points,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(15),
+		firebaseAdmin.from("user_achievements").select("code,unlocked_at").eq("user_id", userId),
+		firebaseAdmin.from("challenges").select("*").eq("is_active", true)
+	]);
+	const challenges = challengeRes.data ?? [];
+	const periods = [...new Set(challenges.map((challenge) => challenge.kind === "weekly" ? weekKey() : monthKey()))];
+	const { data: userChallenges } = await firebaseAdmin.from("user_challenges").select("challenge_id,period_key,progress,completed_at").eq("user_id", userId).in("period_key", periods.length ? periods : ["none"]);
+	const totalXp = statsRes.data?.total_xp ?? 0;
+	const unlocked = new Map((achRes.data ?? []).map((achievement) => [achievement.code, achievement.unlocked_at]));
+	const userChallengeRows = userChallenges ?? [];
+	return {
+		totalXp,
+		level: levelFor(totalXp),
+		currentStreak: statsRes.data?.current_streak ?? 0,
+		longestStreak: statsRes.data?.longest_streak ?? 0,
+		eliteRewardClaimedAt: statsRes.data?.elite_reward_claimed_at ?? null,
+		eliteRewardAvailable: totalXp >= 5e4 && !statsRes.data?.elite_reward_claimed_at,
+		recentEvents: (eventsRes.data ?? []).map((event) => ({
+			action: event.action,
+			points: event.points,
+			created_at: event.created_at,
+			label: XP_ACTIONS[event.action]?.label ?? event.action
+		})),
+		achievements: ACHIEVEMENTS.map((a) => ({
+			...a,
+			unlockedAt: unlocked.get(a.code) ?? null
+		})),
+		challenges: challenges.map((c) => {
+			const period = c.kind === "weekly" ? weekKey() : monthKey();
+			const uc = userChallengeRows.find((userChallenge) => userChallenge.challenge_id === c.id && userChallenge.period_key === period);
+			return {
+				code: c.code,
+				title: c.title,
+				description: c.description,
+				kind: c.kind,
+				goal: c.goal,
+				xpReward: c.xp_reward,
+				progress: uc?.progress ?? 0,
+				completedAt: uc?.completed_at ?? null
+			};
+		})
+	};
+}
+/** 50,000 XP → 30 days of free Premium. Claimable once, ever. */
+async function claimEliteRewardFor(userId) {
+	const { data: stats } = await firebaseAdmin.from("user_stats").select("total_xp,elite_reward_claimed_at").eq("user_id", userId).maybeSingle();
+	if (!stats || stats.total_xp < 5e4) throw new Response("Not enough XP yet", { status: 400 });
+	if (stats.elite_reward_claimed_at) throw new Response("Reward already claimed", { status: 400 });
+	const now = /* @__PURE__ */ new Date();
+	const end = new Date(now.getTime() + 2592e6);
+	const { data: sub } = await firebaseAdmin.from("subscriptions").select("id,period_end,status").eq("user_id", userId).in("status", [
+		"trialing",
+		"active",
+		"in_grace"
+	]).order("period_end", {
+		ascending: false,
+		nullsFirst: false
+	}).limit(1).maybeSingle();
+	if (sub) {
+		const base = sub.period_end && new Date(sub.period_end) > now ? new Date(sub.period_end) : now;
+		await firebaseAdmin.from("subscriptions").update({
+			period_end: new Date(base.getTime() + 2592e6).toISOString(),
+			status: "active",
+			is_manual: true,
+			updated_at: now.toISOString()
+		}).eq("id", sub.id);
+	} else await firebaseAdmin.from("subscriptions").insert({
+		user_id: userId,
+		tier: "promo",
+		status: "active",
+		store: "promo",
+		is_manual: true,
+		auto_renew: false,
+		period_start: now.toISOString(),
+		period_end: end.toISOString()
+	});
+	await firebaseAdmin.from("user_stats").update({
+		elite_reward_claimed_at: now.toISOString(),
+		updated_at: now.toISOString()
+	}).eq("user_id", userId);
+	return {
+		ok: true,
+		premiumUntil: end.toISOString()
+	};
+}
+//#endregion
+export { awardXpFor, claimEliteRewardFor, dayKey, fetchGamification };

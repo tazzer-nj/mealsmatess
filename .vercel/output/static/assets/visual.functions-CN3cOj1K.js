@@ -1,0 +1,1 @@
+import{i as e,r as t,t as n}from"./firebase-auth-middleware-DbGiTWG3.js";var r=t({method:`POST`}).middleware([n]).handler(e(`10efa679dca1e1bca48216ea3d9924dafb2f865f3fa643397fcfa7394c96acb5`));export{r as generateVisualExplanation};

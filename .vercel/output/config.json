@@ -1,0 +1,30 @@
+{
+  "version": 3,
+  "framework": {
+    "name": "nitro",
+    "version": "3.0.260603-beta"
+  },
+  "overrides": {},
+  "routes": [
+    {
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      },
+      "src": "/assets/(.*)"
+    },
+    {
+      "src": "/__/auth/(.*)",
+      "dest": "https://mealmate-d2e53.firebaseapp.com/__/auth/$1",
+      "headers": {
+        "cache-control": "no-store"
+      }
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/__server"
+    }
+  ]
+}
