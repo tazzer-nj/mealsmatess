@@ -19,7 +19,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { auth, onAuthStateChanged } from "@/lib/firebase";
+import { auth, firebaseConfigIssue, onAuthStateChanged } from "@/lib/firebase";
 import { AppHeader } from "@/components/app-header";
 import { BottomNav } from "@/components/bottom-nav";
 
@@ -88,6 +88,50 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
             Go home
           </a>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfigurationRequired({ issue }: { issue: string }) {
+  const missing = issue.startsWith("Missing Firebase web configuration:")
+    ? issue.replace("Missing Firebase web configuration:", "").split(",").map((name) => name.trim())
+    : [];
+
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-background px-6 py-16">
+      <div className="w-full max-w-md">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          MealMate
+        </p>
+        <h1 className="mt-3 text-2xl font-medium tracking-tight text-foreground">
+          Configuration required
+        </h1>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          The server is running, but it has no Firebase credentials yet, so accounts, pantry,
+          Mia and subscriptions are unavailable. Add these environment variables and rebuild —
+          Vite inlines them at build time.
+        </p>
+        {missing.length > 0 ? (
+          <ul className="mt-5 space-y-2">
+            {missing.map((name) => (
+              <li
+                key={name}
+                className="rounded-xl border border-border bg-card px-3 py-2 font-mono text-xs text-foreground"
+              >
+                {name}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-5 rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground">
+            {issue}
+          </p>
+        )}
+        <p className="mt-5 text-[13px] leading-relaxed text-muted-foreground">
+          Nothing is mocked while unconfigured: this screen replaces the app rather than showing
+          empty or invented data.
+        </p>
       </div>
     </div>
   );
@@ -183,12 +227,19 @@ function RootComponent() {
   useShellMetrics(showAppHeader ? "with-header" : "no-header");
 
   useEffect(() => {
+    if (firebaseConfigIssue) return;
     return onAuthStateChanged(auth, (firebaseUser) => {
       router.invalidate();
       if (firebaseUser) void queryClient.invalidateQueries();
       else queryClient.clear();
     });
   }, [router, queryClient]);
+
+  // Without Firebase credentials nothing below can render meaningfully, and rendering it
+  // would surface SDK failures instead of an explanation. Fail visibly, not blankly.
+  if (firebaseConfigIssue) {
+    return <ConfigurationRequired issue={firebaseConfigIssue} />;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
