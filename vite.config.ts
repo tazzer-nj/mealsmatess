@@ -53,6 +53,8 @@ export default defineConfig(({ command }) => ({
       ? [
           nitro({
             preset: process.env["NITRO_PRESET"] || "vercel",
+            // Vercel discontinued the nodejs20.x runtime the preset defaults to.
+            vercel: { functions: { runtime: "nodejs24.x" } },
             // Serve Firebase's helpers on the app origin before enabling a
             // custom authDomain; redirects cannot replace this transparent proxy.
             routeRules: {
