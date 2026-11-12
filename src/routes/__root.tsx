@@ -4,6 +4,7 @@ import { HubShell } from "@/components/hub/hub-shell";
 import { isHubSurface } from "@/lib/hub-surface";
 import { requestHostname } from "@/lib/hub-request";
 import { SplashScreen } from "@/components/splash-screen";
+import { AppSidebar } from "@/components/app-sidebar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -143,7 +144,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
       },
     ],
   }),
@@ -209,12 +210,13 @@ function RootComponent() {
                         className={`theme-backdrop h-dvh w-full overflow-hidden bg-background ${isMarketplace ? "marketplace-dark" : ""}`}
                       >
                         {showAppHeader && <AppHeader />}
+                        {!isFlow && <AppSidebar />}
                         <div
                           id="app-scroll"
-                          className={`h-full overflow-y-auto overscroll-y-none ${isFlow ? "" : "pb-[var(--app-nav-h)] pt-[var(--app-header-h)]"}`}
+                          className={`h-full overflow-y-auto overscroll-y-none ${isFlow ? "" : "pb-[var(--app-nav-h)] pt-[var(--app-header-h)] lg:pb-0 lg:pl-[var(--mm-sidebar-w)]"}`}
                         >
                           <div
-                            className={`mx-auto flex min-h-full w-full flex-col ${isFlow ? "" : pathname === "/admin" ? "max-w-6xl" : "max-w-3xl"}`}
+                            className={`mx-auto flex min-h-full w-full flex-col ${isFlow ? "" : pathname === "/admin" ? "max-w-6xl px-6" : "max-w-3xl lg:max-w-6xl"}`}
                           >
                             <AuthGate>
                               <div
