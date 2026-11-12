@@ -1,7 +1,9 @@
 # MealMate — TanStack Start (nitro) production image.
 # The app builds with nitro's node-server preset and serves on 0.0.0.0:$PORT.
 FROM oven/bun:1-alpine AS build
-RUN apk upgrade --no-cache && apk add --no-cache nodejs
+# GNU tar is required: scripts/prepare-mia-voice.mjs packages the verified
+# offline voice model with --sort/--mtime, which BusyBox tar does not support.
+RUN apk upgrade --no-cache && apk add --no-cache nodejs tar
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
