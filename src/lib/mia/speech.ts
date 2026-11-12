@@ -1,12 +1,13 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import type { TextToSpeechPlugin } from "@capacitor-community/text-to-speech";
+import { getMiaPreferences } from "@/lib/mia-preferences";
 
 // Register only the native bridge. The package's web implementation touches
 // window during module loading, including in the server-rendered bundle.
 // Browser replies use speakBrowser instead.
 
 /** Device TTS, preferring a local English voice. No microphone data is passed to TTS. */
-function speakBrowser(text: string, signal: AbortSignal): Promise<void> {
+function speakBrowser(text: string, signal: AbortSignal, rate: number): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!("speechSynthesis" in window)) {
       reject(
@@ -40,7 +41,7 @@ function speakBrowser(text: string, signal: AbortSignal): Promise<void> {
       const voices = synth.getVoices().filter((voice) => voice.lang.startsWith("en"));
       utterance.voice = voices.find((voice) => voice.localService) ?? voices[0] ?? null;
       utterance.lang = "en-US";
-      utterance.rate = 1;
+      utterance.rate = rate;
       utterance.onend = next;
       utterance.onerror = () => {
         cleanup();
@@ -60,7 +61,11 @@ function speakBrowser(text: string, signal: AbortSignal): Promise<void> {
 
 export async function speakMia(text: string, signal: AbortSignal): Promise<void> {
   signal.throwIfAborted();
-  if (!Capacitor.isNativePlatform()) return speakBrowser(text, signal);
+  // Mute lives in Settings; when spoken replies are off we resolve silently so
+  // the written answer still appears in chat without any audio.
+  const { voiceResponses, speechRate } = getMiaPreferences();
+  if (!voiceResponses) return;
+  if (!Capacitor.isNativePlatform()) return speakBrowser(text, signal, speechRate);
   if (!Capacitor.isPluginAvailable("TextToSpeech")) {
     throw new Error("Update the MealMate Android app to enable spoken Mia replies.");
   }
@@ -85,7 +90,7 @@ export async function speakMia(text: string, signal: AbortSignal): Promise<void>
     void TextToSpeech.speak({
       text: text.replace(/[*#`]/g, ""),
       lang: "en-US",
-      rate: 1,
+      rate: speechRate,
       pitch: 1,
       volume: 1,
     }).then(

@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   ChevronRight,
+  Crown,
   DollarSign,
   FileText,
   Globe,
@@ -15,10 +16,14 @@ import {
   Moon,
   Share2,
   Shield,
+  Sparkles,
   Star,
   Sun,
   User as UserIcon,
   UserCog,
+  Volume2,
+  VolumeX,
+  Gauge,
 } from "lucide-react";
 import { toast } from "sonner";
 import { firebaseData } from "@/lib/firebase-data";
@@ -30,11 +35,13 @@ import {
 } from "@/lib/notifications.functions";
 import { requestBrowserPushToken, revokeBrowserPushToken } from "@/lib/push-client";
 import { useSession, signOutUnified } from "@/hooks/use-session";
+import { usePremium } from "@/hooks/use-premium";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/components/theme-provider";
 import { GamificationCard } from "@/components/gamification-card";
 import { ThemePicker } from "@/components/theme-picker";
+import { useMiaPreferences } from "@/lib/mia-preferences";
 import {
   Select,
   SelectContent,
@@ -72,6 +79,7 @@ type Item = {
   href?: string;
   onClick?: () => void;
   trailing?: React.ReactNode;
+  tone?: "danger";
 };
 
 const CURRENCIES: { code: string; symbol: string; name: string }[] = [
@@ -132,6 +140,8 @@ function SettingsPage() {
   const { user } = useSession();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isPremium } = usePremium();
+  const miaPrefs = useMiaPreferences();
 
   const { resolved, setMode } = useTheme();
 
@@ -290,32 +300,23 @@ function SettingsPage() {
     }
   }
 
-  const profileItems: Item[] = [
-    {
-      label: "Edit my preferences",
-      description: "Goals, tastes, allergies, time and budget",
-      icon: UserCog,
-      to: "/onboarding",
-    },
-    {
-      label: "MealMate Premium",
-      description: "AI, recipes and meal plans · View subscription plans",
-      icon: Star,
-      to: "/premium",
-    },
-    {
-      label: "Admin dashboard",
-      description: "Subscribers, promos, revenue (admin only)",
-      icon: Shield,
-      to: "/admin",
-    },
-  ];
-
   const accountItems: Item[] = [
+    {
+      label: "Profile",
+      description: "Your details and sign-in method",
+      icon: UserIcon,
+      to: "/profile",
+    },
     {
       label: "Email",
       description: user?.email ?? "Not signed in",
       icon: Mail,
+    },
+    {
+      label: "Edit preferences",
+      description: "Goals, tastes, allergies, time and budget",
+      icon: UserCog,
+      to: "/onboarding",
     },
     {
       label: "Change password",
@@ -325,9 +326,24 @@ function SettingsPage() {
     },
   ];
 
+  const subscriptionItems: Item[] = [
+    {
+      label: "MealMate Premium",
+      description: isPremium ? "Active — thank you for supporting MealMate" : "Unlock Mia and more",
+      icon: Crown,
+      to: "/premium",
+    },
+    {
+      label: "Manage subscription",
+      description: "Plans, billing and restore purchases",
+      icon: Star,
+      to: "/premium",
+    },
+  ];
+
   const supportItems: Item[] = [
     {
-      label: "Help Center",
+      label: "Help centre",
       description: "Answers to common questions",
       icon: HelpCircle,
       to: "/support",
@@ -337,6 +353,12 @@ function SettingsPage() {
       description: "Get in touch with the team",
       icon: Mail,
       href: "mailto:support@mealmate.app",
+    },
+    {
+      label: "Report an issue",
+      description: "Tell us what went wrong",
+      icon: Bell,
+      href: "mailto:support@mealmate.app?subject=MealMate%20issue",
     },
   ];
 
@@ -371,28 +393,183 @@ function SettingsPage() {
     },
   ];
 
+  const initial = (user?.email ?? "M").trim().charAt(0).toUpperCase();
+
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 pb-24 pt-8">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/15 via-primary/5 to-background p-5">
-        <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-            <UserIcon className="h-6 w-6" />
-          </div>
+    <main className="mx-auto w-full max-w-2xl flex-1 px-5 pb-10 pt-8 sm:px-8">
+      <header>
+        <p className="mm-eyebrow">Settings</p>
+        <h1 className="mt-2 mm-title">Account &amp; preferences.</h1>
+
+        <div className="mt-6 flex items-center gap-4 rounded-[18px] border border-[#1E1E1E] bg-[#141414] p-4">
+          <span
+            aria-hidden
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#262626] bg-[#1F1F1F] text-[17px] font-semibold text-white"
+          >
+            {initial}
+          </span>
           <div className="min-w-0 flex-1">
-            <h1 className="font-display text-2xl leading-tight">Settings</h1>
-            <p className="truncate text-sm text-muted-foreground">
+            <p className="truncate text-[15px] font-medium">
               {user?.email ?? "Sign in to sync your recipes"}
             </p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-[#71717A]">
+              {isPremium ? (
+                <>
+                  <Crown className="h-3.5 w-3.5" strokeWidth={1.75} /> Premium member
+                </>
+              ) : (
+                "Free plan"
+              )}
+            </p>
           </div>
+          {!isPremium && (
+            <Button asChild className="h-10 px-4 text-[13px]">
+              <Link to="/premium">Upgrade</Link>
+            </Button>
+          )}
         </div>
-      </div>
+      </header>
 
       {/* XP, levels, streaks & challenges */}
       <GamificationCard />
 
-      <ThemePicker />
-      <Section title="Profile" items={profileItems} />
       <Section title="Account" items={accountItems} />
+
+      <Section title="Subscription" items={subscriptionItems} />
+
+      <Section
+        title="Mia"
+        items={[
+          {
+            label: "Spoken replies",
+            description: "Mia reads her answers out loud",
+            icon: miaPrefs.voiceResponses ? Volume2 : VolumeX,
+            trailing: (
+              <Switch
+                checked={miaPrefs.voiceResponses}
+                onCheckedChange={(checked) => {
+                  miaPrefs.setVoiceResponses(checked);
+                  toast.success(checked ? "Mia will speak again" : "Mia is muted");
+                }}
+                aria-label="Spoken replies from Mia"
+              />
+            ),
+          },
+          {
+            label: "Mute Mia",
+            description: "Silence all spoken answers — only here, never in chat",
+            icon: miaPrefs.voiceResponses ? VolumeX : Volume2,
+            trailing: (
+              <Switch
+                checked={!miaPrefs.voiceResponses}
+                onCheckedChange={(checked) => {
+                  miaPrefs.setVoiceResponses(!checked);
+                  toast.success(checked ? "Mia is muted" : "Mia will speak again");
+                }}
+                aria-label="Mute Mia"
+              />
+            ),
+          },
+          {
+            label: "Speech speed",
+            description: "How quickly Mia speaks",
+            icon: Gauge,
+            trailing: (
+              <div onClick={(e) => e.stopPropagation()}>
+                <Select
+                  value={String(miaPrefs.speechRate)}
+                  onValueChange={(v) => miaPrefs.setSpeechRate(Number(v))}
+                >
+                  <SelectTrigger className="h-9 w-[104px] rounded-[10px] text-[13px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="0.8">0.8×</SelectItem>
+                    <SelectItem value="1">1×</SelectItem>
+                    <SelectItem value="1.25">1.25×</SelectItem>
+                    <SelectItem value="1.5">1.5×</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ),
+          },
+          {
+            label: "Voice conversations",
+            description: "Talk with Mia hands-free in chat",
+            icon: Sparkles,
+            to: "/chat",
+          },
+        ]}
+      />
+
+      <Section
+        title="Preferences"
+        items={[
+          {
+            label: resolved === "dark" ? "Dark appearance" : "Light appearance",
+            description:
+              resolved === "dark" ? "Easier on your eyes at night" : "Bright and airy interface",
+            icon: resolved === "dark" ? Moon : Sun,
+            trailing: (
+              <Switch
+                checked={resolved === "dark"}
+                onCheckedChange={(v) => setMode(v ? "dark" : "light")}
+                aria-label="Dark mode"
+              />
+            ),
+          },
+          {
+            label: "Currency",
+            description: "Prices shown throughout the app",
+            icon: DollarSign,
+            trailing: (
+              <div onClick={(e) => e.stopPropagation()}>
+                <Select value={currency} onValueChange={saveCurrency}>
+                  <SelectTrigger className="h-9 w-[124px] rounded-[10px] text-[13px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    {CURRENCIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.symbol} {c.code} — {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ),
+          },
+          {
+            label: "Language",
+            description: "Interface and recipe language",
+            icon: Globe,
+            trailing: (
+              <div onClick={(e) => e.stopPropagation()}>
+                <Select value={lang} onValueChange={saveLanguage}>
+                  <SelectTrigger className="h-9 w-[136px] rounded-[10px] text-[13px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    {LANGUAGES.map((l) => (
+                      <SelectItem key={l.code} value={l.code}>
+                        {l.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ),
+          },
+          {
+            label: "Dietary preferences",
+            description: "Allergies and foods to avoid",
+            icon: UserCog,
+            to: "/onboarding",
+          },
+        ]}
+      />
+
+      <ThemePicker />
 
       <Section
         title="Notifications"
@@ -442,75 +619,7 @@ function SettingsPage() {
       />
 
       <Section
-        title="Appearance"
-        items={[
-          {
-            label: resolved === "dark" ? "Dark mode" : "Light mode",
-            description:
-              resolved === "dark" ? "Easier on your eyes at night" : "Bright and airy interface",
-            icon: resolved === "dark" ? Moon : Sun,
-            onClick: () => setMode(resolved === "dark" ? "light" : "dark"),
-            trailing: (
-              <Switch
-                checked={resolved === "dark"}
-                onCheckedChange={(v) => setMode(v ? "dark" : "light")}
-                aria-label="Dark mode"
-              />
-            ),
-          },
-        ]}
-      />
-
-      <Section
-        title="Region"
-        items={[
-          {
-            label: "Currency",
-            description: "Prices shown throughout the app",
-            icon: DollarSign,
-            trailing: (
-              <div onClick={(e) => e.stopPropagation()}>
-                <Select value={currency} onValueChange={saveCurrency}>
-                  <SelectTrigger className="h-8 w-[140px] rounded-full text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    {CURRENCIES.map((c) => (
-                      <SelectItem key={c.code} value={c.code}>
-                        {c.symbol} {c.code} — {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ),
-          },
-          {
-            label: "App language",
-            description: "Interface and recipe language",
-            icon: Globe,
-            trailing: (
-              <div onClick={(e) => e.stopPropagation()}>
-                <Select value={lang} onValueChange={saveLanguage}>
-                  <SelectTrigger className="h-8 w-[150px] rounded-full text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="end">
-                    {LANGUAGES.map((l) => (
-                      <SelectItem key={l.code} value={l.code}>
-                        {l.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ),
-          },
-        ]}
-      />
-
-      <Section
-        title="Privacy & Security"
+        title="Privacy &amp; security"
         items={[
           {
             label: "Privacy Policy",
@@ -519,50 +628,44 @@ function SettingsPage() {
             to: "/legal/privacy",
           },
           {
-            label: "Change password",
-            description: "Send a secure reset link to your email",
-            icon: UserCog,
-            onClick: resetPassword,
+            label: "Data controls",
+            description: "Manage what MealMate stores",
+            icon: Lock,
+            to: "/legal/privacy",
           },
         ]}
       />
 
-      <Section title="Help & Support" items={supportItems} />
+      <Section title="Support" items={supportItems} />
       <Section title="About MealMate" items={aboutItems} />
-      <Section title="Terms & Privacy" items={legalItems} />
+      <Section title="Terms &amp; privacy" items={legalItems} />
 
-      <section className="mt-6 grid grid-cols-2 gap-3">
+      <section className="mt-6 grid grid-cols-2 gap-2">
         <ActionCard icon={Star} label="Rate the app" onClick={rate} />
         <ActionCard icon={Share2} label="Share MealMate" onClick={share} />
       </section>
 
       {user && (
-        <div className="mt-6">
-          <Button
-            variant="outline"
-            onClick={signOut}
-            className="h-12 w-full rounded-2xl text-destructive hover:text-destructive"
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Log out
-          </Button>
-        </div>
+        <Button variant="danger" onClick={signOut} className="mt-8 w-full">
+          <LogOut className="mr-2 h-[17px] w-[17px]" strokeWidth={1.75} />
+          Sign out
+        </Button>
       )}
 
-      <p className="mt-8 text-center text-xs text-muted-foreground">MealMate · Made with care</p>
+      <p className="mt-8 text-center text-[11px] text-[#52525B]">MealMate · Made with care</p>
     </main>
   );
 }
 
 function Section({ title, items }: { title: string; items: Item[] }) {
   return (
-    <section className="mt-6">
-      <h2 className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <section className="mt-8">
+      <h2 className="mb-2.5 px-1 text-[11px] font-medium uppercase tracking-[0.08em] text-[#71717A]">
         {title}
       </h2>
-      <ul className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <ul className="overflow-hidden rounded-[16px] border border-[#1E1E1E] bg-[#141414]">
         {items.map((item, i) => (
-          <li key={item.label} className={i > 0 ? "border-t border-border/70" : ""}>
+          <li key={item.label} className={i > 0 ? "border-t border-[#1E1E1E]" : ""}>
             <Row item={item} />
           </li>
         ))}
@@ -575,18 +678,22 @@ function Row({ item }: { item: Item }) {
   const Icon = item.icon;
   const showChevron = !!(item.to || item.href) && !item.trailing;
   const body = (
-    <div className="flex items-center gap-3 px-4 py-3.5 transition-colors duration-150 hover:bg-muted/60 active:bg-muted">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-        <Icon className="h-[18px] w-[18px]" />
+    <div className="flex min-h-[60px] items-center gap-3.5 px-4 py-3 transition-colors duration-150 hover:bg-[#171717]">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center text-[#A1A1AA]">
+        <Icon className="h-[19px] w-[19px]" strokeWidth={1.6} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium leading-tight">{item.label}</p>
+        <p className="text-[15px] font-medium leading-tight text-white">{item.label}</p>
         {item.description && (
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.description}</p>
+          <p className="mt-0.5 truncate text-[12.5px] leading-snug text-[#71717A]">
+            {item.description}
+          </p>
         )}
       </div>
       {item.trailing ??
-        (showChevron ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : null)}
+        (showChevron ? (
+          <ChevronRight className="h-4 w-4 shrink-0 text-[#52525B]" strokeWidth={1.75} />
+        ) : null)}
     </div>
   );
 
@@ -634,12 +741,10 @@ function ActionCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex flex-col items-start gap-2 rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
+      className="flex items-center gap-2.5 rounded-[14px] border border-[#1E1E1E] bg-[#141414] px-4 py-3.5 text-left transition-colors hover:border-[#262626] hover:bg-[#171717]"
     >
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:scale-105">
-        <Icon className="h-[18px] w-[18px]" />
-      </span>
-      <span className="text-sm font-semibold">{label}</span>
+      <Icon className="h-[17px] w-[17px] shrink-0 text-[#A1A1AA]" strokeWidth={1.6} />
+      <span className="text-[13.5px] font-medium text-white">{label}</span>
     </button>
   );
 }
