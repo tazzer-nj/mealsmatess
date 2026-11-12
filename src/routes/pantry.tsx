@@ -1,7 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Refrigerator, Camera, ChefHat, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Refrigerator,
+  Camera,
+  ChefHat,
+  Loader2,
+  Search,
+  ArrowRight,
+  ListChecks,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,9 +48,11 @@ function PantryPage() {
   const { data: items = [], isLoading, error } = useQuery({ ...myPantryQuery(), enabled: !!user });
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
+  const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
+
   async function add() {
     if (!user || !name.trim() || busy) return;
     setBusy(true);
@@ -61,6 +73,7 @@ function PantryPage() {
       setBusy(false);
     }
   }
+
   async function remove(id: string) {
     if (!user) return;
     setRemoving(id);
@@ -78,6 +91,7 @@ function PantryPage() {
       setRemoving(null);
     }
   }
+
   async function cook() {
     const query = pantryRecipeQuery(items.map((item) => item.name));
     if (!query || generating) return;
@@ -91,33 +105,44 @@ function PantryPage() {
       setGenerating(false);
     }
   }
+
+  const needle = filter.trim().toLowerCase();
+  const visible = needle ? items.filter((i) => i.name.toLowerCase().includes(needle)) : items;
+
   return (
-    <main className="w-full flex-1 px-5 py-8 sm:px-8">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+    <main className="mx-auto w-full max-w-3xl flex-1 px-5 pb-10 pt-8 sm:px-8">
+      <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-display text-3xl">Your pantry</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {items.length} ingredients, endless possibilities.
+          <p className="mm-eyebrow">Your kitchen</p>
+          <h1 className="mt-2 mm-title">Your pantry.</h1>
+          <p className="mt-2 text-[14px] leading-relaxed text-[#A1A1AA]">
+            Everything you have, ready for something delicious.
           </p>
         </div>
-        <Button
-          asChild
-          variant="outline"
-          size="icon"
-          className="size-11 rounded-full"
-          title="Scan ingredients"
+        <Link
+          to="/scan"
+          search={{ mode: "ingredients" }}
+          aria-label="Scan ingredients"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#262626] bg-[#141414] text-white transition-colors hover:bg-[#1F1F1F]"
         >
-          <Link to="/scan" search={{ mode: "ingredients" }} aria-label="Scan ingredients">
-            <Camera />
-          </Link>
-        </Button>
+          <Camera className="h-[19px] w-[19px]" strokeWidth={1.75} />
+        </Link>
+      </header>
+
+      <div className="mt-7 flex items-baseline gap-2">
+        <span className="text-[22px] font-semibold tracking-[-0.02em]">{items.length}</span>
+        <span className="text-[13px] text-[#71717A]">
+          {items.length === 1 ? "ingredient on hand" : "ingredients on hand"}
+        </span>
       </div>
+
+      {/* Add ingredient */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           void add();
         }}
-        className="mt-8 grid grid-cols-[minmax(0,1fr)_80px_auto] gap-2"
+        className="mt-5 grid grid-cols-[minmax(0,1fr)_84px_auto] gap-2"
       >
         <Input
           aria-label="Ingredient"
@@ -125,7 +150,6 @@ function PantryPage() {
           value={name}
           maxLength={120}
           onChange={(e) => setName(e.target.value)}
-          className="h-11"
           required
         />
         <Input
@@ -134,75 +158,156 @@ function PantryPage() {
           value={quantity}
           maxLength={60}
           onChange={(e) => setQuantity(e.target.value)}
-          className="h-11"
         />
         <Button
           type="submit"
-          size="icon"
-          className="size-11 rounded-full"
           aria-label="Add ingredient"
           disabled={busy || !name.trim()}
+          className="h-12 w-12 px-0"
         >
-          {busy ? <Loader2 className="animate-spin" /> : <Plus />}
+          {busy ? (
+            <Loader2 className="h-[18px] w-[18px] animate-spin" />
+          ) : (
+            <Plus className="h-[18px] w-[18px]" strokeWidth={2} />
+          )}
         </Button>
       </form>
-      <div className="mt-8">
+
+      {items.length > 0 && (
+        <div className="relative mt-3">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71717A]"
+            strokeWidth={1.75}
+          />
+          <Input
+            aria-label="Search your pantry"
+            placeholder="Search your pantry"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="pl-11"
+          />
+        </div>
+      )}
+
+      {/* List */}
+      <div className="mt-6">
         {isLoading ? (
-          <p className="py-12 text-center text-muted-foreground">Loading ingredients…</p>
+          <div className="space-y-2" aria-busy="true">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="mm-skeleton h-16 w-full" />
+            ))}
+          </div>
         ) : error ? (
-          <div className="py-10 text-center">
-            <p>Couldn't load your pantry.</p>
+          <div className="mm-empty">
+            <p className="text-[15px] font-medium">We couldn&apos;t load your pantry</p>
+            <p className="mt-1 text-[13px] text-[#A1A1AA]">
+              Check your connection and try again — nothing was lost.
+            </p>
             <Button
-              variant="ghost"
-              onClick={() => client.invalidateQueries({ queryKey: ["pantry"] })}
+              variant="secondary"
+              className="mt-5"
+              onClick={() => void client.invalidateQueries({ queryKey: ["pantry"] })}
             >
               Try again
             </Button>
           </div>
         ) : !items.length ? (
-          <div className="py-16 text-center">
-            <Refrigerator className="mx-auto size-10 text-muted-foreground" />
-            <h2 className="mt-4 text-xl">A fresh start</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Your pantry is empty.</p>
+          <div className="mm-empty">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full border border-[#262626] bg-[#141414] text-[#A1A1AA]">
+              <Refrigerator className="h-6 w-6" strokeWidth={1.5} />
+            </span>
+            <p className="mt-5 text-[17px] font-medium">Your pantry is waiting.</p>
+            <p className="mt-1.5 max-w-xs text-[13px] leading-relaxed text-[#A1A1AA]">
+              Add ingredients or scan your kitchen to get started.
+            </p>
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+              <Button asChild variant="secondary">
+                <Link to="/scan" search={{ mode: "ingredients" }}>
+                  <Camera className="mr-2 h-[17px] w-[17px]" strokeWidth={1.75} /> Scan ingredients
+                </Link>
+              </Button>
+              <Button asChild variant="ghost">
+                <Link to="/list">
+                  <ListChecks className="mr-2 h-[17px] w-[17px]" strokeWidth={1.75} /> Shopping list
+                </Link>
+              </Button>
+            </div>
+          </div>
+        ) : !visible.length ? (
+          <div className="mm-empty">
+            <p className="text-[15px] font-medium">No match for “{filter.trim()}”</p>
+            <p className="mt-1 text-[13px] text-[#A1A1AA]">Try a different word.</p>
+            <Button variant="ghost" className="mt-4" onClick={() => setFilter("")}>
+              Clear search
+            </Button>
           </div>
         ) : (
-          <ul className="divide-y divide-border">
-            {items.map((item) => (
+          <ul className="space-y-2">
+            {visible.map((item) => (
               <li
                 key={item.id}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-4"
+                className="group flex items-center gap-3 rounded-[14px] border border-[#1E1E1E] bg-[#141414] px-4 py-3.5 transition-colors hover:border-[#262626]"
               >
-                <div className="min-w-0">
-                  <p className="break-words font-medium">{item.name}</p>
-                  {item.quantity && (
-                    <p className="text-sm text-muted-foreground">{item.quantity}</p>
-                  )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[15px] font-medium capitalize text-white">
+                    {item.name}
+                  </p>
+                  <p className="mt-0.5 text-[12px] text-[#71717A]">
+                    {item.quantity || "No quantity set"}
+                  </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-11 rounded-full"
+                <button
+                  type="button"
                   aria-label={`Remove ${item.name}`}
                   disabled={removing === item.id}
-                  onClick={() => remove(item.id)}
+                  onClick={() => void remove(item.id)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-[#71717A] transition-colors hover:bg-[#1F1F1F] hover:text-[#F87171] disabled:opacity-50"
                 >
-                  {removing === item.id ? <Loader2 className="animate-spin" /> : <Trash2 />}
-                </Button>
+                  {removing === item.id ? (
+                    <Loader2 className="h-[17px] w-[17px] animate-spin" />
+                  ) : (
+                    <Trash2 className="h-[17px] w-[17px]" strokeWidth={1.75} />
+                  )}
+                </button>
               </li>
             ))}
           </ul>
         )}
       </div>
-      <Button
-        className="mt-8 h-12 w-full rounded-full"
-        disabled={!items.length || generating}
-        onClick={cook}
-      >
-        {generating ? <Loader2 className="animate-spin" /> : <ChefHat />} Find a recipe
-      </Button>
-      <Button asChild variant="ghost" className="mt-3 h-11 w-full">
-        <Link to="/list">Shopping list</Link>
-      </Button>
+
+      {/* Recipe integration */}
+      {items.length > 0 && (
+        <section className="mt-8 rounded-[18px] border border-[#1E1E1E] bg-[#111111] p-5">
+          <h2 className="text-[16px] font-medium">Cook from what you have</h2>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-[#A1A1AA]">
+            Mia will build a recipe around your pantry and tell you exactly what&apos;s still
+            missing.
+          </p>
+          <Button
+            className="mt-4 w-full"
+            disabled={!items.length || generating}
+            onClick={() => void cook()}
+          >
+            {generating ? (
+              <>
+                <Loader2 className="mr-2 h-[17px] w-[17px] animate-spin" /> Building your recipe…
+              </>
+            ) : (
+              <>
+                <ChefHat className="mr-2 h-[17px] w-[17px]" strokeWidth={1.75} /> Find recipes with
+                these ingredients
+              </>
+            )}
+          </Button>
+          <Link
+            to="/list"
+            className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-[#A1A1AA] transition-colors hover:text-white"
+          >
+            View shopping list <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </section>
+      )}
     </main>
   );
 }
