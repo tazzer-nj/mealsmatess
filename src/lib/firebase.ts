@@ -29,22 +29,42 @@ const missingFirebaseEnv = Object.entries(requiredFirebaseEnv)
   .filter(([, value]) => !value)
   .map(([key]) => `VITE_FIREBASE_${key.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}`);
 
-if (missingFirebaseEnv.length > 0) {
-  throw new Error(`Missing Firebase web configuration: ${missingFirebaseEnv.join(", ")}`);
-}
+// The web configuration arrives through VITE_* variables, which Vite inlines at build
+// time. Throwing here would abort server module loading and turn every request into an
+// opaque HTTP 500 with no UI at all, so the problem is recorded instead and surfaced by
+// the root shell. Nothing is faked: every Firebase-backed feature stays unusable until
+// real credentials are supplied.
+const projectMismatch =
+  missingFirebaseEnv.length === 0 && requiredFirebaseEnv.projectId !== "mealmate-d2e53"
+    ? `Firebase project mismatch: expected mealmate-d2e53, received ${requiredFirebaseEnv.projectId}`
+    : null;
 
-if (requiredFirebaseEnv.projectId !== "mealmate-d2e53") {
-  throw new Error(
-    `Firebase project mismatch: expected mealmate-d2e53, received ${requiredFirebaseEnv.projectId}`,
-  );
-}
+export const firebaseConfigIssue: string | null =
+  missingFirebaseEnv.length > 0
+    ? `Missing Firebase web configuration: ${missingFirebaseEnv.join(", ")}`
+    : projectMismatch;
 
-const firebaseConfig = {
-  ...requiredFirebaseEnv,
-  ...(import.meta.env.FIREBASE_MEASUREMENT_ID
-    ? { measurementId: import.meta.env.FIREBASE_MEASUREMENT_ID }
-    : {}),
-} as {
+export const isFirebaseConfigured = firebaseConfigIssue === null;
+
+// Inert, structurally valid values keep SDK initialisation from throwing at import time.
+// They are never used for a request: the root shell blocks the app while unconfigured.
+const unconfiguredFirebaseConfig = {
+  apiKey: "unconfigured",
+  authDomain: "unconfigured.firebaseapp.com",
+  projectId: "unconfigured",
+  storageBucket: "unconfigured.appspot.com",
+  messagingSenderId: "0",
+  appId: "1:0:web:unconfigured",
+};
+
+const firebaseConfig = (isFirebaseConfigured
+  ? {
+      ...requiredFirebaseEnv,
+      ...(import.meta.env.FIREBASE_MEASUREMENT_ID
+        ? { measurementId: import.meta.env.FIREBASE_MEASUREMENT_ID }
+        : {}),
+    }
+  : unconfiguredFirebaseConfig) as {
   apiKey: string;
   authDomain: string;
   projectId: string;
