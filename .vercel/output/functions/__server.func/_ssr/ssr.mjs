@@ -53,7 +53,7 @@ function renderErrorPage() {
 }
 var serverEntryPromise;
 async function getServerEntry() {
-	if (!serverEntryPromise) serverEntryPromise = import("./server-B7hlMyus.mjs").then((m) => m.default ?? m);
+	if (!serverEntryPromise) serverEntryPromise = import("./server-CVXuMDvd.mjs").then((m) => m.default ?? m);
 	return serverEntryPromise;
 }
 function isHtmlDocumentRequest(request) {
