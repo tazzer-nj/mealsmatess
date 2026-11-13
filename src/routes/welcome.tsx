@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  Sparkles,
+  ChefHat,
   Home,
   Store,
   Bot,
@@ -29,7 +29,7 @@ const TOUR_SECTIONS = [
     eyebrow: "MealMate Consumer · Taz Technologies",
     title: "Discover. Plan. Eat. Enjoy.",
     description: "Your personal companion for better meals and easier dining every day.",
-    icon: Sparkles,
+    icon: ChefHat,
     dish: "Creamy chicken alfredo",
     previewTitle: "Welcome to MealMate",
     previewSubtitle: "Everything you need to discover, plan, and cook with confidence.",
@@ -58,13 +58,13 @@ const TOUR_SECTIONS = [
   },
   {
     key: "mia",
-    eyebrow: "Mia AI Assistant",
+    eyebrow: "Meet Mia",
     title: "Cook hands-free with Mia",
     description:
       "Ask Mia for recipe ideas, ingredient substitutions, cooking timers, and voice guidance—all without touching your screen.",
     icon: Bot,
     dish: "Chakalaka with pap",
-    previewTitle: "Voice & Conversational AI",
+    previewTitle: "Voice & Chat with Mia",
     previewSubtitle: "Real-time kitchen help in chat or hands-free Voice Mode.",
   },
   {

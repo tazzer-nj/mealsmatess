@@ -18,15 +18,16 @@ import {
   Lock,
   LogOut,
   Mail,
+  MessageCircle,
   Mic,
   Monitor,
   Moon,
   Scale,
   Shield,
   Sliders,
-  Sparkles,
   Sun,
   Trash2,
+  Type,
   User,
   Volume2,
   VolumeX,
@@ -36,6 +37,7 @@ import { useSession } from "@/hooks/use-session";
 import { usePremium } from "@/hooks/use-premium";
 import { usePreferences } from "@/hooks/use-preferences";
 import { useTheme, type ThemeMode } from "@/components/theme-provider";
+import { APP_FONTS, type AppFontId } from "@/lib/app-fonts";
 import { createPurchaseSession, verifyMyPremium } from "@/lib/billing.functions";
 import { loadBillingStore } from "@/lib/billing-client";
 import {
@@ -165,7 +167,7 @@ export function SettingsPage() {
   const { user } = useSession();
   const { isPremium, tier, trialActive, entitlement } = usePremium();
   const { preferences, save: savePreferences } = usePreferences();
-  const { mode, setMode } = useTheme();
+  const { mode, setMode, font, setFont } = useTheme();
 
   // Dialog states
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -438,6 +440,12 @@ export function SettingsPage() {
     toast.success(`Appearance set to ${label}`);
   }
 
+  function handleFontChange(nextFont: AppFontId) {
+    setFont(nextFont);
+    const match = APP_FONTS.find((item) => item.id === nextFont);
+    toast.success(`Font set to ${match?.label ?? nextFont}`);
+  }
+
   function handleNotificationToggle(
     key: string,
     setter: (v: boolean) => void,
@@ -590,7 +598,7 @@ export function SettingsPage() {
             </h2>
             {isPremium && (
               <span className="inline-flex items-center gap-1 rounded-md bg-[var(--periwinkle-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--periwinkle)]">
-                <Sparkles size={11} /> {trialActive ? "Trial Active" : "Active"}
+                {trialActive ? "Trial Active" : "Active"}
               </span>
             )}
           </div>
@@ -839,7 +847,7 @@ export function SettingsPage() {
               className="flex items-center justify-between p-4 text-sm text-foreground transition-colors hover:bg-secondary sm:px-5"
             >
               <div className="flex items-center gap-3">
-                <Sparkles size={16} className="text-[var(--periwinkle)]" />
+                <MessageCircle size={16} className="text-[var(--periwinkle)]" />
                 <span>Open Mia Chat &amp; Voice Mode</span>
               </div>
               <ChevronRight size={16} className="text-muted-foreground" />
@@ -953,46 +961,96 @@ export function SettingsPage() {
           >
             Appearance
           </h2>
-          <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
-            <div className="mb-3">
-              <div className="text-sm font-medium text-foreground">Theme mode</div>
-              <div className="text-xs text-muted-foreground">
-                Switch between Light, Dark, or follow your device&apos;s system setting
+          <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="p-4 sm:p-5">
+              <div className="mb-3">
+                <div className="text-sm font-medium text-foreground">Theme mode</div>
+                <div className="text-xs text-muted-foreground">
+                  Switch between Light, Dark, or follow your device&apos;s system setting
+                </div>
+              </div>
+              <div
+                role="radiogroup"
+                aria-label="Appearance mode"
+                className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-secondary p-1"
+              >
+                {[
+                  { id: "light" as ThemeMode, label: "Light", icon: Sun },
+                  { id: "dark" as ThemeMode, label: "Dark", icon: Moon },
+                  { id: "system" as ThemeMode, label: "System", icon: Monitor },
+                ].map((opt) => {
+                  const active = mode === opt.id;
+                  const Icon = opt.icon;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => handleAppearanceChange(opt.id)}
+                      className={`flex min-h-[40px] items-center justify-center gap-2 rounded-lg text-xs font-medium transition-all ${
+                        active
+                          ? "bg-card text-foreground shadow-sm ring-1 ring-border"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Icon
+                        size={14}
+                        className={active ? "text-[var(--periwinkle)]" : "text-muted-foreground"}
+                      />
+                      <span>{opt.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <div
-              role="radiogroup"
-              aria-label="Appearance mode"
-              className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-secondary p-1"
-            >
-              {[
-                { id: "light" as ThemeMode, label: "Light", icon: Sun },
-                { id: "dark" as ThemeMode, label: "Dark", icon: Moon },
-                { id: "system" as ThemeMode, label: "System", icon: Monitor },
-              ].map((opt) => {
-                const active = mode === opt.id;
-                const Icon = opt.icon;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => handleAppearanceChange(opt.id)}
-                    className={`flex min-h-[40px] items-center justify-center gap-2 rounded-lg text-xs font-medium transition-all ${
-                      active
-                        ? "bg-card text-foreground shadow-sm ring-1 ring-border"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Icon
-                      size={14}
-                      className={active ? "text-[var(--periwinkle)]" : "text-muted-foreground"}
-                    />
-                    <span>{opt.label}</span>
-                  </button>
-                );
-              })}
+
+            <div className="p-4 sm:p-5">
+              <div className="mb-3 flex items-center gap-2.5">
+                <Type size={16} className="text-[var(--periwinkle)]" />
+                <div>
+                  <div className="text-sm font-medium text-foreground">App font</div>
+                  <div className="text-xs text-muted-foreground">
+                    Choose from 4 curated MealMate typography styles
+                  </div>
+                </div>
+              </div>
+              <div
+                role="radiogroup"
+                aria-label="App font"
+                className="grid grid-cols-2 gap-2.5 sm:grid-cols-4"
+              >
+                {APP_FONTS.map((opt) => {
+                  const active = font === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => handleFontChange(opt.id)}
+                      className={`flex min-h-[72px] flex-col items-start justify-between rounded-xl border p-3 text-left transition-all ${
+                        active
+                          ? "border-[var(--periwinkle)] bg-[var(--periwinkle-soft)] text-foreground"
+                          : "border-border bg-secondary text-foreground hover:border-foreground/25"
+                      }`}
+                    >
+                      <span
+                        className="text-base font-medium leading-none"
+                        style={{ fontFamily: opt.previewFamily }}
+                      >
+                        Aa
+                      </span>
+                      <div className="mt-2">
+                        <div className="text-xs font-medium leading-tight">{opt.label}</div>
+                        <div className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
+                          {opt.description}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>

@@ -4,7 +4,7 @@ import { usePremium } from "@/hooks/use-premium";
 import { useSession } from "@/hooks/use-session";
 
 const PREMIUM_PERKS = [
-  "Up to 100 Mia AI requests a day (fair use)",
+  "Up to 100 Mia conversations & recipes a day (fair use)",
   "Unlimited saved favourites",
   "Unlimited weekly meal plans",
   "Advanced personalised meal suggestions",

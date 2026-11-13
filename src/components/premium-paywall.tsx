@@ -3,14 +3,14 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
-  Bot,
   CalendarCheck,
   Camera,
   Check,
+  ChefHat,
   Loader2,
+  MessageCircle,
   Refrigerator,
   ShieldCheck,
-  Sparkles,
   Utensils,
   UtensilsCrossed,
   Volume2,
@@ -30,42 +30,43 @@ import {
   type PlanKind,
 } from "@/lib/billing-client";
 import { MealMateLogo } from "@/components/mealmate-logo";
+import { ChefMascot } from "@/components/chef-mascot";
 import paywallHeroImage from "@/assets/images/paywall_editorial_hero_1794594256521.jpg";
 
 const VALUE_BENEFITS = [
   {
-    icon: Bot,
-    title: "AI conversations with Mia",
-    desc: "Get real-time cooking guidance, swaps, and answers while you prepare meals.",
+    icon: MessageCircle,
+    title: "Conversations with Mia",
+    desc: "Get real-time cooking guidance, swaps, and answers from Mia while you prepare meals.",
   },
   {
-    icon: Sparkles,
-    title: "AI recipe generation",
-    desc: "Create original recipes tailored to your ingredients, dietary goals, and pace.",
+    icon: ChefHat,
+    title: "Recipes crafted with Mia",
+    desc: "Ask Mia for original recipes tailored to your ingredients, dietary goals, and pace.",
   },
   {
     icon: Camera,
-    title: "Ingredient scanning",
-    desc: "Scan items in your kitchen to uncover recipes you can cook right now.",
+    title: "Ingredient scanning with Mia",
+    desc: "Scan items in your kitchen so Mia can uncover recipes you can cook right now.",
   },
   {
     icon: CalendarCheck,
-    title: "Smart meal planning",
-    desc: "Plan your week effortlessly with organised grocery lists.",
+    title: "Meal planning with Mia",
+    desc: "Plan your week effortlessly with Mia and build organised grocery lists.",
   },
   {
     icon: Refrigerator,
-    title: "Pantry assistance",
-    desc: "Track what is in your kitchen and reduce everyday food waste.",
+    title: "Pantry assistance from Mia",
+    desc: "Track what is in your kitchen with Mia and reduce everyday food waste.",
   },
   {
     icon: Utensils,
-    title: "Personalised recommendations",
-    desc: "South African staples and global dishes tuned to your preferences.",
+    title: "Tailored by Mia",
+    desc: "South African staples and global dishes tuned by Mia to your preferences.",
   },
   {
     icon: Volume2,
-    title: "Voice conversations",
+    title: "Voice conversations with Mia",
     desc: "Hands-free voice assistance with Mia so you never miss a step.",
   },
 ];
@@ -251,8 +252,8 @@ export function PremiumPaywall() {
                 />
               )}
               <div className="paywall-photo-badge">
-                <Sparkles size={12} className="text-[#A5B4FC]" aria-hidden="true" />
-                <span>MealMate Premium</span>
+                <ChefMascot className="h-4 w-4 shrink-0" />
+                <span>Meet Mia · Premium</span>
               </div>
             </div>
 

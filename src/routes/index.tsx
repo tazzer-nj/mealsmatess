@@ -16,7 +16,7 @@ import {
   ChevronRight,
   Play,
   HeartPulse,
-  Sparkles,
+  ChefHat,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -295,7 +295,7 @@ function Index() {
             {busy === "surprise" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Sparkles className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
+              <ChefHat className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
             )}
             Surprise me
           </span>

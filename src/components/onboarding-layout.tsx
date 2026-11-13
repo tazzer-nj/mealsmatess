@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { MealMateLogo } from "@/components/mealmate-logo";
 import { RecipeImage } from "@/components/recipe-image";
 
@@ -112,7 +112,6 @@ export function OnboardingLayout({
             <RecipeImage recipe={{ name: current.dish }} size="hero" priority />
             <div className="onboarding-visual-overlay">
               <span className="onboarding-pill">
-                <Sparkles size={11} className="text-[#A5B4FC]" />
                 <span>{current.stepName}</span>
               </span>
             </div>

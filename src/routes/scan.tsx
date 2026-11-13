@@ -14,7 +14,6 @@ import {
   Trash2,
   ChefHat,
   Check,
-  Sparkles,
 } from "lucide-react";
 import { scanKitchen, scanDish, type ScannedDish, generateRecipe } from "@/lib/ai.functions";
 import { useSession } from "@/hooks/use-session";
@@ -678,7 +677,7 @@ function ScanPage() {
               {generatingRecipe ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
+                <ChefHat className="mr-2 h-4 w-4" />
               )}
               Cook with Mia
             </Button>

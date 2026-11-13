@@ -90,11 +90,11 @@ export function applyTheme(id: MascotThemeId, animate = false) {
   root.style.setProperty("--brand-foreground", t.accentForeground);
 }
 
-/** Inline script for <head> so the saved theme paints before React hydrates. */
+/** Inline script for <head> so the saved theme and font paint before React hydrates. */
 export const THEME_BOOT_SCRIPT = `(function(){try{var t=localStorage.getItem(${JSON.stringify(
   THEME_STORAGE_KEY,
 )});var m=${JSON.stringify(
   Object.fromEntries(
     MASCOT_THEMES.map((t) => [t.id, [t.accent, t.accentDark, t.accentForeground]]),
   ),
-)};var v=m[t]||m.classic;var r=document.documentElement;r.dataset.mascot=m[t]?t:"classic";r.style.setProperty("--brand",v[0]);r.style.setProperty("--brand-dark",v[1]);r.style.setProperty("--brand-foreground",v[2]);var ap=localStorage.getItem("mealmate-theme");var isDark=ap==="dark"||((!ap||ap==="system")&&window.matchMedia("(prefers-color-scheme: dark)").matches);r.classList.toggle("dark",isDark);r.dataset.theme=isDark?"dark":"light";}catch(e){}})();`;
+)};var v=m[t]||m.classic;var r=document.documentElement;r.dataset.mascot=m[t]?t:"classic";r.style.setProperty("--brand",v[0]);r.style.setProperty("--brand-dark",v[1]);r.style.setProperty("--brand-foreground",v[2]);var ap=localStorage.getItem("mealmate-theme");var isDark=ap==="dark"||((!ap||ap==="system")&&window.matchMedia("(prefers-color-scheme: dark)").matches);r.classList.toggle("dark",isDark);r.dataset.theme=isDark?"dark":"light";var f=localStorage.getItem("mealmate-font");r.dataset.font=(f==="jakarta"||f==="outfit"||f==="dm"||f==="fraunces")?f:"jakarta";}catch(e){}})();`;

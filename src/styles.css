@@ -5,7 +5,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * MealMate Consumer design system — Inter typography, black/white core with warm neutral/grey depth and restrained periwinkle accent.
+ * MealMate Consumer design system — 4 curated font pairings (Plus Jakarta Sans, Outfit, DM Sans, Fraunces + JetBrains Mono), black/white core with warm neutral/grey depth and restrained periwinkle accent.
  * Fonts are loaded via <link> in src/routes/__root.tsx (never @import here).
  */
 
@@ -17,8 +17,10 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-  --font-serif: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-serif: var(--app-font-display, "Outfit", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif);
+  --font-sans: var(--app-font-sans, "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif);
+  --font-display: var(--app-font-display, "Outfit", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif);
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --color-positive: var(--positive);
   --color-negative: var(--negative);
   --color-periwinkle: var(--periwinkle);
@@ -66,6 +68,27 @@
   --color-ember: var(--ember);
   --color-leaf: var(--leaf);
   --color-market-hero: var(--market-hero);
+}
+
+:root,
+html[data-font="jakarta"] {
+  --app-font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --app-font-display: "Outfit", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+html[data-font="outfit"] {
+  --app-font-sans: "Outfit", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --app-font-display: "Outfit", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+html[data-font="dm"] {
+  --app-font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --app-font-display: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html[data-font="fraunces"] {
+  --app-font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --app-font-display: "Fraunces", Georgia, serif;
 }
 
 :root {
@@ -233,14 +256,14 @@
   h2,
   h3,
   h4 {
-    font-family: var(--font-serif);
+    font-family: var(--font-display);
     font-weight: 600;
-    letter-spacing: 0;
+    letter-spacing: -0.015em;
   }
 }
 
 @utility font-display {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
 }
 
 /* ---------- Material Design 3 motion + a11y polish ---------- */

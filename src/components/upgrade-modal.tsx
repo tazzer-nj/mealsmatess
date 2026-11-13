@@ -92,7 +92,7 @@ function UpgradeSheet({ reason, onClose }: { reason?: string; onClose: () => voi
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
             {reason ??
-              "Enjoy AI-powered recipes, meal planning, food scanning and nutrition insights."}
+              "Cook smarter with Mia — personalised recipes, meal planning, food scanning and nutrition insights."}
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
             View available plans, prices and trial eligibility on the subscription page.

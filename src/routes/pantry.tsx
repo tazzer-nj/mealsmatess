@@ -12,7 +12,6 @@ import {
   Edit2,
   Check,
   X,
-  Sparkles,
   ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -390,7 +389,7 @@ export function PantryPage() {
             {generating ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Sparkles className="mr-2 h-4 w-4" />
+              <ChefHat className="mr-2 h-4 w-4" />
             )}
             Find a recipe with Mia ({items.length} items)
           </Button>

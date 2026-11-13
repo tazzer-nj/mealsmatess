@@ -7,6 +7,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  APP_FONT_STORAGE_KEY,
+  DEFAULT_APP_FONT,
+  isAppFontId,
+  type AppFontId,
+} from "@/lib/app-fonts";
 
 export type ThemeMode = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
@@ -17,6 +23,8 @@ type ThemeContextValue = {
   mode: ThemeMode;
   resolved: ResolvedTheme;
   setMode: (m: ThemeMode) => void;
+  font: AppFontId;
+  setFont: (f: AppFontId) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -42,11 +50,16 @@ function applyTheme(resolved: ResolvedTheme) {
   }
 }
 
+function applyAppFont(font: AppFontId) {
+  document.documentElement.dataset["font"] = font;
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>("system");
   const [resolved, setResolved] = useState<ResolvedTheme>("dark");
+  const [font, setFontState] = useState<AppFontId>(DEFAULT_APP_FONT);
 
-  // Load stored preference on mount; default to system appearance.
+  // Load stored appearance & font preferences on mount.
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
     const initial: ThemeMode =
@@ -55,6 +68,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const r = initial === "system" ? systemPref() : initial;
     setResolved(r);
     applyTheme(r);
+
+    const storedFont = window.localStorage.getItem(APP_FONT_STORAGE_KEY);
+    const initialFont = isAppFontId(storedFont) ? storedFont : DEFAULT_APP_FONT;
+    setFontState(initialFont);
+    applyAppFont(initialFont);
   }, []);
 
   // React to system changes when in system mode.
@@ -78,7 +96,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyTheme(r);
   }, []);
 
-  const value = useMemo(() => ({ mode, resolved, setMode }), [mode, resolved, setMode]);
+  const setFont = useCallback((nextFont: AppFontId) => {
+    setFontState(nextFont);
+    window.localStorage.setItem(APP_FONT_STORAGE_KEY, nextFont);
+    applyAppFont(nextFont);
+  }, []);
+
+  const value = useMemo(
+    () => ({ mode, resolved, setMode, font, setFont }),
+    [mode, resolved, setMode, font, setFont],
+  );
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
