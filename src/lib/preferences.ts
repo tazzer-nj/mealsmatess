@@ -8,10 +8,13 @@ export type FoodPreferences = {
   dietary_restrictions: string[];
   disliked_foods: string[];
   meals_per_day: string | null;
+  household_size?: string | null;
+  preferred_name?: string | null;
   cooking_level: string | null;
   cooking_time: string | null;
   food_budget: string | null;
   preferred_features: string[];
+  onboarding_step?: number | null;
   onboarding_completed: boolean;
   updated_at: string | null;
 };
@@ -23,10 +26,13 @@ export const EMPTY_PREFERENCES: FoodPreferences = {
   dietary_restrictions: [],
   disliked_foods: [],
   meals_per_day: null,
+  household_size: null,
+  preferred_name: null,
   cooking_level: null,
   cooking_time: null,
   food_budget: null,
   preferred_features: [],
+  onboarding_step: null,
   onboarding_completed: false,
   updated_at: null,
 };
@@ -43,19 +49,27 @@ function asString(v: unknown): string | null {
   return typeof v === "string" && v ? v : null;
 }
 
+function asStepNumber(v: unknown): number | null {
+  return typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null;
+}
+
 export function normalizePreferences(raw: unknown): FoodPreferences {
   const o = (raw ?? {}) as Record<string, unknown>;
+  const householdSize = asString(o["household_size"]) ?? asString(o["meals_per_day"]);
   return {
     goal: asString(o["goal"]),
     favorite_foods: asStringArray(o["favorite_foods"]),
     allergies: asStringArray(o["allergies"]),
     dietary_restrictions: asStringArray(o["dietary_restrictions"]),
     disliked_foods: asStringArray(o["disliked_foods"]),
-    meals_per_day: asString(o["meals_per_day"]),
+    meals_per_day: asString(o["meals_per_day"]) ?? householdSize,
+    household_size: householdSize,
+    preferred_name: asString(o["preferred_name"]),
     cooking_level: asString(o["cooking_level"]),
     cooking_time: asString(o["cooking_time"]),
     food_budget: asString(o["food_budget"]),
     preferred_features: asStringArray(o["preferred_features"]),
+    onboarding_step: asStepNumber(o["onboarding_step"]),
     onboarding_completed: o["onboarding_completed"] === true,
     updated_at: asString(o["updated_at"]),
   };

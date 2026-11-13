@@ -78,27 +78,29 @@ function CoachPage() {
 
   if (loading) {
     return (
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
-        <Skeleton className="h-8 w-56" />
-        <Skeleton className="mt-3 h-4 w-72" />
-        <Skeleton className="mt-8 h-24 w-full rounded-2xl" />
+      <main className="mx-auto w-full max-w-2xl flex-1 bg-background px-4 py-10">
+        <Skeleton className="h-8 w-56 bg-card" />
+        <Skeleton className="mt-3 h-4 w-72 bg-card" />
+        <Skeleton className="mt-8 h-24 w-full rounded-2xl bg-card" />
       </main>
     );
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center px-4 py-16 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-          <HeartPulse className="h-6 w-6" />
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center bg-background px-4 py-16 text-center text-foreground">
+        <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-card text-foreground">
+          <HeartPulse className="h-6 w-6 text-[var(--periwinkle)]" />
         </span>
-        <h1 className="mt-4 font-display text-3xl">AI Nutrition Coach</h1>
+        <h1 className="mt-4 text-3xl font-medium tracking-tight text-foreground">
+          AI Nutrition Coach
+        </h1>
         <p className="mt-2 max-w-sm text-sm text-muted-foreground">
           Sign in so your coach can personalize advice to your goals, allergies, and daily budget.
         </p>
         <Link
           to="/auth"
-          className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
+          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-foreground px-5 py-2.5 text-sm font-medium text-background"
         >
           Sign in
         </Link>
@@ -109,13 +111,13 @@ function CoachPage() {
   const missing = ctx?.missing ?? [];
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-8">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col bg-background px-4 py-8 text-foreground">
       <header className="flex items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-          <HeartPulse className="h-5 w-5" />
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground">
+          <HeartPulse className="h-5 w-5 text-[var(--periwinkle)]" />
         </span>
         <div className="min-w-0">
-          <h1 className="font-display text-3xl leading-tight">Nutrition Coach</h1>
+          <h1 className="text-2xl font-medium tracking-tight text-foreground">Nutrition Coach</h1>
           <p className="text-sm text-muted-foreground">
             Personalized advice for your goals, allergies, and daily budget.
           </p>
@@ -124,7 +126,7 @@ function CoachPage() {
 
       {/* Profile summary / missing chips */}
       {ctxLoading ? (
-        <Skeleton className="mt-6 h-16 w-full rounded-2xl" />
+        <Skeleton className="mt-6 h-16 w-full rounded-2xl bg-card" />
       ) : ctx ? (
         <section className="mt-6 rounded-2xl border border-border bg-card p-4">
           <div className="flex flex-wrap gap-1.5">
@@ -146,8 +148,8 @@ function CoachPage() {
           </div>
           {missing.length > 0 && (
             <Link
-              to="/profile"
-              className="mt-3 flex items-center justify-between rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
+              to="/settings"
+              className="mt-3 flex items-center justify-between rounded-xl border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
             >
               <span>Add your {missing.slice(0, 3).join(", ")} for sharper advice.</span>
               <ChevronRight className="h-3.5 w-3.5" />
@@ -159,14 +161,14 @@ function CoachPage() {
       {/* Conversation */}
       <section className="mt-6 flex-1 space-y-4">
         {turns.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-border p-5">
-            <p className="text-sm font-medium">Try asking:</p>
+          <div className="rounded-2xl border border-dashed border-border bg-card p-5">
+            <p className="text-sm font-medium text-foreground">Try asking:</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {STARTERS.map((s) => (
                 <button
                   key={s}
                   onClick={() => ask(s)}
-                  className="md3-surface rounded-full border border-border bg-card px-3.5 py-2 text-left text-xs font-medium"
+                  className="rounded-xl border border-border bg-secondary px-3.5 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:border-[var(--periwinkle)] hover:text-foreground"
                 >
                   {s}
                 </button>
@@ -178,13 +180,13 @@ function CoachPage() {
         {turns.map((t, i) =>
           t.role === "user" ? (
             <div key={i} className="flex justify-end">
-              <p className="rise-in max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
+              <p className="rise-in max-w-[85%] rounded-2xl rounded-br-sm bg-foreground px-4 py-2.5 text-sm font-medium text-background">
                 {t.content}
               </p>
             </div>
           ) : (
             <div key={i} className="flex justify-start">
-              <div className="rise-in max-w-[92%] space-y-2 rounded-2xl rounded-bl-sm bg-card px-4 py-3 text-sm leading-relaxed [&_h3]:font-display [&_h3]:text-base [&_h3]:mt-2 [&_li]:ml-4 [&_li]:list-disc [&_strong]:font-semibold [&_a]:underline">
+              <div className="rise-in max-w-[92%] space-y-2 rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3 text-sm leading-relaxed text-foreground [&_a]:underline [&_h3]:mt-2 [&_h3]:text-base [&_h3]:font-semibold [&_li]:ml-4 [&_li]:list-disc [&_strong]:font-semibold">
                 <ReactMarkdown>{t.content}</ReactMarkdown>
               </div>
             </div>
@@ -193,7 +195,7 @@ function CoachPage() {
 
         {busy && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin text-foreground" />
             Coach is thinking…
           </div>
         )}
@@ -206,7 +208,7 @@ function CoachPage() {
           e.preventDefault();
           ask(input);
         }}
-        className="sticky bottom-24 mt-6 flex gap-2 rounded-full border border-border bg-card p-1.5 shadow-sm"
+        className="sticky bottom-24 mt-6 flex gap-2 rounded-2xl border border-border bg-card p-1.5"
       >
         <label htmlFor="coach-input" className="sr-only">
           Ask your nutrition coach
@@ -216,14 +218,14 @@ function CoachPage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about calories, meals, cravings…"
-          className="h-11 flex-1 rounded-full border-none bg-transparent shadow-none focus-visible:ring-0"
+          className="h-11 flex-1 rounded-xl border-none bg-transparent text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0"
           disabled={busy}
         />
         <Button
           type="submit"
           size="icon"
           disabled={busy || !input.trim()}
-          className="h-11 w-11 rounded-full"
+          className="h-11 w-11 rounded-xl bg-foreground text-background hover:opacity-90"
           aria-label="Send message"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -241,8 +243,8 @@ function Chip({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "
     <span
       className={
         tone === "warn"
-          ? "inline-flex items-center rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive"
-          : "inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-medium"
+          ? "inline-flex items-center rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive"
+          : "inline-flex items-center rounded-lg border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground"
       }
     >
       {label}

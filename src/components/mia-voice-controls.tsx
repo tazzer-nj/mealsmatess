@@ -80,16 +80,16 @@ export function MiaVoiceControls() {
         >
           {active ? "On" : "Off"}
         </button>
-        {active && (
-          <button
-            type="button"
+        {voice.state === "speaking" && (
+          <Button
+            variant="outline"
+            size="sm"
             onClick={stopVoice}
+            className="h-7 rounded-full border-border px-2.5 text-xs text-foreground hover:bg-secondary"
             aria-label="Mute Mia microphone immediately"
-            className="mia-voice-toggle"
-            data-active="false"
           >
-            Stop
-          </button>
+            Stop speaking
+          </Button>
         )}
       </div>
       {(expanded || conversation || voice.error) && (
@@ -117,9 +117,6 @@ export function MiaVoiceControls() {
             )}
             <Link className="underline" to="/chat">
               Open Mia chat
-            </Link>
-            <Link className="underline" to="/profile">
-              Mute and voice settings
             </Link>
           </div>
         </div>

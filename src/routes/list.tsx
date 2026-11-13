@@ -82,13 +82,13 @@ function ListPage() {
   const checkedCount = items?.filter((i) => i.checked).length ?? 0;
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
+    <main className="mx-auto w-full max-w-2xl flex-1 bg-background px-4 py-8 text-foreground">
       <div className="flex items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-          <ShoppingCart className="h-5 w-5" />
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground">
+          <ShoppingCart className="h-5 w-5 text-[var(--periwinkle)]" />
         </span>
         <div>
-          <h1 className="font-display text-4xl">Grocery list</h1>
+          <h1 className="text-3xl font-medium tracking-tight text-foreground">Grocery list</h1>
           <p className="text-sm text-muted-foreground">
             {items?.length ?? 0} items · {checkedCount} checked
           </p>
@@ -100,16 +100,24 @@ function ListPage() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Add an item…"
-          className="h-11"
+          className="h-12 rounded-xl border-border bg-card text-foreground placeholder:text-muted-foreground"
         />
-        <Button type="submit" className="h-11">
+        <Button
+          type="submit"
+          className="h-12 rounded-xl bg-foreground px-4 text-background hover:opacity-90"
+        >
           <Plus className="h-4 w-4" />
         </Button>
       </form>
 
       {checkedCount > 0 && (
         <div className="mt-3 flex justify-end">
-          <Button variant="ghost" size="sm" onClick={clearChecked}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearChecked}
+            className="rounded-lg text-xs text-muted-foreground hover:text-foreground"
+          >
             Clear checked
           </Button>
         </div>
@@ -122,12 +130,12 @@ function ListPage() {
               key={i}
               className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
             >
-              <Skeleton className="h-4 w-4 rounded" />
-              <Skeleton className="h-4 flex-1 max-w-[60%]" />
+              <Skeleton className="h-4 w-4 rounded bg-secondary" />
+              <Skeleton className="h-4 max-w-[60%] flex-1 bg-secondary" />
             </li>
           ))
         ) : items.length === 0 ? (
-          <li className="rounded-2xl border border-dashed border-border p-10 text-center text-muted-foreground">
+          <li className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
             Your list is empty. Add items or save ingredients from a recipe.
           </li>
         ) : (
@@ -135,7 +143,7 @@ function ListPage() {
             <li
               key={item.id}
               style={{ animationDelay: `${Math.min(idx, 8) * 30}ms` }}
-              className="rise-in md3-surface flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
+              className="rise-in flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
             >
               <Checkbox
                 checked={item.checked}
@@ -144,7 +152,7 @@ function ListPage() {
               />
               <div className="flex-1">
                 <span
-                  className={`text-sm ${item.checked ? "text-muted-foreground line-through" : ""}`}
+                  className={`text-sm ${item.checked ? "text-muted-foreground line-through" : "text-foreground"}`}
                 >
                   {item.name}
                 </span>
@@ -155,7 +163,7 @@ function ListPage() {
               <button
                 onClick={() => remove(item.id)}
                 aria-label={`Remove ${item.name}`}
-                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-destructive"
               >
                 <Trash2 className="h-4 w-4" />
               </button>

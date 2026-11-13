@@ -7,37 +7,37 @@ const STEP_DATA = [
   {
     stepName: "Welcome",
     title: "Personalize your kitchen",
-    desc: "Let's tailor MealMate to your household, taste, and cooking habits.",
+    desc: "Let's make mealtime better. Tailor MealMate to your household, tastes, and rhythm.",
     dish: "Creamy chicken alfredo",
   },
   {
     stepName: "Goals",
     title: "Set your cooking goals",
-    desc: "We will adapt recipe discovery and recommendations to what you want to achieve.",
+    desc: "Tell us what matters most so every recipe and weekly plan fits your life.",
     dish: "Rainbow buddha bowl",
   },
   {
-    stepName: "Diet",
+    stepName: "Dietary preferences",
     title: "Dietary preferences",
-    desc: "From plant-based to gluten-free, personalize your daily recipe feed.",
+    desc: "From plant-based to halal or keto, keep your daily recipe feed aligned with how you eat.",
     dish: "Greek chicken salad",
   },
   {
     stepName: "Allergies",
     title: "Allergies & intolerances",
-    desc: "Keep your kitchen safe. We'll automatically filter out unsafe ingredients.",
+    desc: "Keep your kitchen safe. MealMate filters out unsafe ingredients automatically.",
     dish: "West African jollof rice",
   },
   {
-    stepName: "Cuisines",
+    stepName: "Flavours",
     title: "Favourite flavours",
-    desc: "Explore authentic South African favourites and world-renowned classics.",
+    desc: "Choose the cuisines you crave most—from South African staples to world classics.",
     dish: "Cape malay bobotie",
   },
   {
-    stepName: "Skill & Pace",
+    stepName: "Cooking style",
     title: "Skill level & pace",
-    desc: "We'll suggest meals that match your kitchen comfort and available time.",
+    desc: "We'll recommend meals matched to your comfort in the kitchen and available time.",
     dish: "Classic american apple pie",
   },
 ];
@@ -69,19 +69,25 @@ export function OnboardingLayout({
       <div className="onboarding-frame">
         <header className="onboarding-header">
           <div className="onboarding-brand-row">
-            {onBack ? (
-              <button
-                type="button"
-                className="onboarding-back"
-                onClick={onBack}
-                disabled={busy}
-                aria-label="Previous step"
-              >
-                <ArrowLeft size={18} />
-              </button>
-            ) : (
-              <MealMateLogo imageClassName="size-8 rounded-xl" className="text-white" />
-            )}
+            <div className="flex items-center gap-3">
+              {onBack ? (
+                <button
+                  type="button"
+                  className="onboarding-back"
+                  onClick={onBack}
+                  disabled={busy}
+                  aria-label="Previous step"
+                >
+                  <ArrowLeft size={16} />
+                </button>
+              ) : (
+                <MealMateLogo
+                  imageClassName="size-8 rounded-xl border border-border"
+                  className="text-foreground"
+                  showName
+                />
+              )}
+            </div>
             <span className="onboarding-step">
               Step {step + 1} of {total}
             </span>
@@ -101,23 +107,24 @@ export function OnboardingLayout({
           </div>
         </header>
 
-        {/* Visual Hero Header */}
-        <div className="onboarding-visual-banner" aria-hidden="true">
-          <RecipeImage recipe={{ name: current.dish }} size="hero" priority />
-          <div className="onboarding-visual-overlay">
-            <span className="onboarding-pill">
-              <Sparkles size={12} className="text-periwinkle" />
-              <span>{current.stepName}</span>
-            </span>
+        <div className="onboarding-surface">
+          <div className="onboarding-visual-banner" aria-hidden="true">
+            <RecipeImage recipe={{ name: current.dish }} size="hero" priority />
+            <div className="onboarding-visual-overlay">
+              <span className="onboarding-pill">
+                <Sparkles size={11} className="text-[#A5B4FC]" />
+                <span>{current.stepName}</span>
+              </span>
+            </div>
           </div>
-        </div>
 
-        <div className="onboarding-content" ref={content}>
-          <div className="onboarding-text-header">
-            <h1 className="onboarding-title">{current.title}</h1>
-            <p className="onboarding-description">{current.desc}</p>
+          <div key={step} className="onboarding-content onboarding-step-enter" ref={content}>
+            <div className="onboarding-text-header">
+              <h1 className="onboarding-title">{current.title}</h1>
+              <p className="onboarding-description">{current.desc}</p>
+            </div>
+            {children}
           </div>
-          {children}
         </div>
 
         <footer className="onboarding-actions">{footer}</footer>

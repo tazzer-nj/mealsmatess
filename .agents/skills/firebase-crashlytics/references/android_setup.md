@@ -15,7 +15,7 @@ the following is done.
 - The Android project has a Firebase config file (`google-services.json`) and
   the Google services Gradle plugin (`google-services`).
 
-______________________________________________________________________
+---
 
 ## 1. Add dependencies to Gradle build files
 
@@ -87,9 +87,9 @@ plugins {
    }
    ```
 
-______________________________________________________________________
+---
 
-## 2. *Optional:* Install the NDK SDK to capture native crashes
+## 2. _Optional:_ Install the NDK SDK to capture native crashes
 
 If the Android project uses native code (C/C++), or includes a library with
 native code, configure Crashlytics to report native crashes.
@@ -132,9 +132,9 @@ App-level `build.gradle.kts` (`<project>/<app-module>/build.gradle.kts`)
 After these changes, Crashlytics will automatically report crashes in the app's
 native code.
 
-______________________________________________________________________
+---
 
-## 3. *Required:* Force a test crash
+## 3. _Required:_ Force a test crash
 
 To verify that Crashlytics is correctly set up in the Android project, force a
 test crash in the app.
@@ -172,7 +172,7 @@ test crash in the app.
    the `get_report` tool or manually viewing it in the Firebase console --
    remove the code that triggers the test crash.
 
-______________________________________________________________________
+---
 
 ## Optional additional steps
 

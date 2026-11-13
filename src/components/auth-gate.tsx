@@ -10,13 +10,7 @@ import { toast } from "sonner";
 
 // MealMate entry: auth → onboarding → paywall → app.
 // Only these routes are reachable without a signed-in, verified user.
-const PUBLIC_PREFIXES = [
-  "/auth",
-  "/reset-password",
-  "/legal",
-  "/about",
-  "/support",
-];
+const PUBLIC_PREFIXES = ["/auth", "/reset-password", "/legal", "/about", "/support"];
 
 // Inactive sessions are signed out after this window.
 const INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes
@@ -133,24 +127,36 @@ function VerifyEmailPrompt({ email }: { email: string }) {
     await signOutUnified();
   }
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-16">
-      <div className="w-full max-w-md rounded-3xl border border-border bg-card p-8 text-center shadow-sm">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-600">
-          <MailWarning className="h-6 w-6" />
+    <main className="flex flex-1 items-center justify-center bg-background px-4 py-16 text-foreground">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-[var(--periwinkle-soft)] text-[var(--periwinkle)]">
+          <MailWarning className="h-5 w-5" />
         </div>
-        <h1 className="font-display text-2xl">Verify your email</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          We sent a link to <span className="font-medium text-foreground">{email}</span>. Open it,
-          then come back here.
+        <h1 className="text-2xl font-medium tracking-tight text-foreground">Verify your email</h1>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          We sent a verification link to{" "}
+          <span className="font-medium text-foreground">{email}</span>. Open it in your inbox, then
+          come back here.
         </p>
-        <div className="mt-6 flex flex-col gap-2">
-          <Button className="w-full" onClick={() => void confirmVerification()}>
+        <div className="mt-6 flex flex-col gap-2.5">
+          <Button
+            className="h-11 w-full rounded-xl bg-foreground text-background hover:opacity-90"
+            onClick={() => void confirmVerification()}
+          >
             I verified my email
           </Button>
-          <Button variant="outline" className="w-full" onClick={() => void resend()}>
+          <Button
+            variant="outline"
+            className="h-11 w-full rounded-xl border-border bg-secondary text-foreground hover:bg-muted"
+            onClick={() => void resend()}
+          >
             Resend verification email
           </Button>
-          <Button variant="ghost" className="w-full" onClick={() => void signOut()}>
+          <Button
+            variant="ghost"
+            className="h-11 w-full rounded-xl text-muted-foreground hover:text-foreground"
+            onClick={() => void signOut()}
+          >
             Use a different account
           </Button>
         </div>

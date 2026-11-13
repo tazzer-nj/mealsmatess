@@ -1,68 +1,90 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Home, UtensilsCrossed, Refrigerator, Settings2, Sparkles } from "lucide-react";
+import { Home, UtensilsCrossed, CalendarDays, User } from "lucide-react";
+import { ChefMascot } from "@/components/chef-mascot";
 import { cn } from "@/lib/utils";
 
 /**
- * Five primary MealMate destinations: Home, Dining, Mia, Pantry, Settings.
- * Mia keeps a gentle visual emphasis in the centre without being oversized.
+ * Five primary MealMate tabs with the AI chef raised in the centre.
  */
-const TABS = [
+const LEFT_TABS = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/restaurants", icon: UtensilsCrossed, label: "Dining" },
-  { to: "/chat", icon: Sparkles, label: "Mia" },
-  { to: "/pantry", icon: Refrigerator, label: "Pantry" },
-  { to: "/profile", icon: Settings2, label: "Settings" },
 ] as const;
 
-function isActive(pathname: string, to: string) {
-  return to === "/" ? pathname === "/" : pathname.startsWith(to);
+const RIGHT_TABS = [
+  { to: "/planner", icon: CalendarDays, label: "Planner" },
+  { to: "/profile", icon: User, label: "Profile" },
+] as const;
+
+function Tab({
+  to,
+  icon: Icon,
+  label,
+  active,
+}: {
+  to: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <Link
+      to={to}
+      aria-label={label}
+      data-tour={label.toLowerCase()}
+      className={cn(
+        "group relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium transition-colors",
+        active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      <Icon className="h-5 w-5 transition-transform duration-200 group-active:scale-90" />
+      {active && (
+        <span
+          className="absolute inset-x-4 top-0 h-0.5 rounded-full bg-[var(--periwinkle)]"
+          aria-hidden="true"
+        />
+      )}
+      {label}
+    </Link>
+  );
 }
 
 export function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
 
   return (
     <nav
       id="app-nav"
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-background/85"
     >
-      <div className="mx-auto grid max-w-[640px] grid-cols-5 items-center px-3">
-        {TABS.map((tab) => {
-          const active = isActive(pathname, tab.to);
-          if (tab.to === "/chat") {
-            return (
-              <Link
-                key={tab.to}
-                to={tab.to}
-                aria-label="Mia, your food companion"
-                aria-current={active ? "page" : undefined}
-                data-tour="chef"
-                data-active={active}
-                className="mm-nav-item mm-nav-mia"
-              >
-                <span className="mm-nav-mia-icon">
-                  <tab.icon aria-hidden="true" />
-                </span>
-                {tab.label}
-              </Link>
-            );
-          }
-          return (
-            <Link
-              key={tab.to}
-              to={tab.to}
-              aria-label={tab.label}
-              aria-current={active ? "page" : undefined}
-              data-tour={tab.label.toLowerCase()}
-              data-active={active}
-              className={cn("mm-nav-item", active && "text-foreground")}
-            >
-              <tab.icon aria-hidden="true" />
-              {tab.label}
-            </Link>
-          );
-        })}
+      <div className="mx-auto grid max-w-3xl grid-cols-[1fr_1fr_68px_1fr_1fr] items-end px-2">
+        {LEFT_TABS.map((t) => (
+          <Tab key={t.to} {...t} active={isActive(t.to)} />
+        ))}
+        <Link
+          to="/chat"
+          aria-label="Ask the AI chef"
+          data-tour="chef"
+          className={cn(
+            "group relative mx-auto -mt-5 flex min-h-20 w-16 flex-col items-center justify-end gap-1 pb-2 text-[11px] font-medium transition-colors",
+            isActive("/chat") ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <span
+            className={cn(
+              "flex h-13 w-13 items-center justify-center rounded-2xl border bg-card ring-4 ring-background transition-all group-hover:border-[var(--periwinkle)] group-active:scale-95",
+              isActive("/chat") ? "border-[var(--periwinkle)]" : "border-border",
+            )}
+          >
+            <ChefMascot className="h-10 w-10" />
+          </span>
+          AI Chef
+        </Link>
+        {RIGHT_TABS.map((t) => (
+          <Tab key={t.to} {...t} active={isActive(t.to)} />
+        ))}
       </div>
     </nav>
   );

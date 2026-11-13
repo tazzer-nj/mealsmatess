@@ -3,13 +3,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useFlowController } from "@/lib/flow-controller";
 import { Loader2 } from "lucide-react";
 
-const ALLOWED_UNAUTH_PREFIXES = [
-  "/auth",
-  "/reset-password",
-  "/legal",
-  "/support",
-  "/about",
-];
+const ALLOWED_UNAUTH_PREFIXES = ["/auth", "/reset-password", "/legal", "/support", "/about"];
 
 function isPublicPath(pathname: string) {
   return ALLOWED_UNAUTH_PREFIXES.some(

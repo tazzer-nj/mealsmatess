@@ -33,6 +33,8 @@ function applyTheme(resolved: ResolvedTheme) {
   const root = document.documentElement;
   root.classList.toggle("dark", resolved === "dark");
   root.dataset["theme"] = resolved;
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (meta) meta.content = resolved === "dark" ? "#080808" : "#fafafa";
   const icon = resolved === "dark" ? DARK_APP_ICON : LIGHT_APP_ICON;
   for (const rel of ["icon", "apple-touch-icon"]) {
     const link = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
@@ -42,9 +44,9 @@ function applyTheme(resolved: ResolvedTheme) {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>("system");
-  const [resolved, setResolved] = useState<ResolvedTheme>("light");
+  const [resolved, setResolved] = useState<ResolvedTheme>("dark");
 
-  // Load stored preference on mount.
+  // Load stored preference on mount; default to system appearance.
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
     const initial: ThemeMode =

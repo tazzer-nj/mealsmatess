@@ -5,13 +5,15 @@ import {
   ArrowRight,
   Bot,
   CalendarCheck,
-  ChefHat,
+  Camera,
+  Check,
   Loader2,
-  Mic,
   Refrigerator,
-  ScanLine,
   ShieldCheck,
+  Sparkles,
   Utensils,
+  UtensilsCrossed,
+  Volume2,
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import {
@@ -28,41 +30,45 @@ import {
   type PlanKind,
 } from "@/lib/billing-client";
 import { MealMateLogo } from "@/components/mealmate-logo";
-import { RecipeImage } from "@/components/recipe-image";
+import paywallHeroImage from "@/assets/images/paywall_editorial_hero_1794594256521.jpg";
 
-const BENEFITS = [
-  { icon: Bot, label: "Your personal food companion" },
-  { icon: ChefHat, label: "Intelligent recipe generation" },
-  { icon: ScanLine, label: "Smart ingredient scanning" },
-  { icon: CalendarCheck, label: "Personalised meal planning" },
-  { icon: Refrigerator, label: "Pantry assistance" },
-  { icon: Utensils, label: "Advanced food discovery" },
-  { icon: Mic, label: "Voice conversations with Mia" },
+const VALUE_BENEFITS = [
+  {
+    icon: Bot,
+    title: "AI conversations with Mia",
+    desc: "Get real-time cooking guidance, swaps, and answers while you prepare meals.",
+  },
+  {
+    icon: Sparkles,
+    title: "AI recipe generation",
+    desc: "Create original recipes tailored to your ingredients, dietary goals, and pace.",
+  },
+  {
+    icon: Camera,
+    title: "Ingredient scanning",
+    desc: "Scan items in your kitchen to uncover recipes you can cook right now.",
+  },
+  {
+    icon: CalendarCheck,
+    title: "Smart meal planning",
+    desc: "Plan your week effortlessly with organised grocery lists.",
+  },
+  {
+    icon: Refrigerator,
+    title: "Pantry assistance",
+    desc: "Track what is in your kitchen and reduce everyday food waste.",
+  },
+  {
+    icon: Utensils,
+    title: "Personalised recommendations",
+    desc: "South African staples and global dishes tuned to your preferences.",
+  },
+  {
+    icon: Volume2,
+    title: "Voice conversations",
+    desc: "Hands-free voice assistance with Mia so you never miss a step.",
+  },
 ];
-
-const PLAN_LABEL: Record<PlanKind, string> = {
-  monthly: "Monthly",
-  yearly: "Yearly",
-  family: "Family",
-};
-
-const PLAN_NOTE: Record<PlanKind, string> = {
-  monthly: "Flexible, cancel anytime",
-  yearly: "One payment for the whole year",
-  family: "Share MealMate with your household",
-};
-
-/** Reads a formatted store price without assuming a currency or rounding rule. */
-function amountOf(price: string): number | null {
-  const match = /(\d[\d\s.,]*)/.exec(price);
-  if (!match) return null;
-  const raw = match[1].trim();
-  const decimals = /[.,](\d{2})$/.exec(raw);
-  const digits = raw.replace(/[^\d]/g, "");
-  if (!digits) return null;
-  if (decimals) return Number(`${digits.slice(0, digits.length - 2)}.${decimals[1]}`);
-  return Number(digits);
-}
 
 export function PremiumPaywall() {
   const { user, loading: sessionLoading } = useSession();
@@ -78,6 +84,7 @@ export function PremiumPaywall() {
   const [attempt, setAttempt] = useState(0);
   const [promoCode, setPromoCode] = useState("");
   const [promoBusy, setPromoBusy] = useState(false);
+  const [heroFailed, setHeroFailed] = useState(false);
   const lock = useRef(false);
   const userId = user?.id;
 
@@ -123,21 +130,18 @@ export function PremiumPaywall() {
       .then((next) => {
         if (!active || !next) return;
         setStore(next);
-        setSelected(next.plans.find((p) => p.kind === "yearly")?.kind ?? next.plans[0].kind);
+        const best = next.plans.find((p) => p.kind === "yearly") ?? next.plans[0];
+        if (best) setSelected(best.kind);
       })
       .catch((error) => {
         if (!active) return;
         const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
         if (/unavailable|temporarily|not available|plans|not configured|REVENUECAT/i.test(raw))
           setMessage(raw);
-        else if (/forbidden|401|403|unauthorized/i.test(raw))
-          setMessage("We couldn’t start checkout from this page. Refresh and try again.");
         else if (!navigator.onLine)
           setMessage("You’re offline. Connect to the internet and try again.");
         else
-          setMessage(
-            "We couldn’t load subscription plans. Check your connection and try again. If this continues, confirm RevenueCat web billing is configured.",
-          );
+          setMessage("We couldn’t load subscription plans. Check your connection and try again.");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -222,216 +226,280 @@ export function PremiumPaywall() {
   }
 
   const plan = store?.plans.find((p) => p.kind === selected);
-  const monthly = store?.plans.find((p) => p.kind === "monthly");
-  const yearly = store?.plans.find((p) => p.kind === "yearly");
-  const monthlyAmount = monthly ? amountOf(monthly.price) : null;
-  const yearlyAmount = yearly ? amountOf(yearly.price) : null;
-  const savingPercent =
-    monthlyAmount && yearlyAmount && monthlyAmount * 12 > yearlyAmount
-      ? Math.round((1 - yearlyAmount / (monthlyAmount * 12)) * 100)
-      : null;
 
   return (
-    <main className="paywall-redesign">
-      <div className="paywall-hero">
-        <RecipeImage
-          recipe={{ name: "Creamy chicken alfredo" }}
-          size="hero"
-          priority
-          className="paywall-hero-media"
-        />
-        <div className="paywall-hero-top">
-          <span className="paywall-brand">
-            <MealMateLogo imageClassName="size-6 rounded-md object-contain" showName={false} />
-            MealMate
-          </span>
+    <main className="premium-flow paywall paywall-redesign">
+      <div className="paywall-shell">
+        <div className="mb-4 flex items-center justify-between px-1">
+          <MealMateLogo imageClassName="size-8 rounded-xl border border-border" showName />
+          <span className="text-xs font-medium text-muted-foreground">MealMate Consumer</span>
         </div>
-      </div>
 
-      <section className="paywall-content">
-        <p className="premium-eyebrow">MealMate Premium</p>
-        <h1>Make every meal better.</h1>
-        <p className="paywall-description">
-          Unlock your personal food companion. Discover recipes, plan meals and cook smarter with
-          Mia.
-        </p>
+        <div className="paywall-grid">
+          {/* Left Column: Culinary Photo & Real Benefits */}
+          <section className="paywall-editorial">
+            <div className="paywall-photo" aria-hidden="true">
+              {heroFailed ? (
+                <div className="flex h-full w-full items-center justify-center bg-secondary text-muted-foreground">
+                  <UtensilsCrossed className="h-7 w-7" />
+                </div>
+              ) : (
+                <img
+                  src={paywallHeroImage}
+                  alt="Pan-seared sea bass with charred lemon and herb oil"
+                  onError={() => setHeroFailed(true)}
+                />
+              )}
+              <div className="paywall-photo-badge">
+                <Sparkles size={12} className="text-[#A5B4FC]" aria-hidden="true" />
+                <span>MealMate Premium</span>
+              </div>
+            </div>
 
-        <ul className="paywall-benefits">
-          {BENEFITS.map((benefit) => (
-            <li key={benefit.label} className="paywall-benefit">
-              <benefit.icon strokeWidth={1.7} aria-hidden="true" />
-              {benefit.label}
-            </li>
-          ))}
-        </ul>
+            <div className="paywall-editorial-body">
+              <p className="premium-eyebrow">Membership</p>
+              <h1>Make every meal better.</h1>
+              <p className="premium-description">
+                Your personal food companion. Discover recipes, plan meals and cook smarter with
+                Mia.
+              </p>
 
-        <fieldset className="paywall-plans" disabled={busy || loading}>
-          <legend className="sr-only">Choose a subscription plan</legend>
-          {loading
-            ? [0, 1].map((i) => <div key={i} className="paywall-plan-skeleton" />)
-            : (["yearly", "monthly", "family"] as const).map((kind) => {
+              <div className="paywall-benefits">
+                {VALUE_BENEFITS.map((item) => (
+                  <div key={item.title} className="paywall-benefit-row">
+                    <div className="paywall-benefit-icon">
+                      <item.icon size={15} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="paywall-benefit-title">{item.title}</div>
+                      <div className="paywall-benefit-desc">{item.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Right Column: Plans & Checkout */}
+          <section className="paywall-checkout">
+            <div className="mb-5">
+              <h2 className="text-lg font-medium tracking-tight text-foreground">
+                Choose your plan
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Real store pricing verified directly at checkout. Cancel anytime.
+              </p>
+            </div>
+
+            <fieldset className="premium-plans" disabled={busy || loading}>
+              <legend className="sr-only">Choose a subscription plan</legend>
+              {(["monthly", "yearly", "family"] as const).map((kind) => {
                 const option = store?.plans.find((p) => p.kind === kind);
                 const isSelected = selected === kind && !!option;
                 return (
-                  <button
+                  <label
                     key={kind}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    disabled={!option}
-                    className="paywall-plan"
-                    data-selected={isSelected}
-                    data-unavailable={!option}
-                    onClick={() => setSelected(kind)}
+                    className={`premium-plan ${isSelected ? "selected" : ""} ${!option ? "unavailable" : ""}`}
+                    onClick={() => {
+                      if (option) setSelected(kind);
+                    }}
                   >
-                    <span className="paywall-radio" aria-hidden="true" />
-                    <span className="paywall-plan-body">
-                      <span className="paywall-plan-name">
-                        {PLAN_LABEL[kind]}
-                        {kind === "yearly" && option && savingPercent ? (
-                          <span className="paywall-badge">Save {savingPercent}%</span>
-                        ) : null}
-                      </span>
-                      <span className="paywall-plan-note">
-                        {option
-                          ? option.trialDays === 7
-                            ? `7 days free, then billed ${option.period === "year" ? "yearly" : option.period}`
-                            : PLAN_NOTE[kind]
-                          : loading
-                            ? "Loading store prices…"
-                            : "Currently unavailable"}
-                      </span>
-                    </span>
-                    <span className="paywall-plan-price">
-                      <strong>{option ? option.price : "—"}</strong>
-                      <span>{option ? `per ${option.period}` : "not offered"}</span>
-                    </span>
-                  </button>
+                    <input
+                      type="radio"
+                      name="subscription"
+                      value={kind}
+                      checked={isSelected}
+                      disabled={!option}
+                      onChange={() => setSelected(kind)}
+                    />
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                          isSelected
+                            ? "border-[var(--periwinkle)] bg-[var(--periwinkle)] text-white"
+                            : "border-border bg-card"
+                        }`}
+                      >
+                        {isSelected && <Check size={12} strokeWidth={2.75} />}
+                      </div>
+                      <div className="plan-name">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>
+                            {kind === "monthly"
+                              ? "Monthly"
+                              : kind === "yearly"
+                                ? "Yearly"
+                                : "Family Plan"}
+                          </span>
+                          {kind === "yearly" && <span className="plan-badge">Best Value</span>}
+                        </div>
+                        {option?.trialDays === 7 && (
+                          <span className="plan-trial">7-day free trial included</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="plan-price">
+                      {loading ? (
+                        <span className="text-xs font-normal text-muted-foreground">Loading…</span>
+                      ) : option ? (
+                        <>
+                          <span>{option.price}</span>
+                          <small> / {option.period}</small>
+                        </>
+                      ) : (
+                        <span className="text-xs font-normal text-muted-foreground">
+                          Unavailable
+                        </span>
+                      )}
+                    </div>
+                  </label>
                 );
               })}
-        </fieldset>
+            </fieldset>
 
-        {!online ? (
-          <p role="alert" className="paywall-notice">
-            You’re offline. Connect to verify your subscription or make a purchase.
-          </p>
-        ) : null}
-        {message ? (
-          <p role="status" className="paywall-notice">
-            {message}
-          </p>
-        ) : null}
-
-        {!store && !loading ? (
-          <button
-            type="button"
-            className="paywall-secondary"
-            onClick={() => setAttempt((n) => n + 1)}
-            disabled={busy || !online}
-          >
-            Try again
-          </button>
-        ) : null}
-
-        {pendingVerification ? (
-          <button
-            type="button"
-            className="paywall-cta"
-            disabled={busy || !online}
-            onClick={() => void perform("verify")}
-          >
-            {busy ? <Loader2 className="size-5 animate-spin" /> : "Check subscription access"}
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="paywall-cta"
-            disabled={loading || busy || !online || !plan}
-            onClick={() => void perform("purchase")}
-          >
-            {busy || loading ? (
-              <Loader2 className="size-5 animate-spin" />
-            ) : (
-              <>
-                Unlock MealMate Premium
-                <ArrowRight className="size-4" aria-hidden="true" />
-              </>
+            {!online && (
+              <p role="alert" className="premium-notice">
+                You’re offline. Connect to verify your subscription or make a purchase.
+              </p>
             )}
-          </button>
-        )}
+            {message && (
+              <p role="status" className="premium-notice">
+                {message}
+              </p>
+            )}
+            {!store && !loading && (
+              <button
+                type="button"
+                className="premium-secondary"
+                onClick={() => setAttempt((n) => n + 1)}
+                disabled={busy || !online}
+              >
+                Try again
+              </button>
+            )}
 
-        {plan ? (
-          <p className="paywall-fineprint">
-            {plan.trialDays === 7
-              ? `7 days free, then ${plan.price} every ${plan.period}.`
-              : `${plan.price} every ${plan.period}.`}{" "}
-            Auto-renews until cancelled. Cancel any time in your store or billing settings before
-            renewal. Final taxes and trial eligibility are confirmed at checkout.
-          </p>
-        ) : null}
+            {pendingVerification ? (
+              <button
+                type="button"
+                className="premium-primary"
+                disabled={busy || !online}
+                onClick={() => void perform("verify")}
+              >
+                {busy ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  "Check subscription access"
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="premium-primary"
+                disabled={loading || busy || !online || !plan}
+                onClick={() => void perform("purchase")}
+              >
+                {busy || loading ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  <>
+                    <span>{plan?.trialDays === 7 ? "Start 7-day free trial" : "Subscribe"}</span>
+                    <ArrowRight size={16} aria-hidden="true" />
+                  </>
+                )}
+              </button>
+            )}
 
-        <details className="paywall-promo">
-          <summary>Have a promo code?</summary>
-          <div className="mt-3 flex gap-2">
-            <input
-              type="text"
-              className="paywall-promo-input"
-              placeholder="Enter code"
-              value={promoCode}
-              aria-label="Promo code"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              disabled={busy || promoBusy || !online}
-              onChange={(e) => setPromoCode(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void applyPromo();
-                }
-              }}
-            />
-            <button
-              type="button"
-              className="mm-btn mm-btn--secondary mm-btn--sm"
-              disabled={busy || promoBusy || !online || !promoCode.trim()}
-              onClick={() => void applyPromo()}
-            >
-              {promoBusy ? <Loader2 className="size-4 animate-spin" /> : "Apply"}
-            </button>
-          </div>
-          {!userId ? (
-            <p className="mm-meta mt-2">
-              <Link to="/auth" search={{ mode: "signin" }} className="underline">
-                Sign in
-              </Link>{" "}
-              to redeem a code.
+            {plan && (
+              <p className="premium-terms">
+                {plan.trialDays === 7
+                  ? `7 days free, then ${plan.price} every ${plan.period}.`
+                  : `${plan.price} billed every ${plan.period}.`}{" "}
+                Cancel anytime before renewal in your store settings.
+              </p>
+            )}
+
+            <div className="premium-promo">
+              <label className="premium-promo-label" htmlFor="promo-code">
+                Have an access or promo code?
+              </label>
+              <div className="premium-promo-row">
+                <input
+                  id="promo-code"
+                  type="text"
+                  className="premium-promo-input"
+                  placeholder="ENTER CODE"
+                  value={promoCode}
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  disabled={busy || promoBusy || !online}
+                  onChange={(e) => setPromoCode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void applyPromo();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="premium-promo-button"
+                  disabled={busy || promoBusy || !online || !promoCode.trim()}
+                  onClick={() => void applyPromo()}
+                >
+                  {promoBusy ? <Loader2 className="animate-spin" size={15} /> : "Apply"}
+                </button>
+              </div>
+              {!userId && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  <Link
+                    to="/auth"
+                    search={{ mode: "signin" }}
+                    className="underline hover:text-foreground"
+                  >
+                    Sign in
+                  </Link>{" "}
+                  to redeem your code.
+                </p>
+              )}
+            </div>
+
+            <div className="mt-5 flex flex-col items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => void perform("restore")}
+                disabled={busy || loading || !online}
+                className="text-xs font-medium text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+              >
+                Restore Purchases
+              </button>
+              {!userId && (
+                <Link
+                  to="/auth"
+                  search={{ mode: "signin" }}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Already subscribed? Sign in
+                </Link>
+              )}
+            </div>
+
+            <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+              <ShieldCheck size={14} className="text-[var(--periwinkle)]" aria-hidden="true" />{" "}
+              Encrypted checkout · Verified access
             </p>
-          ) : null}
-        </details>
 
-        <div className="paywall-links">
-          <button
-            type="button"
-            onClick={() => void perform("restore")}
-            disabled={busy || loading || !online}
-          >
-            Restore purchases
-          </button>
-          {!userId ? (
-            <Link to="/auth" search={{ mode: "signin" }}>
-              Already subscribed? Sign in
-            </Link>
-          ) : null}
-          <Link to="/legal/terms">Terms</Link>
-          <Link to="/legal/privacy">Privacy</Link>
+            <div className="premium-footer-links">
+              <Link to="/legal/terms">Terms</Link>
+              <span>·</span>
+              <Link to="/legal/privacy">Privacy</Link>
+              <span>·</span>
+              <Link to="/support">Help</Link>
+            </div>
+          </section>
         </div>
-
-        <p className="paywall-secure">
-          <ShieldCheck className="size-3.5" aria-hidden="true" />
-          Secure checkout · Access opens after confirmation
-        </p>
-      </section>
+      </div>
     </main>
   );
 }

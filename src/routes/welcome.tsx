@@ -9,6 +9,7 @@ import {
   Bot,
   Refrigerator,
   Sliders,
+  CheckCircle2,
   Loader2,
 } from "lucide-react";
 import { RecipeImage } from "@/components/recipe-image";
@@ -16,73 +17,77 @@ import { completeIntro } from "@/lib/billing.functions";
 import { useSession } from "@/hooks/use-session";
 import { markTourSeen } from "@/lib/preferences";
 import { useQueryClient } from "@tanstack/react-query";
-import { MealMateLogo } from "@/components/mealmate-logo";
 
 export const Route = createFileRoute("/welcome")({
-  head: () => ({ meta: [{ title: "Welcome to MealMate" }] }),
+  head: () => ({ meta: [{ title: "Welcome to MealMate — App Tour" }] }),
   component: WelcomeTourPage,
 });
 
 const TOUR_SECTIONS = [
   {
     key: "welcome",
-    eyebrow: "Welcome",
-    title: "A quieter way to cook well.",
-    description:
-      "MealMate brings recipes, planning and a food companion together — from South African favourites to everything else you love.",
+    eyebrow: "MealMate Consumer · Taz Technologies",
+    title: "Discover. Plan. Eat. Enjoy.",
+    description: "Your personal companion for better meals and easier dining every day.",
     icon: Sparkles,
     dish: "Creamy chicken alfredo",
-    note: "Discover. Plan. Eat. Enjoy.",
+    previewTitle: "Welcome to MealMate",
+    previewSubtitle: "Everything you need to discover, plan, and cook with confidence.",
   },
   {
     key: "home",
-    eyebrow: "Discover",
-    title: "Recipes that fit your day.",
+    eyebrow: "Home",
+    title: "Your daily culinary feed",
     description:
-      "A home feed shaped by your taste, with categories, favourites and a Surprise Me button for when you can't decide.",
+      "Browse personalised recipes, explore cuisines, try Surprise Me, and pick up active cooking sessions right where you left off.",
     icon: Home,
     dish: "Rainbow buddha bowl",
-    note: "Personalised discovery, every day.",
+    previewTitle: "Personalised Recipe Discovery",
+    previewSubtitle: "Curated daily meals matched to your dietary preferences and pace.",
   },
   {
     key: "dining",
     eyebrow: "Dining",
-    title: "Find somewhere worth eating.",
+    title: "Explore restaurants & menus",
     description:
-      "Browse local restaurants and their menus, with real photography, ratings and delivery details.",
+      "Discover curated local restaurants, browse chef menus, view photography, and save standout spots for your next night out.",
     icon: Store,
     dish: "West African jollof rice",
-    note: "Dining that matches the rest of MealMate.",
+    previewTitle: "Dining Discovery",
+    previewSubtitle: "Trusted venues, vibrant menus, and seamless local exploration.",
   },
   {
     key: "mia",
-    eyebrow: "Mia",
-    title: "Meet Mia, your food companion.",
+    eyebrow: "Mia AI Assistant",
+    title: "Cook hands-free with Mia",
     description:
-      "Ask questions, get substitutions, or cook hands-free with voice guidance while your hands are busy.",
+      "Ask Mia for recipe ideas, ingredient substitutions, cooking timers, and voice guidance—all without touching your screen.",
     icon: Bot,
     dish: "Chakalaka with pap",
-    note: "Voice and chat, whenever you need it.",
+    previewTitle: "Voice & Conversational AI",
+    previewSubtitle: "Real-time kitchen help in chat or hands-free Voice Mode.",
   },
   {
     key: "pantry",
-    eyebrow: "Pantry",
-    title: "Cook from what you already have.",
+    eyebrow: "Pantry & Scanning",
+    title: "Cook with what you already have",
     description:
-      "Track ingredients, scan your kitchen, and turn what's on the shelf into something delicious.",
+      "Manage your kitchen inventory and scan ingredients with your camera to generate tailored recipes and cut down on food waste.",
     icon: Refrigerator,
     dish: "Smoky beef tacos",
-    note: "Less waste, better meals.",
+    previewTitle: "Smart Pantry & Camera Scan",
+    previewSubtitle: "Turn ingredients on hand into balanced meals in seconds.",
   },
   {
-    key: "personalization",
-    eyebrow: "Preferences",
-    title: "Make it feel like yours.",
+    key: "settings",
+    eyebrow: "Settings & Personalisation",
+    title: "Built around your preferences",
     description:
-      "Your dietary needs, household size and appearance live in Settings, ready to change whenever you are.",
+      "Adjust Light or Dark appearance, update allergies and dietary goals, manage your subscription, and tune Mia's voice anytime in Settings.",
     icon: Sliders,
     dish: "Classic american apple pie",
-    note: "Everything adjustable, nothing cluttered.",
+    previewTitle: "Full Account Control",
+    previewSubtitle: "Dietary filters, appearance, units, and notifications in one place.",
   },
 ];
 
@@ -105,6 +110,7 @@ function WelcomeTourPage() {
   }, []);
 
   const current = TOUR_SECTIONS[step]!;
+  const Icon = current.icon;
   const isLast = step === TOUR_SECTIONS.length - 1;
 
   async function handleComplete() {
@@ -137,106 +143,117 @@ function WelcomeTourPage() {
   function next() {
     if (isLast) {
       void handleComplete();
-      return;
-    }
-    const nextStep = step + 1;
-    setStep(nextStep);
-    try {
-      localStorage.setItem("mealmate.tour-step.v3", String(nextStep));
-    } catch {
-      /* optional */
+    } else {
+      const nextStep = step + 1;
+      setStep(nextStep);
+      try {
+        localStorage.setItem("mealmate.tour-step.v3", String(nextStep));
+      } catch {
+        /* optional */
+      }
     }
   }
 
   function back() {
-    if (step === 0) return;
-    const prevStep = step - 1;
-    setStep(prevStep);
-    try {
-      localStorage.setItem("mealmate.tour-step.v3", String(prevStep));
-    } catch {
-      /* optional */
+    if (step > 0) {
+      const prevStep = step - 1;
+      setStep(prevStep);
+      try {
+        localStorage.setItem("mealmate.tour-step.v3", String(prevStep));
+      } catch {
+        /* optional */
+      }
     }
   }
 
   return (
-    <main className="onboarding-shell">
-      <div className="onboarding-frame">
-        <header className="onboarding-header">
-          <div className="onboarding-brand-row">
-            {step > 0 ? (
-              <button
-                type="button"
-                className="onboarding-back"
-                onClick={back}
-                disabled={busy}
-                aria-label="Previous step"
-              >
-                <ArrowLeft size={17} strokeWidth={1.7} />
-              </button>
-            ) : (
-              <MealMateLogo imageClassName="size-8 rounded-lg object-contain" />
-            )}
-            <span className="onboarding-step">
+    <main className="premium-flow app-tour-shell">
+      <header className="tour-header">
+        <div className="tour-header-row">
+          {step > 0 ? (
+            <button
+              type="button"
+              className="tour-back-btn"
+              onClick={back}
+              disabled={busy}
+              aria-label="Previous tour step"
+            >
+              <ArrowLeft size={16} />
+            </button>
+          ) : (
+            <span className="tour-brand-name">MealMate</span>
+          )}
+
+          <div className="flex items-center gap-3">
+            <span className="tour-step-counter">
               {step + 1} / {TOUR_SECTIONS.length}
             </span>
+            {!isLast && (
+              <button
+                type="button"
+                className="tour-skip-btn"
+                onClick={() => void handleComplete()}
+                disabled={busy}
+              >
+                Skip
+              </button>
+            )}
           </div>
-          <div
-            role="progressbar"
-            aria-label="Tour progress"
-            aria-valuemin={1}
-            aria-valuemax={TOUR_SECTIONS.length}
-            aria-valuenow={step + 1}
-            className="onboarding-progress"
-          >
-            {TOUR_SECTIONS.map((_, i) => (
-              <span key={i} data-active={i <= step} />
-            ))}
-          </div>
-        </header>
-
-        <div className="onboarding-content" key={step}>
-          <div className="onboarding-visual-banner" aria-hidden="true">
-            <RecipeImage recipe={{ name: current.dish }} size="hero" priority />
-            <div className="onboarding-visual-overlay">
-              <span className="onboarding-pill">
-                <current.icon size={11} strokeWidth={1.8} />
-                {current.eyebrow}
-              </span>
-            </div>
-          </div>
-
-          <div className="onboarding-text-header mt-6">
-            <h1 className="onboarding-title">{current.title}</h1>
-            <p className="onboarding-description">{current.description}</p>
-          </div>
-
-          <p className="mm-meta">{current.note}</p>
         </div>
 
-        <footer className="onboarding-actions">
-          <button type="button" className="onboarding-primary-btn" onClick={next} disabled={busy}>
-            {busy ? (
-              <Loader2 className="animate-spin" size={18} />
-            ) : (
-              <>
-                <span>{isLast ? "Get Started" : "Next"}</span>
-                <ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" />
-              </>
-            )}
-          </button>
+        <div
+          role="progressbar"
+          aria-label="App tour progress"
+          aria-valuemin={1}
+          aria-valuemax={TOUR_SECTIONS.length}
+          aria-valuenow={step + 1}
+          className="tour-progressbar"
+        >
+          {TOUR_SECTIONS.map((_, i) => (
+            <span key={i} className={i <= step ? "complete" : ""} />
+          ))}
+        </div>
+      </header>
 
-          <p className="text-center text-[11px] text-muted-foreground">
-            <Link to="/legal/terms" className="underline underline-offset-2">
-              Terms
-            </Link>
-            <span className="mx-2">·</span>
-            <Link to="/legal/privacy" className="underline underline-offset-2">
-              Privacy
-            </Link>
-          </p>
-        </footer>
-      </div>
+      <section key={step} className="tour-step-card">
+        <div className="tour-photo-wrapper">
+          <RecipeImage recipe={{ name: current.dish }} size="hero" priority />
+          <div className="tour-photo-badge">
+            <Icon size={14} className="text-[#A5B4FC]" aria-hidden="true" />
+            <span>{current.previewTitle}</span>
+          </div>
+        </div>
+
+        <div className="tour-copy-body">
+          <p className="tour-eyebrow">{current.eyebrow}</p>
+          <h1 className="tour-heading">{current.title}</h1>
+          <p className="tour-description">{current.description}</p>
+
+          <div className="tour-ui-highlight">
+            <CheckCircle2 size={16} className="shrink-0 text-[var(--periwinkle)]" />
+            <span className="text-xs font-medium text-foreground">{current.previewSubtitle}</span>
+          </div>
+        </div>
+      </section>
+
+      <footer className="tour-footer">
+        <button type="button" className="tour-primary-btn" onClick={next} disabled={busy}>
+          {busy ? (
+            <Loader2 className="animate-spin" size={18} />
+          ) : (
+            <>
+              <span>{isLast ? "Get Started" : "Next"}</span>
+              <ArrowRight size={17} aria-hidden="true" />
+            </>
+          )}
+        </button>
+
+        <p className="tour-legal">
+          <Link to="/legal/terms">Terms</Link>
+          <span>·</span>
+          <Link to="/legal/privacy">Privacy</Link>
+        </p>
+      </footer>
     </main>
   );
 }

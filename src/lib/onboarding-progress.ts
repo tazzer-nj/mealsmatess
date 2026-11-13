@@ -8,12 +8,16 @@ const MAX_STEP = 6;
 
 export function readOnboardingDraft(
   userId: string,
-): { step: number; preferences: FoodPreferences } | null {
+): { step: number; preferences: FoodPreferences; savedAt?: string } | null {
   try {
     const value = JSON.parse(localStorage.getItem(key(userId)) ?? "null");
     if (!value || !Number.isInteger(value.step) || value.step < MIN_STEP || value.step > MAX_STEP)
       return null;
-    return { step: value.step, preferences: normalizePreferences(value.preferences) };
+    return {
+      step: value.step,
+      preferences: normalizePreferences(value.preferences),
+      savedAt: typeof value.savedAt === "string" ? value.savedAt : undefined,
+    };
   } catch {
     return null;
   }
@@ -21,7 +25,8 @@ export function readOnboardingDraft(
 export function saveOnboardingDraft(userId: string, step: number, preferences: FoodPreferences) {
   try {
     const clamped = Math.min(MAX_STEP, Math.max(MIN_STEP, step));
-    localStorage.setItem(key(userId), JSON.stringify({ step: clamped, preferences }));
+    const savedAt = preferences.updated_at ?? new Date().toISOString();
+    localStorage.setItem(key(userId), JSON.stringify({ step: clamped, preferences, savedAt }));
   } catch {
     /* Resume is optional when storage is blocked. */
   }

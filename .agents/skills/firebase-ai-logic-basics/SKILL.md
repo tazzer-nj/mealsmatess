@@ -28,7 +28,7 @@ It supports the two Gemini API providers:
 Use the Gemini Developer API as a default, and only Agent Platform Gemini API
 (formerly branded Vertex AI) if the application requires it.
 
-______________________________________________________________________
+---
 
 ## Setup & initialization
 
@@ -103,7 +103,7 @@ Before writing code, read the reference for the target platform listed under
 More info in
 [Firebase AI Logic Getting Started](https://firebase.google.com/docs/ai-logic/get-started.md.txt)
 
-______________________________________________________________________
+---
 
 ## Core Capabilities
 
@@ -168,7 +168,7 @@ snippets for iOS (Swift), Android (Kotlin), and Web.
 
 ### Search Grounding with the built in googleSearch tool
 
-______________________________________________________________________
+---
 
 ## Supported Platforms and Frameworks
 
@@ -189,7 +189,7 @@ setup steps differ by platform, more info in the
 [hybrid and on-device documentation](https://firebase.google.com/docs/ai-logic/hybrid.md.txt),
 which links to each platform's guide.
 
-______________________________________________________________________
+---
 
 ## Security & Production
 
@@ -225,7 +225,7 @@ Tokens** during development and testing to bypass standard attestation.
    App Check documentation linked above.
 1. Run your app in the emulator/localhost.
 1. Look at your runtime debugger console / Logcat logs for the generated UUID:
-   - *Example:* `AppCheck debug token: "123a4567-b89c-12d3-e456-789012345678"`
+   - _Example:_ `AppCheck debug token: "123a4567-b89c-12d3-e456-789012345678"`
 1. Register this token in the Firebase Console under **Security > App Check >
    Apps > Manage debug tokens**.
 
@@ -250,7 +250,7 @@ version string). Use Firebase Remote Config to update model versions dynamically
 without deploying new client code. See
 [Changing model names remotely](https://firebase.google.com/docs/ai-logic/change-model-name-remotely.md.txt)
 
-______________________________________________________________________
+---
 
 ## Initialization Code References
 

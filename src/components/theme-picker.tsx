@@ -16,7 +16,7 @@ export function ThemePicker() {
       <div className="mb-2 flex items-center justify-between px-1">
         <h2
           id="theme-heading"
-          className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+          className="text-xs font-medium uppercase tracking-widest text-muted-foreground"
         >
           App theme
         </h2>
@@ -24,7 +24,7 @@ export function ThemePicker() {
           <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-label="Saving" />
         )}
       </div>
-      <div className="rounded-3xl border border-border bg-card p-3">
+      <div className="rounded-2xl border border-border bg-card p-3">
         <div
           role="radiogroup"
           aria-label="Mascot theme"
@@ -45,27 +45,27 @@ export function ThemePicker() {
                     ? open(`Unlock the ${t.name} theme with MealMate Premium.`)
                     : void setTheme(t.id)
                 }
-                className="group flex flex-col items-center gap-2 rounded-2xl p-1.5 text-center transition-transform active:scale-95"
+                className="group flex flex-col items-center gap-2 rounded-xl p-1.5 text-center transition-transform active:scale-95"
               >
                 <span
                   className={cn(
-                    "relative block aspect-square w-full overflow-hidden rounded-2xl border-2 transition-colors",
-                    selected ? "border-foreground" : "border-transparent",
+                    "relative block aspect-square w-full overflow-hidden rounded-xl border-2 transition-colors",
+                    selected ? "border-[var(--periwinkle)]" : "border-border",
                   )}
                 >
                   <img src={t.image} alt="" loading="lazy" className="h-full w-full object-cover" />
                   {locked && (
-                    <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-background/90">
+                    <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-black/80 text-white">
                       <Lock className="h-3 w-3" />
                     </span>
                   )}
                   {selected && (
-                    <span className="absolute bottom-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-background motion-safe:animate-in motion-safe:zoom-in-50">
+                    <span className="absolute bottom-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--periwinkle)] text-white motion-safe:animate-in motion-safe:zoom-in-50">
                       <Check className="h-3.5 w-3.5" />
                     </span>
                   )}
                 </span>
-                <span className="flex items-center gap-1.5 text-xs font-medium">
+                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <span
                     className="h-2 w-2 rounded-full"
                     style={{ background: t.accent }}

@@ -69,22 +69,25 @@ function UpgradeSheet({ reason, onClose }: { reason?: string; onClose: () => voi
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md rounded-t-[32px] border border-border bg-background px-6 pb-8 pt-10 shadow-2xl sm:rounded-[32px]"
+        className="relative w-full max-w-md rounded-t-[20px] border border-border bg-card px-6 pb-8 pt-10 text-foreground shadow-2xl sm:rounded-[20px]"
         onClick={(event) => event.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-background/80 text-muted-foreground shadow-sm transition hover:text-foreground"
+          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-secondary text-muted-foreground transition hover:text-foreground"
         >
           <X className="h-5 w-5" />
         </button>
         <div className="text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 text-white shadow-lg">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-foreground text-background">
             <Crown className="h-7 w-7" />
           </div>
-          <h2 id="upgrade-title" className="mt-4 font-display text-2xl font-bold">
+          <h2
+            id="upgrade-title"
+            className="mt-4 text-2xl font-medium tracking-tight text-foreground"
+          >
             MealMate Premium
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -95,7 +98,9 @@ function UpgradeSheet({ reason, onClose }: { reason?: string; onClose: () => voi
             View available plans, prices and trial eligibility on the subscription page.
           </p>
           <Link to="/premium" onClick={onClose} className="mt-6 block">
-            <Button className="h-12 w-full rounded-2xl">View subscription plans</Button>
+            <Button className="h-12 w-full rounded-xl bg-foreground text-background hover:opacity-90">
+              View subscription plans
+            </Button>
           </Link>
         </div>
       </div>

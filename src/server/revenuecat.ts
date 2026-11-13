@@ -81,23 +81,29 @@ export async function grantManualPremium(
 ): Promise<PremiumAccess> {
   const db = getFirebaseAdminFirestore();
   const access = lifetimePremium();
-  await db.collection("premium_grants").doc(userId).set(
-    {
-      active: true,
-      reason,
-      email: email ?? null,
+  await db
+    .collection("premium_grants")
+    .doc(userId)
+    .set(
+      {
+        active: true,
+        reason,
+        email: email ?? null,
+        source: "promo",
+        granted_at: Date.now(),
+        valid_until_ms: null,
+      },
+      { merge: true },
+    );
+  await db
+    .collection("premium_access")
+    .doc(userId)
+    .set({
+      valid_until: Timestamp.fromMillis(access.verifiedUntil),
       source: "promo",
-      granted_at: Date.now(),
-      valid_until_ms: null,
-    },
-    { merge: true },
-  );
-  await db.collection("premium_access").doc(userId).set({
-    valid_until: Timestamp.fromMillis(access.verifiedUntil),
-    source: "promo",
-    entitlement: ENTITLEMENT,
-    reason,
-  });
+      entitlement: ENTITLEMENT,
+      reason,
+    });
   return access;
 }
 

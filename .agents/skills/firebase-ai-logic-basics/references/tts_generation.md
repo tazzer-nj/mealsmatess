@@ -6,7 +6,7 @@ services. Using specialized Gemini TTS models, apps can synthesize natural,
 expressive audio with custom voice personas, multi-speaker dialogues, and
 in-flight audio streaming.
 
-______________________________________________________________________
+---
 
 ## Supported Models
 
@@ -19,7 +19,7 @@ Always specify a dedicated Gemini TTS model when generating audio:
 > [!WARNING] Always verify currently supported model availability in the
 > [Firebase AI Logic Models documentation](https://firebase.google.com/docs/ai-logic/models.md.txt).
 
-______________________________________________________________________
+---
 
 ## Core Concepts & Configurations
 
@@ -127,18 +127,18 @@ narrator and character), configure `MultiSpeakerVoiceConfig` with
       speakerVoiceConfigs: [
         {
           speaker: "Host",
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } }
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } },
         },
         {
           speaker: "Guest",
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } }
-        }
-      ]
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+        },
+      ];
     }
   }
   ```
 
-______________________________________________________________________
+---
 
 ## Audio Directives and Emotional Tags
 
@@ -177,7 +177,7 @@ Host: [whispers] Tell us the secret... how does it stream?
 Guest: [slowly] Pure linear PCM, chunk by chunk, directly to your device's audio engine.
 ```
 
-______________________________________________________________________
+---
 
 ## Audio Decoding and Playback
 
@@ -241,7 +241,7 @@ Offset  Size  Field              Value
 44+     N     Data               Raw PCM bytes
 ```
 
-______________________________________________________________________
+---
 
 ## Platform Code Snippets
 
@@ -257,7 +257,7 @@ import FirebaseAILogic
 final class SpeechStreamingManager {
     private let audioEngine = AVAudioEngine()
     private let playerNode = AVAudioPlayerNode()
-    
+
     // 24 kHz, 16-bit Mono PCM
     private let audioFormat = AVAudioFormat(
         commonFormat: .pcmFormatInt16,
@@ -273,23 +273,23 @@ final class SpeechStreamingManager {
 
     func streamSpeech(prompt: String) async throws {
         let ai = FirebaseAI.firebaseAI()
-        
+
         let speechConfig = SpeechConfig(
             voiceConfig: VoiceConfig(
                 prebuiltVoiceConfig: PrebuiltVoiceConfig(voiceName: "Puck")
             )
         )
-        
+
         let genConfig = GenerationConfig(
             responseModalities: [.audio],
             speechConfig: speechConfig
         )
-        
+
         let model = ai.generativeModel(
             modelName: "gemini-3.1-flash-tts-preview",
             generationConfig: genConfig
         )
-        
+
         if !audioEngine.isRunning {
             try audioEngine.start()
         }
@@ -313,14 +313,14 @@ final class SpeechStreamingManager {
             return
         }
         buffer.frameLength = frameCount
-        
+
         data.withUnsafeBytes { rawBufferPointer in
             guard let src = rawBufferPointer.baseAddress else { return }
             if let dest = buffer.int16ChannelData?[0] {
                 UnsafeMutableRawPointer(dest).copyMemory(from: src, byteCount: data.count)
             }
         }
-        
+
         playerNode.scheduleBuffer(buffer)
     }
 
@@ -366,7 +366,7 @@ private extension Data {
 }
 ```
 
-______________________________________________________________________
+---
 
 ### Kotlin (Android)
 
@@ -513,7 +513,7 @@ fun playWavAudio(context: Context, wavBytes: ByteArray) {
 }
 ```
 
-______________________________________________________________________
+---
 
 ### Web (JavaScript/TypeScript)
 
@@ -555,8 +555,7 @@ export class WebSpeechPlayer {
       }
       const AudioContextClass =
         window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext })
-          .webkitAudioContext;
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.audioCtx = new AudioContextClass({ sampleRate: 24000 });
     }
     return this.audioCtx;
@@ -637,8 +636,8 @@ export function pcmToWavBlob(pcmBytes: Uint8Array, sampleRate = 24000): Blob {
 
   // fmt subchunk
   writeString(view, 12, "fmt ");
-  view.setUint32(16, 16, true);             // Subchunk1Size
-  view.setUint16(20, 1, true);              // AudioFormat (PCM = 1)
+  view.setUint32(16, 16, true); // Subchunk1Size
+  view.setUint16(20, 1, true); // AudioFormat (PCM = 1)
   view.setUint16(22, numChannels, true);
   view.setUint32(24, sampleRate, true);
   view.setUint32(28, byteRate, true);
@@ -659,7 +658,7 @@ function writeString(view: DataView, offset: number, string: string) {
 }
 ```
 
-______________________________________________________________________
+---
 
 ## Best Practices & Troubleshooting
 

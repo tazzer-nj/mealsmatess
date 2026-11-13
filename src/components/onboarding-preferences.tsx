@@ -11,14 +11,17 @@ export type OnboardingWizardProps = {
   householdSize: string;
   onHouseholdSizeChange: (size: string) => void;
   onChange: (p: FoodPreferences) => void;
+  onSkipStep?: () => void;
   disabled?: boolean;
 };
 
 const MEAL_GOALS = [
   "Eat healthier & balanced",
-  "Save money & reduce waste",
-  "Quick & easy weeknight meals",
-  "Discover new global recipes",
+  "Discover new recipes",
+  "Save time",
+  "Save money",
+  "Plan weekly meals",
+  "Reduce food waste",
   "High protein & fitness",
   "Family-friendly cooking",
 ];
@@ -55,24 +58,20 @@ const FAVOURITE_CUISINES = [
   "Asian Fusion",
   "Mediterranean",
   "Indian",
-  "American",
-  "West African",
-  "Japanese",
-  "Middle Eastern",
+  "Healthy meals",
+  "High protein",
+  "Comfort food",
+  "Quick weeknight meals",
+  "Anything!",
 ];
 
 const SKILL_LEVELS = [
-  { level: "Beginner", desc: "Just starting out, prefer simple step-by-step guidance." },
-  { level: "Intermediate", desc: "Comfortable with everyday cooking techniques and spices." },
-  { level: "Advanced", desc: "Experienced in the kitchen, eager for gourmet experiments." },
+  { level: "Beginner", desc: "Simple recipes with clear, step-by-step guidance." },
+  { level: "Intermediate", desc: "Comfortable with everyday techniques and flavour building." },
+  { level: "Experienced", desc: "Confident in the kitchen and ready for creative dishes." },
 ];
 
-const COOKING_TIMES = [
-  "Under 20 mins",
-  "20–35 mins",
-  "35–50 mins",
-  "Weekend slow cooking",
-];
+const COOKING_TIMES = ["Under 20 mins", "20–35 mins", "35–50 mins", "Weekend slow cooking"];
 
 export function OnboardingStepContent({
   step,
@@ -82,9 +81,13 @@ export function OnboardingStepContent({
   householdSize,
   onHouseholdSizeChange,
   onChange,
+  onSkipStep,
   disabled = false,
 }: OnboardingWizardProps) {
-  function toggleList(field: "favorite_foods" | "dietary_restrictions" | "allergies", option: string) {
+  function toggleList(
+    field: "favorite_foods" | "dietary_restrictions" | "allergies",
+    option: string,
+  ) {
     if (option === "None") {
       onChange({ ...preferences, [field]: [] });
       return;
@@ -104,8 +107,11 @@ export function OnboardingStepContent({
     return (
       <div className="onboarding-step-body">
         <div className="onboarding-field-group">
-          <Label htmlFor="preferred-name" className="text-white font-semibold flex items-center gap-2">
-            <Users size={16} className="text-periwinkle" /> What should MealMate call you?
+          <Label
+            htmlFor="preferred-name"
+            className="flex items-center gap-2 text-[13px] font-medium text-foreground"
+          >
+            <Users size={15} className="text-[var(--periwinkle)]" /> What should MealMate call you?
           </Label>
           <Input
             id="preferred-name"
@@ -113,17 +119,22 @@ export function OnboardingStepContent({
             value={preferredName}
             onChange={(e) => onPreferredNameChange(e.target.value)}
             disabled={disabled}
-            className="auth-input mt-1.5"
+            className="mt-2 h-12 rounded-xl border-border bg-secondary px-4 text-sm text-foreground focus-visible:border-[var(--periwinkle)]"
             maxLength={40}
           />
         </div>
 
         <div className="onboarding-field-group mt-6">
-          <Label className="text-white font-semibold flex items-center gap-2 mb-2">
-            <Users size={16} className="text-periwinkle" /> Household or serving size
+          <Label className="mb-2.5 flex items-center gap-2 text-[13px] font-medium text-foreground">
+            <Users size={15} className="text-[var(--periwinkle)]" /> Household or serving size
           </Label>
           <div className="onboarding-chips">
-            {["1 person (solo)", "2 people (couple)", "3–4 people (family)", "5+ people (large feast)"].map((s) => (
+            {[
+              "1 person (solo)",
+              "2 people (couple)",
+              "3–4 people (family)",
+              "5+ people (large feast)",
+            ].map((s) => (
               <button
                 type="button"
                 key={s}
@@ -144,11 +155,11 @@ export function OnboardingStepContent({
   if (step === 1) {
     return (
       <div className="onboarding-step-body">
-        <Label className="text-white font-semibold flex items-center gap-2 mb-2">
-          <Target size={16} className="text-periwinkle" /> What is your primary meal goal?
+        <Label className="mb-1.5 flex items-center gap-2 text-[13px] font-medium text-foreground">
+          <Target size={15} className="text-[var(--periwinkle)]" /> What is your primary meal goal?
         </Label>
-        <p className="text-xs text-muted-foreground mb-3">
-          Select what matters most for dinner and weekly meal plans.
+        <p className="mb-4 text-xs text-muted-foreground">
+          Select what matters most for weeknight dinners and weekly planning.
         </p>
         <div className="onboarding-chips">
           {MEAL_GOALS.map((goal) => (
@@ -157,7 +168,9 @@ export function OnboardingStepContent({
               key={goal}
               disabled={disabled}
               aria-pressed={preferences.goal === goal}
-              onClick={() => onChange({ ...preferences, goal: preferences.goal === goal ? null : goal })}
+              onClick={() =>
+                onChange({ ...preferences, goal: preferences.goal === goal ? null : goal })
+              }
             >
               {goal}
             </button>
@@ -171,17 +184,36 @@ export function OnboardingStepContent({
   if (step === 2) {
     return (
       <div className="onboarding-step-body">
-        <Label className="text-white font-semibold flex items-center gap-2 mb-2">
-          <Salad size={16} className="text-periwinkle" /> Do you have any dietary preferences?
-        </Label>
-        <p className="text-xs text-muted-foreground mb-3">
-          Choose any diets or eating styles that apply.
-        </p>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <Label className="flex items-center gap-2 text-[13px] font-medium text-foreground">
+              <Salad size={15} className="text-[var(--periwinkle)]" /> Do you follow any dietary
+              preferences?
+            </Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Choose any eating styles that apply to your household.
+            </p>
+          </div>
+          {onSkipStep && (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => {
+                onChange({ ...preferences, dietary_restrictions: [] });
+                onSkipStep();
+              }}
+              className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              Skip if none
+            </button>
+          )}
+        </div>
         <div className="onboarding-chips">
           {DIETARY_RESTRICTIONS.map((diet) => {
-            const isSelected = diet === "None"
-              ? preferences.dietary_restrictions.length === 0
-              : preferences.dietary_restrictions.includes(diet);
+            const isSelected =
+              diet === "None"
+                ? preferences.dietary_restrictions.length === 0
+                : preferences.dietary_restrictions.includes(diet);
             return (
               <button
                 type="button"
@@ -203,17 +235,36 @@ export function OnboardingStepContent({
   if (step === 3) {
     return (
       <div className="onboarding-step-body">
-        <Label className="text-white font-semibold flex items-center gap-2 mb-2">
-          <AlertTriangle size={16} className="text-amber-400" /> Any food allergies or intolerances?
-        </Label>
-        <p className="text-xs text-muted-foreground mb-3">
-          Excluded automatically from recipe recommendations and meal suggestions.
-        </p>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <Label className="flex items-center gap-2 text-[13px] font-medium text-foreground">
+              <AlertTriangle size={15} className="text-[var(--periwinkle)]" /> Any food allergies or
+              intolerances?
+            </Label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Excluded automatically from recipe suggestions and weekly plans.
+            </p>
+          </div>
+          {onSkipStep && (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => {
+                onChange({ ...preferences, allergies: [] });
+                onSkipStep();
+              }}
+              className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              Skip if none
+            </button>
+          )}
+        </div>
         <div className="onboarding-chips">
           {FOOD_ALLERGIES.map((allergen) => {
-            const isSelected = allergen === "None"
-              ? preferences.allergies.length === 0
-              : preferences.allergies.includes(allergen);
+            const isSelected =
+              allergen === "None"
+                ? preferences.allergies.length === 0
+                : preferences.allergies.includes(allergen);
             return (
               <button
                 type="button"
@@ -231,15 +282,15 @@ export function OnboardingStepContent({
     );
   }
 
-  // Step 4: Favourite Cuisines
+  // Step 4: Favourite Flavours & Cuisines
   if (step === 4) {
     return (
       <div className="onboarding-step-body">
-        <Label className="text-white font-semibold flex items-center gap-2 mb-2">
-          <Globe size={16} className="text-periwinkle" /> Which cuisines do you love the most?
+        <Label className="mb-1.5 flex items-center gap-2 text-[13px] font-medium text-foreground">
+          <Globe size={15} className="text-[var(--periwinkle)]" /> What kind of food do you enjoy?
         </Label>
-        <p className="text-xs text-muted-foreground mb-3">
-          Pick your go-to flavours and cooking traditions.
+        <p className="mb-4 text-xs text-muted-foreground">
+          Select as many cuisines and styles as you like.
         </p>
         <div className="onboarding-chips">
           {FAVOURITE_CUISINS_OPTIONS(preferences.favorite_foods).map((cuisine) => {
@@ -265,30 +316,39 @@ export function OnboardingStepContent({
   if (step === 5) {
     return (
       <div className="onboarding-step-body">
-        <Label className="text-white font-semibold flex items-center gap-2 mb-2">
-          <ChefHat size={16} className="text-periwinkle" /> What's your cooking skill level?
+        <Label className="mb-2.5 flex items-center gap-2 text-[13px] font-medium text-foreground">
+          <ChefHat size={15} className="text-[var(--periwinkle)]" /> What&apos;s your cooking style?
         </Label>
-        <div className="grid gap-2 mb-5">
-          {SKILL_LEVELS.map((item) => (
-            <button
-              type="button"
-              key={item.level}
-              disabled={disabled}
-              className={`p-3 rounded-xl border text-left transition-all ${
-                preferences.cooking_level === item.level
-                  ? "border-indigo-400 bg-indigo-500/15 text-white shadow-sm"
-                  : "border-border bg-card/60 text-muted-foreground hover:bg-card"
-              }`}
-              onClick={() => onChange({ ...preferences, cooking_level: item.level })}
-            >
-              <div className="font-semibold text-sm text-foreground">{item.level}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{item.desc}</div>
-            </button>
-          ))}
+        <div className="mb-6 grid gap-2.5 sm:grid-cols-3">
+          {SKILL_LEVELS.map((item) => {
+            const active = preferences.cooking_level === item.level;
+            return (
+              <button
+                type="button"
+                key={item.level}
+                disabled={disabled}
+                className={`rounded-xl border p-4 text-left transition-all ${
+                  active
+                    ? "border-foreground bg-foreground text-background shadow-sm"
+                    : "border-border bg-secondary text-foreground hover:border-[var(--periwinkle)]"
+                }`}
+                onClick={() => onChange({ ...preferences, cooking_level: item.level })}
+              >
+                <div className="text-sm font-medium">{item.level}</div>
+                <div
+                  className={`mt-1 text-xs leading-relaxed ${
+                    active ? "text-background/75" : "text-muted-foreground"
+                  }`}
+                >
+                  {item.desc}
+                </div>
+              </button>
+            );
+          })}
         </div>
 
-        <Label className="text-white font-semibold flex items-center gap-2 mb-2">
-          <Clock size={16} className="text-periwinkle" /> How much time do you like to spend cooking?
+        <Label className="mb-2.5 flex items-center gap-2 text-[13px] font-medium text-foreground">
+          <Clock size={15} className="text-[var(--periwinkle)]" /> Preferred cooking time
         </Label>
         <div className="onboarding-chips">
           {COOKING_TIMES.map((time) => (

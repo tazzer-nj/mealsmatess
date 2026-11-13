@@ -22,15 +22,15 @@ export function PlanStatusCard() {
     return (
       <Link
         to="/auth"
-        className="flex items-center justify-between rounded-3xl border border-border bg-card p-4 shadow-sm"
+        className="flex items-center justify-between rounded-2xl border border-border bg-card p-5 transition-colors hover:border-[var(--periwinkle)]"
       >
         <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
             Not signed in
           </p>
-          <p className="mt-0.5 font-display text-lg">Sign in to track your usage</p>
+          <p className="mt-1 text-base font-medium text-foreground">Sign in to track your usage</p>
         </div>
-        <span className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
+        <span className="rounded-xl bg-foreground px-4 py-2 text-xs font-medium text-background">
           Sign in
         </span>
       </Link>
@@ -39,27 +39,30 @@ export function PlanStatusCard() {
 
   if (isPremium) {
     return (
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-5 text-white shadow-lg shadow-orange-500/30">
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-foreground">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest backdrop-blur">
-              <Crown className="h-3 w-3" /> Premium {tier} {trialActive ? "· trial" : ""}
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-foreground">
+              <Crown className="h-3 w-3 text-[var(--periwinkle)]" /> Premium {tier}{" "}
+              {trialActive ? "· trial" : ""}
             </span>
-            <h3 className="mt-2 font-display text-2xl font-bold leading-tight">
+            <h3 className="mt-3 text-xl font-medium tracking-tight text-foreground">
               Unlimited everything
             </h3>
-            <p className="mt-1 text-xs text-white/90">
+            <p className="mt-1 text-xs text-muted-foreground">
               {entitlement?.periodEnd
                 ? `Renews ${new Date(entitlement.periodEnd).toLocaleDateString()}`
-                : "Lifetime access"}
+                : "Active access"}
             </p>
           </div>
-          <Zap className="h-6 w-6 shrink-0 text-white/80" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-secondary text-[var(--periwinkle)]">
+            <Zap className="h-4 w-4" />
+          </div>
         </div>
-        <ul className="mt-4 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {PREMIUM_PERKS.slice(0, 6).map((p) => (
-            <li key={p} className="flex items-center gap-1.5 text-xs text-white/95">
-              <Check className="h-3 w-3 shrink-0" /> {p}
+            <li key={p} className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Check className="h-3.5 w-3.5 shrink-0 text-[var(--periwinkle)]" /> {p}
             </li>
           ))}
         </ul>
@@ -70,15 +73,15 @@ export function PlanStatusCard() {
   return (
     <Link
       to="/premium"
-      className="flex items-center justify-between rounded-3xl border border-border bg-card p-4 shadow-sm"
+      className="flex items-center justify-between rounded-2xl border border-border bg-card p-5 transition-colors hover:border-[var(--periwinkle)]"
     >
       <div>
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+        <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
           Subscription needed
         </p>
-        <p className="mt-0.5 font-display text-lg">Check your Premium access</p>
+        <p className="mt-1 text-base font-medium text-foreground">Unlock MealMate Premium</p>
       </div>
-      <span className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
+      <span className="rounded-xl bg-foreground px-4 py-2 text-xs font-medium text-background">
         View plans
       </span>
     </Link>

@@ -137,27 +137,32 @@ function RecipesPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-display text-4xl md:text-5xl">Discover recipes</h1>
-        <p className="text-muted-foreground">
-          Search our library — or ask the AI chef to invent something new.
+    <main className="mx-auto w-full max-w-6xl flex-1 bg-background px-4 py-8 text-foreground">
+      <div className="flex flex-col gap-1.5">
+        <h1 className="text-3xl font-medium tracking-tight text-foreground">Discover recipes</h1>
+        <p className="text-sm text-muted-foreground">
+          Search our library — or ask Mia to create something new.
         </p>
       </div>
 
       <form onSubmit={handleGenerate} className="mt-6 flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search recipes"
             maxLength={200}
             placeholder="Search recipes, ingredients, cuisines…"
-            className="h-12 pl-9"
+            className="h-12 rounded-xl border-border bg-card pl-10 text-foreground placeholder:text-muted-foreground"
           />
         </div>
-        <Button type="submit" size="lg" disabled={busy} className="h-12">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={busy}
+          className="h-12 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+        >
           Search
         </Button>
         <Button
@@ -165,7 +170,7 @@ function RecipesPage() {
           variant="outline"
           size="lg"
           disabled={busy}
-          className="h-12"
+          className="h-12 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
           onClick={handleAiGenerate}
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ask AI chef"}
@@ -174,7 +179,7 @@ function RecipesPage() {
           type="button"
           variant="secondary"
           size="lg"
-          className="h-12"
+          className="h-12 rounded-xl border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
           onClick={handleSurprise}
           disabled={busy}
         >
@@ -188,10 +193,10 @@ function RecipesPage() {
             key={cat}
             to="/recipes"
             search={{ ...(cat === "All" ? {} : { c: cat }), ...(q ? { q } : {}) }}
-            className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-xl border px-3.5 py-2 text-xs font-medium transition-colors ${
               active === cat
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-card hover:bg-muted"
+                : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground"
             }`}
           >
             {cat}
@@ -203,13 +208,17 @@ function RecipesPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-[4/3] w-full rounded-2xl" />
+              <Skeleton key={i} className="aspect-[4/3] w-full rounded-2xl bg-secondary" />
             ))}
           </div>
         ) : isError ? (
-          <div className="rounded-2xl border border-dashed border-border p-12 text-center">
-            <p className="text-muted-foreground">Recipes couldn&apos;t load right now.</p>
-            <Button variant="outline" className="mt-4" onClick={() => void refetch()}>
+          <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+            <p className="text-sm text-muted-foreground">Recipes couldn&apos;t load right now.</p>
+            <Button
+              variant="outline"
+              className="mt-4 rounded-xl border-border bg-secondary text-foreground"
+              onClick={() => void refetch()}
+            >
               Try again
             </Button>
           </div>
@@ -220,8 +229,8 @@ function RecipesPage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-border p-12 text-center">
-            <p className="text-muted-foreground">
+          <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+            <p className="text-sm text-muted-foreground">
               Nothing here yet. Try generating a recipe above!
             </p>
           </div>

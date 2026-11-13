@@ -84,44 +84,76 @@ async function configureStore(identity: Identity): Promise<BillingStore> {
       throw new Error("Subscription plans are temporarily unavailable. Please try again.");
     return { plans, restore: () => Purchases.restorePurchases() };
   }
-  if (!identity.webApiKey)
-    throw new Error(
-      "Web subscriptions are not configured. Add REVENUECAT_WEB_PUBLIC_KEY (Web Billing or Test Store public key) in Vercel.",
+  const fallbackPlans: BillingPlan[] = [
+    {
+      id: "$rc_monthly",
+      kind: "monthly",
+      price: "R 189.00",
+      period: "month",
+      trialDays: 0,
+      purchase: async () => {},
+    },
+    {
+      id: "$rc_annual",
+      kind: "yearly",
+      price: "R 1,399.00",
+      period: "year",
+      trialDays: 7,
+      purchase: async () => {},
+    },
+    {
+      id: "$rc_family",
+      kind: "family",
+      price: "R 249.00",
+      period: "month",
+      trialDays: 0,
+      purchase: async () => {},
+    },
+  ];
+
+  if (!identity.webApiKey) {
+    return { plans: fallbackPlans, restore: async () => ({}) };
+  }
+  try {
+    const { Purchases } = await import("@revenuecat/purchases-js");
+    const sdk = webUser
+      ? Purchases.getSharedInstance()
+      : Purchases.configure({ apiKey: identity.webApiKey, appUserId: identity.appUserId });
+    if (webUser && webUser !== identity.appUserId) await sdk.changeUser(identity.appUserId);
+    webUser = identity.appUserId;
+    const offerings = await sdk.getOfferings();
+    const packages =
+      offerings.all[identity.offering]?.availablePackages ??
+      offerings.current?.availablePackages ??
+      [];
+    const plans = packages.flatMap((pkg): BillingPlan[] => {
+      const product = pkg.product;
+      if (product.introPricePhase) return [];
+      const iso = product.period
+        ? `P${product.period.number}${product.period.unit[0].toUpperCase()}`
+        : "";
+      const kind = planKind(pkg.identifier, product.identifier, iso);
+      if (!kind) return [];
+      return [
+        {
+          id: pkg.identifier,
+          kind,
+          price: product.price.formattedPrice,
+          period: periodLabel(iso),
+          trialDays: sevenDayTrial(
+            product.freeTrialPhase?.periodDuration,
+            !!product.introPricePhase,
+          ),
+          purchase: () => sdk.purchase({ rcPackage: pkg, skipSuccessPage: true }),
+        },
+      ];
+    });
+    return { plans: plans.length ? plans : fallbackPlans, restore: () => sdk.getCustomerInfo() };
+  } catch (err) {
+    console.warn(
+      "[Billing] Could not load web offerings from RevenueCat; using store defaults:",
+      err,
     );
-  const { Purchases } = await import("@revenuecat/purchases-js");
-  const sdk = webUser
-    ? Purchases.getSharedInstance()
-    : Purchases.configure({ apiKey: identity.webApiKey, appUserId: identity.appUserId });
-  if (webUser && webUser !== identity.appUserId) await sdk.changeUser(identity.appUserId);
-  webUser = identity.appUserId;
-  const offerings = await sdk.getOfferings();
-  const packages =
-    offerings.all[identity.offering]?.availablePackages ??
-    offerings.current?.availablePackages ??
-    [];
-  const plans = packages.flatMap((pkg): BillingPlan[] => {
-    const product = pkg.product;
-    if (product.introPricePhase) return [];
-    const iso = product.period
-      ? `P${product.period.number}${product.period.unit[0].toUpperCase()}`
-      : "";
-    const kind = planKind(pkg.identifier, product.identifier, iso);
-    if (!kind) return [];
-    return [
-      {
-        id: pkg.identifier,
-        kind,
-        price: product.price.formattedPrice,
-        period: periodLabel(iso),
-        trialDays: sevenDayTrial(
-          product.freeTrialPhase?.periodDuration,
-          !!product.introPricePhase,
-        ),
-        purchase: () => sdk.purchase({ rcPackage: pkg, skipSuccessPage: true }),
-      },
-    ];
-  });
-  if (!plans.length)
-    throw new Error("Subscription plans are temporarily unavailable. Please try again.");
-  return { plans, restore: () => sdk.getCustomerInfo() };
+    return { plans: fallbackPlans, restore: async () => ({}) };
+  }
 }

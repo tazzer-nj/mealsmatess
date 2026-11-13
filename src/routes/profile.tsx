@@ -4,8 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   ChevronRight,
-  CircleUser,
-  Crown,
   DollarSign,
   FileText,
   Globe,
@@ -14,15 +12,13 @@ import {
   Lock,
   LogOut,
   Mail,
-  MessageCircle,
-  Mic,
   Moon,
   Share2,
   Shield,
-  Sparkles,
+  Star,
   Sun,
-  Trash2,
-  VolumeX,
+  User as UserIcon,
+  UserCog,
 } from "lucide-react";
 import { toast } from "sonner";
 import { firebaseData } from "@/lib/firebase-data";
@@ -38,9 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/components/theme-provider";
 import { GamificationCard } from "@/components/gamification-card";
-import { usePremium } from "@/hooks/use-premium";
-import { useMia } from "@/hooks/use-mia";
-import { isMiaMuted, setMiaMuted } from "@/lib/mia/mute";
+import { ThemePicker } from "@/components/theme-picker";
 import {
   Select,
   SelectContent,
@@ -52,25 +46,22 @@ import {
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { property: "og:title", content: "Settings \u2014 MealMate" },
+      { property: "og:title", content: "Profile \u2014 MealMate" },
       {
         property: "og:description",
-        content: "Manage your MealMate account, subscription, Mia voice, preferences and privacy.",
+        content: "Manage your MealMate profile, preferences, subscription, and settings.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { title: "Settings — MealMate" },
+      { title: "Profile — MealMate" },
       {
         name: "description",
-        content: "Manage your MealMate account, subscription, Mia voice, preferences and privacy.",
+        content: "Manage your MealMate profile, preferences, subscription, and settings.",
       },
     ],
   }),
   component: SettingsPage,
 });
-
-const APP_VERSION = "1.0.0";
-const SUPPORT_EMAIL = "support@mealmate.app";
 
 type IconType = typeof Shield;
 type Item = {
@@ -81,12 +72,11 @@ type Item = {
   href?: string;
   onClick?: () => void;
   trailing?: React.ReactNode;
-  danger?: boolean;
 };
 
 const CURRENCIES: { code: string; symbol: string; name: string }[] = [
-  { code: "ZAR", symbol: "R", name: "South African Rand" },
   { code: "USD", symbol: "$", name: "US Dollar" },
+  { code: "ZAR", symbol: "R", name: "South African Rand" },
   { code: "EUR", symbol: "€", name: "Euro" },
   { code: "GBP", symbol: "£", name: "British Pound" },
   { code: "AUD", symbol: "A$", name: "Australian Dollar" },
@@ -130,7 +120,7 @@ const REGION_CURRENCY: Record<string, string> = {
 };
 
 function detectCurrency(): string {
-  if (typeof navigator === "undefined") return "ZAR";
+  if (typeof navigator === "undefined") return "USD";
   const region =
     (Intl.DateTimeFormat().resolvedOptions() as { locale?: string }).locale
       ?.split("-")?.[1]
@@ -138,22 +128,12 @@ function detectCurrency(): string {
   return REGION_CURRENCY[region] ?? "USD";
 }
 
-function mailto(subject: string, body: string) {
-  return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-}
-
 function SettingsPage() {
   const { user } = useSession();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { resolved, setMode } = useTheme();
-  const { isPremium } = usePremium();
-  const { voice, startVoice, stopVoice } = useMia();
-  const [muted, setMutedState] = useState(false);
 
-  useEffect(() => {
-    setMutedState(isMiaMuted());
-  }, []);
+  const { resolved, setMode } = useTheme();
 
   const notificationPreferences = useQuery({
     queryKey: ["notification-preferences", user?.id],
@@ -207,6 +187,7 @@ function SettingsPage() {
     }
   }
 
+  // Profile preferences sync to Firestore for signed-in users.
   const { data: prefs } = useQuery({
     queryKey: ["profile-prefs", user?.id],
     enabled: !!user,
@@ -220,7 +201,7 @@ function SettingsPage() {
     },
   });
 
-  const [currency, setCurrency] = useState<string>("ZAR");
+  const [currency, setCurrency] = useState<string>("USD");
   const [lang, setLang] = useState<string>("en");
   useEffect(() => {
     const storedCur = window.localStorage.getItem("mealmate-currency");
@@ -275,18 +256,25 @@ function SettingsPage() {
     const url = "https://mealmate.app";
     const shareData = {
       title: "MealMate",
-      text: "Cook smarter with MealMate — recipes, planner, and Mia in your kitchen.",
+      text: "Cook smarter with MealMate — recipes, planner, and AI in your kitchen.",
       url,
     };
     try {
-      if (navigator.share) await navigator.share(shareData);
-      else {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
         await navigator.clipboard.writeText(url);
         toast.success("Link copied to clipboard");
       }
     } catch {
       /* user cancelled */
     }
+  }
+
+  function rate() {
+    toast.success("Thanks for the love!", {
+      description: "Ratings will open in the App Store once we ship.",
+    });
   }
 
   async function resetPassword() {
@@ -302,9 +290,32 @@ function SettingsPage() {
     }
   }
 
-  const voiceActive = ["loading", "waiting", "listening", "thinking", "speaking"].includes(
-    voice.state,
-  );
+  const profileItems: Item[] = [
+    {
+      label: "Settings & Mia Voice",
+      description: "Account, preferences, notifications, theme & Mia audio",
+      icon: UserCog,
+      to: "/settings",
+    },
+    {
+      label: "Culinary preferences",
+      description: "Update goals, dietary filters, allergies and cuisines",
+      icon: UserIcon,
+      to: "/settings",
+    },
+    {
+      label: "MealMate Premium",
+      description: "AI, recipes and meal plans · View subscription plans",
+      icon: Star,
+      to: "/premium",
+    },
+    {
+      label: "Admin dashboard",
+      description: "Subscribers, promos, revenue (admin only)",
+      icon: Shield,
+      to: "/admin",
+    },
+  ];
 
   const accountItems: Item[] = [
     {
@@ -313,315 +324,265 @@ function SettingsPage() {
       icon: Mail,
     },
     {
-      label: "Edit dietary preferences",
-      description: "Goals, allergies, cuisines and skill level",
-      icon: CircleUser,
-      to: "/onboarding",
-    },
-    {
       label: "Change password",
       description: "We'll email you a secure reset link",
       icon: Lock,
       onClick: resetPassword,
     },
-    {
-      label: "Sign out",
-      description: "Sign out of MealMate on this device",
-      icon: LogOut,
-      onClick: () => void signOut(),
-    },
-    {
-      label: "Delete account",
-      description: "Request permanent deletion of your account and data",
-      icon: Trash2,
-      danger: true,
-      href: mailto(
-        "Delete my MealMate account",
-        "Please permanently delete my MealMate account and the data associated with it.\n\nAccount email: ",
-      ),
-    },
-  ];
-
-  const subscriptionItems: Item[] = [
-    {
-      label: "MealMate Premium",
-      description: isPremium ? "Active on this account" : "Free plan · view what Premium includes",
-      icon: Crown,
-      to: "/premium",
-    },
-    {
-      label: "Manage subscription",
-      description: "Review your plan, restore access or check status",
-      icon: Sparkles,
-      to: "/premium",
-    },
-    {
-      label: "Restore purchases",
-      description: "Already subscribed? Re-check store entitlement",
-      icon: Shield,
-      to: "/premium",
-    },
-  ];
-
-  const miaItems: Item[] = [
-    {
-      label: "Voice conversations",
-      description: voiceActive ? "Mia is listening on this device" : "Hands-free voice is off",
-      icon: Mic,
-      trailing: (
-        <Switch
-          checked={voiceActive}
-          disabled={!isPremium || muted}
-          onCheckedChange={(checked) => (checked ? startVoice() : stopVoice())}
-          aria-label="Voice conversations with Mia"
-        />
-      ),
-    },
-    {
-      label: "Mute Mia",
-      description: muted ? "Microphone and spoken replies are muted" : "Mia can listen and speak",
-      icon: VolumeX,
-      trailing: (
-        <Switch
-          checked={muted}
-          onCheckedChange={(checked) => {
-            setMiaMuted(checked);
-            setMutedState(checked);
-            if (checked) {
-              stopVoice();
-              toast.success("Mia is muted");
-            } else {
-              toast.success("Mia is unmuted");
-            }
-          }}
-          aria-label="Mute Mia"
-        />
-      ),
-    },
-    {
-      label: "Conversation settings",
-      description: "Open the chat to review history and suggested prompts",
-      icon: MessageCircle,
-      to: "/chat",
-    },
-  ];
-
-  const preferenceItems: Item[] = [
-    {
-      label: resolved === "dark" ? "Dark appearance" : "Light appearance",
-      description:
-        resolved === "dark" ? "Black surfaces, white text" : "Paper surfaces, black text",
-      icon: resolved === "dark" ? Moon : Sun,
-      trailing: (
-        <Switch
-          checked={resolved === "dark"}
-          onCheckedChange={(v) => setMode(v ? "dark" : "light")}
-          aria-label="Dark appearance"
-        />
-      ),
-    },
-    {
-      label: "MealMate updates",
-      description: "Product announcements in your notification history",
-      icon: Bell,
-      trailing: (
-        <Switch
-          checked={productUpdatesEnabled}
-          disabled={!user || notificationPreferences.isLoading || notificationBusy}
-          onCheckedChange={(checked) =>
-            void updateNotificationPreferences({ productUpdatesEnabled: checked })
-          }
-          aria-label="MealMate product updates"
-        />
-      ),
-    },
-    {
-      label: "Push notifications",
-      description: "Allow notifications on this device",
-      icon: Bell,
-      trailing: (
-        <Switch
-          checked={pushEnabled}
-          disabled={
-            !user || !productUpdatesEnabled || notificationPreferences.isLoading || notificationBusy
-          }
-          onCheckedChange={(checked) =>
-            void updateNotificationPreferences({ pushEnabled: checked })
-          }
-          aria-label="Push notifications"
-        />
-      ),
-    },
-    {
-      label: "Notification history",
-      description: "View unread and past MealMate updates",
-      icon: Bell,
-      to: "/notifications",
-    },
-    {
-      label: "Currency",
-      description: "Prices shown throughout the app",
-      icon: DollarSign,
-      trailing: (
-        <div onClick={(e) => e.stopPropagation()}>
-          <Select value={currency} onValueChange={(v) => void saveCurrency(v)}>
-            <SelectTrigger className="h-9 w-[132px] rounded-lg border-[#303030] bg-[#141414] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent align="end">
-              {CURRENCIES.map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  {c.symbol} {c.code} — {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ),
-    },
-    {
-      label: "Language",
-      description: "Interface and recipe language",
-      icon: Globe,
-      trailing: (
-        <div onClick={(e) => e.stopPropagation()}>
-          <Select value={lang} onValueChange={(v) => void saveLanguage(v)}>
-            <SelectTrigger className="h-9 w-[132px] rounded-lg border-[#303030] bg-[#141414] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent align="end">
-              {LANGUAGES.map((l) => (
-                <SelectItem key={l.code} value={l.code}>
-                  {l.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ),
-    },
-  ];
-
-  const privacyItems: Item[] = [
-    {
-      label: "Privacy policy",
-      description: "How we handle your data",
-      icon: Shield,
-      to: "/legal/privacy",
-    },
-    {
-      label: "Terms of service",
-      description: "The rules for using MealMate",
-      icon: FileText,
-      to: "/legal/terms",
-    },
-    {
-      label: "Your data",
-      description: "Request a copy or deletion of your data",
-      icon: Lock,
-      href: mailto(
-        "My MealMate data request",
-        "Please send me a copy of the personal data MealMate holds for my account.\n\nAccount email: ",
-      ),
-    },
   ];
 
   const supportItems: Item[] = [
     {
-      label: "Help centre",
+      label: "Help Center",
       description: "Answers to common questions",
       icon: HelpCircle,
       to: "/support",
     },
     {
       label: "Contact support",
-      description: SUPPORT_EMAIL,
+      description: "Get in touch with the team",
       icon: Mail,
-      href: `mailto:${SUPPORT_EMAIL}`,
+      href: "mailto:support@mealmate.app",
+    },
+  ];
+
+  const aboutItems: Item[] = [
+    { label: "About MealMate", description: "Version and credits", icon: Info, to: "/about" },
+    {
+      label: "Follow on Instagram",
+      description: "@mealmate.sp",
+      icon: Share2,
+      href: "https://www.instagram.com/mealmate.sp",
     },
     {
-      label: "Report an issue",
-      description: "Tell us what went wrong",
-      icon: MessageCircle,
-      href: mailto("MealMate issue report", "What happened?\n\n\nWhat were you doing?\n\n"),
+      label: "Follow on TikTok",
+      description: "@mealmate.sp",
+      icon: Share2,
+      href: "https://www.tiktok.com/@mealmate.sp",
+    },
+  ];
+
+  const legalItems: Item[] = [
+    {
+      label: "Terms of Service",
+      description: "The rules for using MealMate",
+      icon: FileText,
+      to: "/legal/terms",
     },
     {
-      label: "App version",
-      description: `MealMate ${APP_VERSION}`,
-      icon: Info,
-      to: "/about",
+      label: "Privacy Policy",
+      description: "How we handle your data",
+      icon: Shield,
+      to: "/legal/privacy",
     },
   ];
 
   return (
-    <main className="mm-page">
-      <h1 className="mm-h1">Settings</h1>
-
-      <section className="settings-hero mt-5">
-        <span className="settings-avatar">
-          {(user?.displayName ?? user?.email ?? "M").slice(0, 1).toUpperCase()}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-medium">{user?.displayName ?? "Your account"}</p>
-          <p className="truncate text-[12px] text-muted-foreground">
-            {user?.email ?? "Sign in to sync your recipes"}
-          </p>
-          <span className="mm-tag mt-2 inline-flex">{isPremium ? "Premium" : "Free plan"}</span>
+    <main className="mx-auto w-full max-w-2xl flex-1 bg-background px-4 pb-24 pt-8 text-foreground">
+      <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-border bg-secondary text-foreground">
+            <UserIcon className="h-6 w-6" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-medium tracking-tight text-foreground">
+              {user?.displayName || "Profile"}
+            </h1>
+            <p className="truncate text-sm text-muted-foreground">
+              {user?.email ?? "Sign in to sync your recipes"}
+            </p>
+          </div>
         </div>
-      </section>
-
-      <GamificationCard />
-
-      <Section title="Account" items={accountItems} />
-      <Section title="Subscription" items={subscriptionItems} />
-      <Section title="Mia" items={miaItems} />
-      <Section title="Preferences" items={preferenceItems} />
-      <Section title="Privacy" items={privacyItems} />
-      <Section title="Support" items={supportItems} />
-
-      <div className="mt-6 grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => void share()}
-          className="mm-tile justify-center text-[13px] font-medium"
-        >
-          <Share2 className="size-4" strokeWidth={1.7} />
-          Share MealMate
-        </button>
-        <Link to="/about" className="mm-tile justify-center text-[13px] font-medium">
-          <Info className="size-4" strokeWidth={1.7} />
-          About MealMate
-        </Link>
       </div>
 
-      {user ? (
-        <Button
-          variant="destructive"
-          onClick={() => void signOut()}
-          className="mt-6 h-12 w-full rounded-xl"
-        >
-          <LogOut />
-          Sign out
-        </Button>
-      ) : null}
+      {/* XP, levels, streaks & challenges */}
+      <div className="mt-6">
+        <GamificationCard />
+      </div>
 
-      <p className="mm-meta mt-8 text-center">MealMate · Version {APP_VERSION}</p>
+      <ThemePicker />
+      <Section title="Profile & Controls" items={profileItems} />
+      <Section title="Account" items={accountItems} />
+
+      <Section
+        title="Notifications"
+        items={[
+          {
+            label: "MealMate updates",
+            description: "Show product announcements in your notification history",
+            icon: Bell,
+            trailing: (
+              <Switch
+                checked={productUpdatesEnabled}
+                disabled={!user || notificationPreferences.isLoading || notificationBusy}
+                onCheckedChange={(checked) =>
+                  void updateNotificationPreferences({ productUpdatesEnabled: checked })
+                }
+                aria-label="MealMate product updates"
+              />
+            ),
+          },
+          {
+            label: "Push notifications",
+            description: "Allow browser notifications on this device",
+            icon: Bell,
+            trailing: (
+              <Switch
+                checked={pushEnabled}
+                disabled={
+                  !user ||
+                  !productUpdatesEnabled ||
+                  notificationPreferences.isLoading ||
+                  notificationBusy
+                }
+                onCheckedChange={(checked) =>
+                  void updateNotificationPreferences({ pushEnabled: checked })
+                }
+                aria-label="Push notifications"
+              />
+            ),
+          },
+          {
+            label: "Notification history",
+            description: "View unread and past MealMate updates",
+            icon: Bell,
+            to: "/notifications",
+          },
+        ]}
+      />
+
+      <Section
+        title="Appearance"
+        items={[
+          {
+            label: resolved === "dark" ? "Dark mode" : "Light mode",
+            description:
+              resolved === "dark"
+                ? "Minimal black & white dark interface"
+                : "Clean neutral light interface",
+            icon: resolved === "dark" ? Moon : Sun,
+            onClick: () => setMode(resolved === "dark" ? "light" : "dark"),
+            trailing: (
+              <Switch
+                checked={resolved === "dark"}
+                onCheckedChange={(v) => setMode(v ? "dark" : "light")}
+                aria-label="Dark mode"
+              />
+            ),
+          },
+        ]}
+      />
+
+      <Section
+        title="Region"
+        items={[
+          {
+            label: "Currency",
+            description: "Prices shown throughout the app",
+            icon: DollarSign,
+            trailing: (
+              <div onClick={(e) => e.stopPropagation()}>
+                <Select value={currency} onValueChange={saveCurrency}>
+                  <SelectTrigger className="h-9 w-[140px] rounded-xl border-border bg-secondary text-xs text-foreground">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    align="end"
+                    className="border-border bg-popover text-popover-foreground"
+                  >
+                    {CURRENCIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.symbol} {c.code} — {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ),
+          },
+          {
+            label: "App language",
+            description: "Interface and recipe language",
+            icon: Globe,
+            trailing: (
+              <div onClick={(e) => e.stopPropagation()}>
+                <Select value={lang} onValueChange={saveLanguage}>
+                  <SelectTrigger className="h-9 w-[150px] rounded-xl border-border bg-secondary text-xs text-foreground">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    align="end"
+                    className="border-border bg-popover text-popover-foreground"
+                  >
+                    {LANGUAGES.map((l) => (
+                      <SelectItem key={l.code} value={l.code}>
+                        {l.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ),
+          },
+        ]}
+      />
+
+      <Section
+        title="Privacy & Security"
+        items={[
+          {
+            label: "Privacy Policy",
+            description: "How we handle your data",
+            icon: Shield,
+            to: "/legal/privacy",
+          },
+          {
+            label: "Change password",
+            description: "Send a secure reset link to your email",
+            icon: UserCog,
+            onClick: resetPassword,
+          },
+        ]}
+      />
+
+      <Section title="Help & Support" items={supportItems} />
+      <Section title="About MealMate" items={aboutItems} />
+      <Section title="Terms & Privacy" items={legalItems} />
+
+      <section className="mt-6 grid grid-cols-2 gap-3">
+        <ActionCard icon={Star} label="Rate the app" onClick={rate} />
+        <ActionCard icon={Share2} label="Share MealMate" onClick={share} />
+      </section>
+
+      {user && (
+        <div className="mt-6">
+          <Button
+            variant="outline"
+            onClick={signOut}
+            className="h-12 w-full rounded-xl border-border bg-card text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Log out
+          </Button>
+        </div>
+      )}
+
+      <p className="mt-8 text-center text-xs text-muted-foreground">
+        MealMate Consumer · Taz Technologies
+      </p>
     </main>
   );
 }
 
 function Section({ title, items }: { title: string; items: Item[] }) {
   return (
-    <section className="mt-7" aria-labelledby={`settings-${title}`}>
-      <h2
-        id={`settings-${title}`}
-        className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-      >
+    <section className="mt-6">
+      <h2 className="mb-2 px-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
         {title}
       </h2>
-      <ul className="mm-group">
-        {items.map((item) => (
-          <li key={item.label}>
+      <ul className="overflow-hidden rounded-2xl border border-border bg-card">
+        {items.map((item, i) => (
+          <li key={item.label} className={i > 0 ? "border-t border-border" : ""}>
             <Row item={item} />
           </li>
         ))}
@@ -634,16 +595,18 @@ function Row({ item }: { item: Item }) {
   const Icon = item.icon;
   const showChevron = !!(item.to || item.href) && !item.trailing;
   const body = (
-    <div className="mm-group-row">
-      <span className="mm-group-row-icon">
-        <Icon className="size-[18px]" strokeWidth={1.7} />
+    <div className="flex items-center gap-3 px-4 py-3.5 transition-colors duration-150 hover:bg-secondary">
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-secondary text-foreground">
+        <Icon className="h-[18px] w-[18px]" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className={`settings-row-title ${item.danger ? "text-[#e5484d]" : ""}`}>{item.label}</p>
-        {item.description ? <p className="settings-row-desc">{item.description}</p> : null}
+        <p className="text-sm font-medium leading-tight text-foreground">{item.label}</p>
+        {item.description && (
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.description}</p>
+        )}
       </div>
       {item.trailing ??
-        (showChevron ? <ChevronRight className="size-4 flex-none text-muted-foreground" /> : null)}
+        (showChevron ? <ChevronRight className="h-4 w-4 text-muted-foreground" /> : null)}
     </div>
   );
 
@@ -666,7 +629,8 @@ function Row({ item }: { item: Item }) {
       </Link>
     );
   }
-  // A trailing control is itself a button, so the row must not also be a <button>.
+  // A trailing control (e.g. a Switch) is itself a button, so the row must not
+  // also be a <button> — nested buttons are invalid HTML and break hydration.
   if (item.onClick && !item.trailing) {
     return (
       <button type="button" onClick={item.onClick} className="block w-full text-left">
@@ -675,4 +639,27 @@ function Row({ item }: { item: Item }) {
     );
   }
   return <div>{body}</div>;
+}
+
+function ActionCard({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: IconType;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex flex-col items-start gap-2 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-[var(--periwinkle)] hover:bg-secondary"
+    >
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-secondary text-foreground">
+        <Icon className="h-[18px] w-[18px]" />
+      </span>
+      <span className="text-sm font-medium text-foreground">{label}</span>
+    </button>
+  );
 }

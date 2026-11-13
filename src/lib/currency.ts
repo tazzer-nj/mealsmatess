@@ -42,12 +42,29 @@ export const PRICES_USD = {
 } as const;
 export type PriceKey = keyof typeof PRICES_USD;
 
+export const PRICES_ZAR: Record<PriceKey, number> = {
+  premium_monthly: 189.0,
+  premium_annual: 1399.0,
+  family_monthly: 249.0,
+  family_annual: 1899.0,
+  referral_reward_days: 14,
+};
+
 export function convertFromUsd(amountUsd: number, to: CurrencyCode): number {
   const rate = USD_RATES[to] ?? 1;
   return amountUsd * rate;
 }
 
-export function formatPrice(amountUsd: number, currency: CurrencyCode): string {
+export function formatPrice(
+  amountUsd: number,
+  currency: CurrencyCode,
+  priceKey?: PriceKey,
+): string {
+  if (currency === "ZAR") {
+    const val =
+      priceKey && PRICES_ZAR[priceKey] ? PRICES_ZAR[priceKey] : convertFromUsd(amountUsd, "ZAR");
+    return `R ${Math.round(val)}`;
+  }
   const meta = CURRENCY_META[currency] ?? CURRENCY_META.USD;
   const value = convertFromUsd(amountUsd, currency);
   try {
@@ -57,12 +74,12 @@ export function formatPrice(amountUsd: number, currency: CurrencyCode): string {
       maximumFractionDigits: 2,
     }).format(value);
   } catch {
-    return `${meta.symbol}${value.toFixed(2)}`;
+    return `${meta.symbol} ${value.toFixed(2)}`;
   }
 }
 
 export function price(key: PriceKey, currency: CurrencyCode): string {
-  return formatPrice(PRICES_USD[key], currency);
+  return formatPrice(PRICES_USD[key], currency, key);
 }
 
 const REGION_CURRENCY: Record<string, CurrencyCode> = {
@@ -86,10 +103,12 @@ const REGION_CURRENCY: Record<string, CurrencyCode> = {
 };
 
 export function detectCurrency(): CurrencyCode {
-  if (typeof navigator === "undefined") return "USD";
-  const region =
-    Intl.DateTimeFormat().resolvedOptions().locale?.split("-")?.[1]?.toUpperCase() ?? "";
-  return REGION_CURRENCY[region] ?? "USD";
+  if (typeof navigator === "undefined") return "ZAR";
+  const locale = Intl.DateTimeFormat().resolvedOptions().locale ?? "";
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+  if (tz.includes("Johannesburg") || locale.toLowerCase().includes("za")) return "ZAR";
+  const region = locale.split("-")?.[1]?.toUpperCase() ?? "";
+  return REGION_CURRENCY[region] ?? "ZAR";
 }
 
 // ---- Hook: single source of truth for the user's active currency ----
@@ -98,7 +117,7 @@ export function useCurrency(): {
   setCurrency: (c: CurrencyCode) => Promise<void>;
 } {
   const { user } = useSession();
-  const [currency, setCurrencyState] = useState<CurrencyCode>("USD");
+  const [currency, setCurrencyState] = useState<CurrencyCode>("ZAR");
 
   const { data } = useQuery({
     queryKey: ["currency", user?.id ?? "anon"],

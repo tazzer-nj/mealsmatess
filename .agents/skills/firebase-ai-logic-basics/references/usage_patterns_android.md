@@ -13,7 +13,7 @@ npx -y firebase-tools@latest init
 # When prompted, select 'AI logic' to enable the Gemini API in your project.
 ```
 
-______________________________________________________________________
+---
 
 ### 1. Add Dependencies
 
@@ -30,7 +30,7 @@ dependencies {
 }
 ```
 
-______________________________________________________________________
+---
 
 ### 2. Initialize and Generate Content
 
@@ -115,7 +115,7 @@ class MainActivity : ComponentActivity() {
         val ai = Firebase.ai
         // [AGENT] Replace with the latest model from https://firebase.google.com/docs/ai-logic/models.md.txt
         val model = ai.generativeModel("<latest_supported_model>")
-        
+
         lifecycleScope.launch {
             val response = model.generateContent("Hello Gemini!")
             setContent {
@@ -128,7 +128,7 @@ class MainActivity : ComponentActivity() {
 }
 ```
 
-______________________________________________________________________
+---
 
 ### 3. Multimodal Input (Text and Images)
 
@@ -148,7 +148,7 @@ val response = model.generateContent(
 Log.d(TAG, response.text)
 ```
 
-______________________________________________________________________
+---
 
 ### 4. Chat Session (Multi-turn)
 
@@ -168,7 +168,7 @@ lifecycleScope.launch {
 }
 ```
 
-______________________________________________________________________
+---
 
 ### 5. Streaming Responses
 
@@ -183,7 +183,7 @@ lifecycleScope.launch {
 }
 ```
 
-______________________________________________________________________
+---
 
 ### 6. App Check Debug Provider
 

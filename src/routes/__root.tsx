@@ -21,7 +21,6 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { auth, onAuthStateChanged } from "@/lib/firebase";
 import { AppHeader } from "@/components/app-header";
 import { BottomNav } from "@/components/bottom-nav";
-import { DesktopNav } from "@/components/desktop-nav";
 
 import { AuthGate } from "@/components/auth-gate";
 import { MascotThemeProvider } from "@/hooks/use-mascot-theme";
@@ -35,17 +34,17 @@ import { useShellMetrics } from "@/hooks/use-shell-metrics";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4 text-foreground">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center">
+        <h1 className="text-6xl font-medium tracking-tight text-foreground">404</h1>
+        <h2 className="mt-3 text-xl font-medium text-foreground">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
         <div className="mt-6">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
           >
             Go home
           </Link>
@@ -63,27 +62,27 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
   }, [error]);
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+    <div className="flex min-h-dvh items-center justify-center bg-background px-4 text-foreground">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center">
+        <h1 className="text-xl font-medium tracking-tight text-foreground">
+          This page didn&apos;t load
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <div className="mt-6 flex flex-wrap justify-center gap-2.5">
           <button
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
           >
             Try again
           </button>
           <a
             href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-secondary px-5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
             Go home
           </a>
@@ -108,26 +107,25 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "MealMate" },
       { name: "application-name", content: "MealMate" },
-      { title: "MealMate — Cook the world, one recipe at a time" },
+      { title: "MealMate — Make every meal better" },
       {
         name: "description",
         content:
-          "MealMate generates authentic recipes from around the world with AI, plans your week, and builds your grocery list. From pap and chakalaka to global classics.",
+          "MealMate is your personal food companion. Discover recipes, plan your week, and cook smarter with AI.",
       },
       { name: "author", content: "MealMate" },
-      { property: "og:title", content: "MealMate — Cook the world, one recipe at a time" },
+      { property: "og:title", content: "MealMate — Make every meal better" },
       {
         property: "og:description",
-        content:
-          "AI-powered recipes, meal planning, and smart grocery lists rooted in South African and global cuisine.",
+        content: "AI-powered recipes, smart meal planning, and kitchen intelligence.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "MealMate — Cook the world, one recipe at a time" },
+      { name: "twitter:title", content: "MealMate — Make every meal better" },
       {
         name: "twitter:description",
         content:
-          "MealMate generates authentic recipes from around the world with AI, plans your week, and builds your grocery list. From pap and chakalaka to global classics.",
+          "MealMate is your personal food companion. Discover recipes, plan your week, and cook smarter with AI.",
       },
     ],
     links: [
@@ -144,7 +142,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap",
       },
     ],
   }),
@@ -161,7 +159,10 @@ function RootShell({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <HeadContent />
       </head>
-      <body suppressHydrationWarning>
+      <body
+        suppressHydrationWarning
+        className="bg-background text-foreground antialiased selection:bg-[#5B6CFA] selection:text-white"
+      >
         {children}
         <Scripts />
       </body>
@@ -210,10 +211,9 @@ function RootComponent() {
                         className={`theme-backdrop h-dvh w-full overflow-hidden bg-background ${isMarketplace ? "marketplace-dark" : ""}`}
                       >
                         {showAppHeader && <AppHeader />}
-                        {!isFlow && <DesktopNav />}
                         <div
                           id="app-scroll"
-                          className={`h-full overflow-y-auto overscroll-y-none ${isFlow ? "" : "mm-shell-content pb-[var(--app-nav-h)] pt-[var(--app-header-h)]"}`}
+                          className={`h-full overflow-y-auto overscroll-y-none ${isFlow ? "" : "pb-[var(--app-nav-h)] pt-[var(--app-header-h)]"}`}
                         >
                           <div
                             className={`mx-auto flex min-h-full w-full flex-col ${isFlow ? "" : pathname === "/admin" ? "max-w-6xl" : "max-w-3xl"}`}

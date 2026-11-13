@@ -10,9 +10,8 @@ export function MascotMark({
   className?: string | undefined;
   alt?: string;
 }) {
-  // The mark also renders in isolated screens (auth, paywall, tests) without a
-  // provider, so fall back to the classic artwork instead of throwing.
-  const theme = useOptionalMascotTheme()?.theme ?? getTheme("classic");
+  const ctx = useOptionalMascotTheme();
+  const theme = ctx?.theme ?? getTheme("classic");
   return (
     <img
       key={theme.id}

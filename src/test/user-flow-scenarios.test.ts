@@ -8,7 +8,12 @@ describe("First-Time Experience and Return User Flow Scenarios", () => {
     | "app_tour_required"
     | "application_ready";
 
-  function determineFlowState(user: { id: string } | null, onboardingCompleted: boolean, isPremium: boolean, tourCompleted: boolean): FlowState {
+  function determineFlowState(
+    user: { id: string } | null,
+    onboardingCompleted: boolean,
+    isPremium: boolean,
+    tourCompleted: boolean,
+  ): FlowState {
     if (!user) return "unauthenticated";
     if (!onboardingCompleted) return "onboarding_required";
     if (!isPremium) return "paywall_required";

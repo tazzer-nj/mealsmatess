@@ -5,8 +5,19 @@ import type { TextToSpeechPlugin } from "@capacitor-community/text-to-speech";
 // window during module loading, including in the server-rendered bundle.
 // Browser replies use speakBrowser instead.
 
+function getSpeechPreferences() {
+  if (typeof window === "undefined") {
+    return { muted: false, enabled: true, rate: 1 };
+  }
+  const muted = localStorage.getItem("mealmate_voice_muted") === "true";
+  const enabled = localStorage.getItem("mealmate_voice_responses") !== "false";
+  const parsedRate = Number.parseFloat(localStorage.getItem("mealmate_speech_speed") ?? "1");
+  const rate = Number.isFinite(parsedRate) && parsedRate >= 0.5 && parsedRate <= 2 ? parsedRate : 1;
+  return { muted, enabled, rate };
+}
+
 /** Device TTS, preferring a local English voice. No microphone data is passed to TTS. */
-function speakBrowser(text: string, signal: AbortSignal): Promise<void> {
+function speakBrowser(text: string, signal: AbortSignal, rate: number): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!("speechSynthesis" in window)) {
       reject(
@@ -40,7 +51,7 @@ function speakBrowser(text: string, signal: AbortSignal): Promise<void> {
       const voices = synth.getVoices().filter((voice) => voice.lang.startsWith("en"));
       utterance.voice = voices.find((voice) => voice.localService) ?? voices[0] ?? null;
       utterance.lang = "en-US";
-      utterance.rate = 1;
+      utterance.rate = rate;
       utterance.onend = next;
       utterance.onerror = () => {
         cleanup();
@@ -60,7 +71,9 @@ function speakBrowser(text: string, signal: AbortSignal): Promise<void> {
 
 export async function speakMia(text: string, signal: AbortSignal): Promise<void> {
   signal.throwIfAborted();
-  if (!Capacitor.isNativePlatform()) return speakBrowser(text, signal);
+  const { muted, enabled, rate } = getSpeechPreferences();
+  if (muted || !enabled) return;
+  if (!Capacitor.isNativePlatform()) return speakBrowser(text, signal, rate);
   if (!Capacitor.isPluginAvailable("TextToSpeech")) {
     throw new Error("Update the MealMate Android app to enable spoken Mia replies.");
   }
@@ -85,7 +98,7 @@ export async function speakMia(text: string, signal: AbortSignal): Promise<void>
     void TextToSpeech.speak({
       text: text.replace(/[*#`]/g, ""),
       lang: "en-US",
-      rate: 1,
+      rate,
       pitch: 1,
       volume: 1,
     }).then(
