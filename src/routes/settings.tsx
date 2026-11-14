@@ -164,7 +164,7 @@ function formatDate(iso?: string | null): string | null {
   });
 }
 
-export function SettingsPage() {
+function SettingsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, firebaseUser } = useSession();

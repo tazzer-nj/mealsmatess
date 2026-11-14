@@ -11,6 +11,7 @@ metadata:
   author: Google LLC
   category: Databases
 ---
+
 # Firestore Security Rules Creation
 
 > [!IMPORTANT] **Subagent Delegation vs. Direct Authoring**
@@ -86,7 +87,7 @@ Generate Firebase Security Rules following these principles:
 - **UID Protection:** Prevent users from changing ownership of data
 - **Initially restricted:** Never make any collection or data publicly readable,
   always require authentication for any access to data unless the user makes an
-  *explicit* request for unauthenticated data.
+  _explicit_ request for unauthenticated data.
 
 This means the first firestore.rules file you generate must never have any
 "allow read: true" statements.
@@ -447,7 +448,7 @@ has not already performed the action (e.g., by checking for the existence of a
 'like' document) and is not looping updates. * **CRITICAL:** Relying solely on
 `!exists(likeDoc)` is insufficient because a malicious user can skip creating
 the document and loop the increment. * **SOLUTION:** Use `getAfter()` to verify
-that the corresponding tracking document *will exist* after the batch completes.
+that the corresponding tracking document _will exist_ after the batch completes.
 
 **Example:**
 

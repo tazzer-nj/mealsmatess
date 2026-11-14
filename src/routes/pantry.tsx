@@ -43,7 +43,7 @@ export const Route = createFileRoute("/pantry")({
   component: PantryPage,
 });
 
-export function PantryPage() {
+function PantryPage() {
   const { user } = useSession();
   const navigate = useNavigate();
   const client = useQueryClient();

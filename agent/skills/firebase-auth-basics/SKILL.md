@@ -10,6 +10,7 @@ metadata:
   author: Google LLC
   category: Identity
 ---
+
 ## Prerequisites
 
 - **Firebase Project**: Created via

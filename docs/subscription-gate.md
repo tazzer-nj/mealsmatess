@@ -18,13 +18,13 @@ The previous Consumer policy allowed free AI allowances, a Continue Free button 
 
 Use the existing RevenueCat project for **both** Android and Web Billing. Do not create duplicate products or change existing store prices.
 
-| Variable | Scope | Purpose |
-| --- | --- | --- |
-| `REVENUECAT_WEB_PUBLIC_KEY` | Server configuration, safe for SDK delivery | Existing Web Billing app public SDK key |
-| `REVENUECAT_ANDROID_PUBLIC_KEY` | Server configuration, safe for SDK delivery | Existing Google Play app public SDK key |
-| `REVENUECAT_SECRET_API_KEY` | Server secret only | Authenticated v1 subscriber lookup |
-| `REVENUECAT_WEBHOOK_SECRET` | Server secret only | Existing webhook authorization |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | Server secret only | Existing Firebase Admin identity, never exposed to browser |
+| Variable                        | Scope                                       | Purpose                                                    |
+| ------------------------------- | ------------------------------------------- | ---------------------------------------------------------- |
+| `REVENUECAT_WEB_PUBLIC_KEY`     | Server configuration, safe for SDK delivery | Existing Web Billing app public SDK key                    |
+| `REVENUECAT_ANDROID_PUBLIC_KEY` | Server configuration, safe for SDK delivery | Existing Google Play app public SDK key                    |
+| `REVENUECAT_SECRET_API_KEY`     | Server secret only                          | Authenticated v1 subscriber lookup                         |
+| `REVENUECAT_WEBHOOK_SECRET`     | Server secret only                          | Existing webhook authorization                             |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Server secret only                          | Existing Firebase Admin identity, never exposed to browser |
 
 The service account also needs its existing Firestore/Auth permissions. Retain the Firebase project, database, Google client and official-domain configuration from the existing deployment. No credentials were available in this sandbox, and no store or Firebase console settings were altered by this patch.
 
@@ -55,6 +55,7 @@ Production rejects sandbox entitlement responses. Explicit nonproduction verific
 - The complete Consumer shell waits for authenticated, server-confirmed access. Direct routes do not mount the main app first. Verification errors, offline state and expired leases block it.
 - AI APIs and Consumer recipe/planner/image server functions independently verify RevenueCat before doing work. The server's Firebase table adapter checks Consumer personal data and catalog access as well.
 - Browser Firestore access requires `premium_access/{uid}` with `source=revenuecat`, `entitlement=premium`, and a future `valid_until` Timestamp. Only the server can write this record. It expires after at most five minutes or the entitlement end, whichever comes first. The foreground app checks every minute, on focus, and at checkout completion. A remote revocation can remain reflected in the Firestore lease for up to five minutes; server operations still request RevenueCat verification.
+
 <!-- coderabbit-ai-generated:v1 -->
 
 <!-- coderabbit-ai-generated-section:v1:3c58a37c0da250849db2d99993bcf4723792b56d0e7820f62fb725afd379ba58 -->
@@ -81,6 +82,7 @@ I've set up prototype Security Rules to keep the data in Firestore safe. They ar
 1. Reconcile the source: Vercel last showed commit `88cf5bc`, whose former name `tazzy-max/mealsmatess` resolves to this same GitHub repository, `tazlol0909-maker/mealsmatess` (ID `1414342874`). That production branch contains newer billing, scanner, support and onboarding changes absent from this draft. A merge trial exposed conflicting billing and webhook implementations; resolve and test them before rollout. Publishing this older snapshot directly would replace newer work.
 
 <!-- /coderabbit-ai-generated:v1 -->
+
 2. Configure the existing RevenueCat keys and Firebase Admin identity in the correct Vercel project/environment. Verify that the three intended store packages and eligible seven-day offer exist.
 3. Review and deploy the updated Firestore rules with the server/UI rollout. Missing access records deny protected direct SDK reads; do not publish these rules alone against the old app. Use a maintenance window or coordinated cutover to avoid locking existing subscribers out of catalog/personal data.
 4. Deploy the reconciled Consumer app to the existing `mealsmates.site` project and release a wrapper built after `bunx cap sync android`. Preserve Hub project attachments, DNS and all existing subdomains.

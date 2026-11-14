@@ -10,6 +10,7 @@ metadata:
   author: Google LLC
   category: Serverless
 ---
+
 # hosting-basics
 
 This skill provides instructions and references for working with Firebase

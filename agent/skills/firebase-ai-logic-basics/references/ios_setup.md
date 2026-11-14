@@ -66,16 +66,16 @@ final class AIViewModel {
         backend: .googleAI(),
         useLimitedUseAppCheckTokens: true
     ).generativeModel(modelName: "<latest_supported_model>")
-    
+
     var responseText: String = ""
     var isFetching: Bool = false
     var errorMessage: String?
-    
+
     func generate(prompt: String) async {
         isFetching = true
         errorMessage = nil
         defer { isFetching = false }
-        
+
         do {
             let response = try await model.generateContent(prompt)
             self.responseText = response.text ?? "No response"
@@ -88,16 +88,16 @@ final class AIViewModel {
 struct AIView: View {
     @State private var viewModel = AIViewModel()
     @State private var prompt = "Write a story about a magic backpack."
-    
+
     var body: some View {
         VStack {
             TextField("Enter prompt", text: $prompt)
-            
+
             Button("Generate") {
                 Task { await viewModel.generate(prompt: prompt) }
             }
             .disabled(viewModel.isFetching)
-            
+
             if viewModel.isFetching {
                 ProgressView()
             } else if let error = viewModel.errorMessage {
@@ -134,7 +134,7 @@ let model = FirebaseAI.firebaseAI().generativeModel(
 
 For App Check debug tokens during local development and CI/CD, add the
 `FirebaseAppCheck` product to the app target (with the `xcode-project-setup`
-skill), then set the debug provider factory in debug builds *before*
+skill), then set the debug provider factory in debug builds _before_
 `FirebaseApp.configure()`. Otherwise the debug provider isn't used.
 
 ```swift
@@ -218,8 +218,8 @@ Task {
 ### Function Calling (Tools)
 
 Define functions that the model can request to execute to interact with external
-systems. *Note: Advanced workflows like function calling generally require a
-multi-turn Chat Session to handle the back-and-forth execution.*
+systems. _Note: Advanced workflows like function calling generally require a
+multi-turn Chat Session to handle the back-and-forth execution._
 
 ```swift
 let getStockPriceTool = Tool.functionDeclarations([

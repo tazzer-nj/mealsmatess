@@ -51,11 +51,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { AnnouncementsTab } from "@/components/admin/announcements-tab";
-import { TelemetryTab } from "@/components/admin/telemetry-tab";
-import { AiDiagnosticsTab } from "@/components/admin/ai-diagnostics";
-import { FlagsTab } from "@/components/admin/flags-tab";
 import { RecipeImage } from "@/components/recipe-image";
+
+const AnnouncementsTab = lazy(() =>
+  import("@/components/admin/announcements-tab").then((m) => ({ default: m.AnnouncementsTab })),
+);
+const TelemetryTab = lazy(() =>
+  import("@/components/admin/telemetry-tab").then((m) => ({ default: m.TelemetryTab })),
+);
+const AiDiagnosticsTab = lazy(() =>
+  import("@/components/admin/ai-diagnostics").then((m) => ({ default: m.AiDiagnosticsTab })),
+);
+const FlagsTab = lazy(() =>
+  import("@/components/admin/flags-tab").then((m) => ({ default: m.FlagsTab })),
+);
 
 // Charts pull in the charting library — load them only when a chart renders.
 const AreaTrend = lazy(() =>
@@ -352,13 +361,37 @@ function AdminPage() {
           />
         </TabsContent>
         <TabsContent value="telemetry" className="mt-4">
-          <TelemetryTab range={range} />
+          <Suspense
+            fallback={
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            }
+          >
+            <TelemetryTab range={range} />
+          </Suspense>
         </TabsContent>
         <TabsContent value="ai" className="mt-4">
-          <AiDiagnosticsTab />
+          <Suspense
+            fallback={
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            }
+          >
+            <AiDiagnosticsTab />
+          </Suspense>
         </TabsContent>
         <TabsContent value="flags" className="mt-4">
-          <FlagsTab />
+          <Suspense
+            fallback={
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            }
+          >
+            <FlagsTab />
+          </Suspense>
         </TabsContent>
         <TabsContent value="subs" className="mt-4">
           <SubscribersTab />
@@ -373,7 +406,15 @@ function AdminPage() {
           <ManagedRestaurantsTab />
         </TabsContent>
         <TabsContent value="announce" className="mt-4">
-          <AnnouncementsTab />
+          <Suspense
+            fallback={
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            }
+          >
+            <AnnouncementsTab />
+          </Suspense>
         </TabsContent>
         <TabsContent value="audit" className="mt-4">
           <AuditTab />

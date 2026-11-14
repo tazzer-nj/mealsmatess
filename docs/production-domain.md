@@ -8,14 +8,14 @@ Consumer's official production origin is **https://mealsmates.site** in the exis
 
 ## Host boundaries
 
-| Host | Project and routing |
-| --- | --- |
-| `mealsmates.site` | `mealsmates`, direct Production |
-| `www.mealsmates.site` | `mealsmates`, permanent 308 redirect to apex, preserving path/query |
-| `hub.mealsmates.site` | `mealsmates`, direct Production; retain hostname |
-| `partner.mealsmates.site`, `partners.mealsmates.site` | Separate `mealmate-hub`; preserve attachments and DNS |
-| `discover.mealsmates.site` | Separate `mealmate-website`; preserve |
-| `admin.mealsmates.site` | Separate `mealmate-admin`; preserve |
+| Host                                                  | Project and routing                                                 |
+| ----------------------------------------------------- | ------------------------------------------------------------------- |
+| `mealsmates.site`                                     | `mealsmates`, direct Production                                     |
+| `www.mealsmates.site`                                 | `mealsmates`, permanent 308 redirect to apex, preserving path/query |
+| `hub.mealsmates.site`                                 | `mealsmates`, direct Production; retain hostname                    |
+| `partner.mealsmates.site`, `partners.mealsmates.site` | Separate `mealmate-hub`; preserve attachments and DNS               |
+| `discover.mealsmates.site`                            | Separate `mealmate-website`; preserve                               |
+| `admin.mealsmates.site`                               | Separate `mealmate-admin`; preserve                                 |
 
 The user's latest explicit domain checklist changes the earlier instruction to preserve the `www` Hub attachment. On 2026-10-30, exactly `www.mealsmates.site` was moved from `mealmate-hub` to `mealsmates`, with a Vercel domain-level 308 redirect to `mealsmates.site`. The other attachments remain intact. The separate typo hostname `www.mealsmate.site` was not changed.
 
@@ -27,8 +27,8 @@ Authoritative nameservers are `ashton.ns.cloudflare.com` and `brenna.ns.cloudfla
 
 For `www`, the project's DNS panel specifies:
 
-| Type | Name | Required target |
-| --- | --- | --- |
+| Type  | Name  | Required target                        |
+| ----- | ----- | -------------------------------------- |
 | CNAME | `www` | `204900adb0666974.vercel-dns-017.com.` |
 
 Vercel also reports conflicting public AAAA answers `2606:4700:3031::ac43:c764` and `2606:4700:3036::6815:5ce6`. Inspect the actual Cloudflare zone first: proxied records can generate those answers. Configure only the requested hosts using the current Vercel recommendations; use DNS-only where required and remove explicit conflicting records only after inspection. Do not delete wildcard, Hub, mail, verification or other records. The apex panel currently reports Proxy Detected without exposing a required origin A value; do not invent one.
@@ -72,6 +72,5 @@ The redeploy dialog was prepared for the same Current source and Production envi
 - No Android device is connected to this sandbox. Android Chrome and the installed Google Play application's account-selection-and-return tests remain blocked; a successful debug build from the prior task does not establish store sign-in.
 
 The Capacitor source in this branch loads the official origin and keeps package `com.taztechnologies.mealmate`. An installed Play/Median wrapper may differ from this source; inspect the actual installed package/version and release signing configuration before changing native OAuth. Do not bypass Google's embedded-browser restrictions. Test the installed Play version separately from a browser or debug APK.
-
 
 <!-- /coderabbit-ai-generated:v1 -->

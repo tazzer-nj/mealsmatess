@@ -1,7 +1,25 @@
+import { lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { getAdminTelemetry } from "@/lib/admin-analytics.functions";
-import { AreaTrend, BarBreakdown, DonutBreakdown } from "@/components/admin/charts";
+
+const AreaTrend = lazy(() =>
+  import("@/components/admin/charts").then((m) => ({ default: m.AreaTrend })),
+);
+const BarBreakdown = lazy(() =>
+  import("@/components/admin/charts").then((m) => ({ default: m.BarBreakdown })),
+);
+const DonutBreakdown = lazy(() =>
+  import("@/components/admin/charts").then((m) => ({ default: m.DonutBreakdown })),
+);
+
+function ChartSkeleton() {
+  return (
+    <div className="flex h-64 items-center justify-center text-xs text-muted-foreground">
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading chart…
+    </div>
+  );
+}
 
 export function TelemetryTab({ range }: { range: { from: string; to: string } }) {
   const q = useQuery({
@@ -43,25 +61,31 @@ export function TelemetryTab({ range }: { range: { from: string; to: string } })
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-border bg-card p-4">
           <h3 className="mb-3 font-medium">Events per day</h3>
-          <AreaTrend
-            data={t.series.map((s) => ({ date: s.date, value: s.count }))}
-            dataKey="value"
-            color="hsl(var(--primary))"
-          />
+          <Suspense fallback={<ChartSkeleton />}>
+            <AreaTrend
+              data={t.series.map((s) => ({ date: s.date, value: s.count }))}
+              dataKey="value"
+              color="hsl(var(--primary))"
+            />
+          </Suspense>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4">
           <h3 className="mb-3 font-medium">By kind</h3>
-          <DonutBreakdown data={t.events_by_kind} dataKey="count" nameKey="name" />
+          <Suspense fallback={<ChartSkeleton />}>
+            <DonutBreakdown data={t.events_by_kind} dataKey="count" nameKey="name" />
+          </Suspense>
         </div>
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-4">
         <h3 className="mb-3 font-medium">Top events</h3>
-        <BarBreakdown
-          data={t.events_by_name.slice(0, 10).map((e) => ({ name: e.name, count: e.count }))}
-          dataKey="count"
-          xKey="name"
-        />
+        <Suspense fallback={<ChartSkeleton />}>
+          <BarBreakdown
+            data={t.events_by_name.slice(0, 10).map((e) => ({ name: e.name, count: e.count }))}
+            dataKey="count"
+            xKey="name"
+          />
+        </Suspense>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase text-muted-foreground">

@@ -13,6 +13,7 @@ metadata:
   author: Google LLC
   category: ApplicationDevelopment
 ---
+
 # Remote Config
 
 This skill provides a complete guide for getting started with Remote Config on
@@ -102,7 +103,7 @@ history through the terminal:
     local JSON to the Remote Config service:
 
   ```json
-    { "remoteconfig": { "template": "remote_config.json" } }
+  { "remoteconfig": { "template": "remote_config.json" } }
   ```
 
   - Deploy: Execute the partial deployment command

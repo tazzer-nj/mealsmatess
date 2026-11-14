@@ -9,6 +9,7 @@ metadata:
   author: Google LLC
   category: Databases
 ---
+
 # Firebase SQL Connect
 
 Firebase SQL Connect is a relational database service using Cloud SQL for
@@ -139,7 +140,7 @@ For platform-specific instructions on how to use the generated SDKs, read:
   [reference/sdk_admin_node.md](reference/sdk_admin_node.md)
 - **Flutter (Dart)**: [reference/sdk_flutter.md](reference/sdk_flutter.md)
 
-______________________________________________________________________
+---
 
 ## Feature Capability Map
 
@@ -159,7 +160,7 @@ If you need to implement a specific feature, consult the mapped reference file:
 | **Data Seeding & Migrations**   | [reference/data_seeding.md](reference/data_seeding.md)       | `seed_data.gql`, `_insertMany`, Admin SDK bulk     |
 | **Starter Templates**           | [templates.md](templates.md)                                 | CRUD, user-owned resources, many-to-many, SDK init |
 
-______________________________________________________________________
+---
 
 ## Deployment & CLI
 

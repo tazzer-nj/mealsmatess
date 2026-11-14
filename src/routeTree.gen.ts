@@ -38,6 +38,7 @@ import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as ApiMiaRouteImport } from './routes/api/mia'
 import { Route as ApiRecipeImageRouteImport } from './routes/api/recipe-image'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AuthFounderRouteImport } from './routes/auth.founder'
 import { Route as LegalPrivacyRouteImport } from './routes/legal.privacy'
 import { Route as LegalTermsRouteImport } from './routes/legal.terms'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
@@ -193,6 +194,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/callback',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthFounderRoute = AuthFounderRouteImport.update({
+  id: '/founder',
+  path: '/founder',
+  getParentRoute: () => AuthRoute,
+} as any)
 const LegalPrivacyRoute = LegalPrivacyRouteImport.update({
   id: '/legal/privacy',
   path: '/legal/privacy',
@@ -272,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/api/mia': typeof ApiMiaRoute
   '/api/recipe-image': typeof ApiRecipeImageRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/auth/founder': typeof AuthFounderRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/order/$id': typeof OrderIdRoute
@@ -312,6 +319,7 @@ export interface FileRoutesByTo {
   '/api/mia': typeof ApiMiaRoute
   '/api/recipe-image': typeof ApiRecipeImageRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/auth/founder': typeof AuthFounderRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/order/$id': typeof OrderIdRoute
@@ -353,6 +361,7 @@ export interface FileRoutesById {
   '/api/mia': typeof ApiMiaRoute
   '/api/recipe-image': typeof ApiRecipeImageRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/auth/founder': typeof AuthFounderRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/order/$id': typeof OrderIdRoute
@@ -395,6 +404,7 @@ export interface FileRouteTypes {
     | '/api/mia'
     | '/api/recipe-image'
     | '/auth/callback'
+    | '/auth/founder'
     | '/legal/privacy'
     | '/legal/terms'
     | '/order/$id'
@@ -435,6 +445,7 @@ export interface FileRouteTypes {
     | '/api/mia'
     | '/api/recipe-image'
     | '/auth/callback'
+    | '/auth/founder'
     | '/legal/privacy'
     | '/legal/terms'
     | '/order/$id'
@@ -475,6 +486,7 @@ export interface FileRouteTypes {
     | '/api/mia'
     | '/api/recipe-image'
     | '/auth/callback'
+    | '/auth/founder'
     | '/legal/privacy'
     | '/legal/terms'
     | '/order/$id'
@@ -730,6 +742,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/auth/founder': {
+      id: '/auth/founder'
+      path: '/founder'
+      fullPath: '/auth/founder'
+      preLoaderRoute: typeof AuthFounderRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/legal/privacy': {
       id: '/legal/privacy'
       path: '/legal/privacy'
@@ -798,10 +817,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthFounderRoute: typeof AuthFounderRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
+  AuthFounderRoute: AuthFounderRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)

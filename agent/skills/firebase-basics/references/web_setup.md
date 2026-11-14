@@ -48,7 +48,7 @@ const firebaseConfig = {
   storageBucket: "PROJECT_ID.firebasestorage.app",
   messagingSenderId: "SENDER_ID",
   appId: "APP_ID",
-  measurementId: "G-MEASUREMENT_ID"
+  measurementId: "G-MEASUREMENT_ID",
 };
 
 // Initialize Firebase
@@ -113,12 +113,10 @@ To persist a stable debug token across browser resets without leaking secrets:
    if (typeof self !== "undefined") {
      if (typeof process !== "undefined" && process.env.NODE_ENV === "development") {
        // ✅ SAFE: Load dynamically from Next.js environment variable; fallback to true to auto-generate
-       self.FIREBASE_APPCHECK_DEBUG_TOKEN =
-         process.env.NEXT_PUBLIC_APP_CHECK_DEBUG_TOKEN || true;
+       self.FIREBASE_APPCHECK_DEBUG_TOKEN = process.env.NEXT_PUBLIC_APP_CHECK_DEBUG_TOKEN || true;
      } else if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
        // ✅ SAFE: Load dynamically from Vite environment variable; fallback to true to auto-generate
-       self.FIREBASE_APPCHECK_DEBUG_TOKEN =
-         import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
+       self.FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
      }
    }
 
