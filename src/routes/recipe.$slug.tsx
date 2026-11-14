@@ -291,7 +291,7 @@ function RecipePage() {
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
               <ImageCredit source={r.image_source} attribution={r.image_attribution} />
-              <ChangeImageButton recipeId={r.id} slug={r.slug} currentImage={r.image_url} />
+              <ChangeImageButton recipe={r} userId={user?.id} />
             </div>
           </div>
 

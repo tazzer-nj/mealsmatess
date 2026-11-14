@@ -7,6 +7,7 @@ import {
   Bot,
   Check,
   ChevronRight,
+  Contrast,
   CreditCard,
   Download,
   ExternalLink,
@@ -40,6 +41,7 @@ import { useTheme, type ThemeMode } from "@/components/theme-provider";
 import { APP_FONTS, type AppFontId } from "@/lib/app-fonts";
 import { createPurchaseSession, verifyMyPremium } from "@/lib/billing.functions";
 import { loadBillingStore } from "@/lib/billing-client";
+import { useCurrency } from "@/lib/currency";
 import {
   auth,
   db,
@@ -144,9 +146,10 @@ function formatInitials(name?: string | null, email?: string | null): string {
 
 function formatPlanTier(tier: string, isPremium: boolean): string {
   if (!isPremium || tier === "free") return "Free Plan";
-  if (tier === "family") return "MealMate Family";
-  if (tier === "yearly") return "MealMate Yearly";
-  if (tier === "monthly") return "MealMate Monthly";
+  const normalized = tier.toLowerCase();
+  if (normalized.includes("family")) return "MealMate Family";
+  if (normalized.includes("year") || normalized.includes("annual")) return "MealMate Yearly";
+  if (normalized.includes("month")) return "MealMate Monthly";
   return "MealMate Premium";
 }
 
@@ -164,7 +167,8 @@ function formatDate(iso?: string | null): string | null {
 export function SettingsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useSession();
+  const { user, firebaseUser } = useSession();
+  const { currency } = useCurrency();
   const { isPremium, tier, trialActive, entitlement } = usePremium();
   const { preferences, save: savePreferences } = usePreferences();
   const { mode, setMode, font, setFont } = useTheme();
@@ -213,7 +217,9 @@ export function SettingsPage() {
   const [draftPrefs, setDraftPrefs] = useState<FoodPreferences>(preferences);
   const [savingPrefs, setSavingPrefs] = useState(false);
 
-  const isGoogleUser = Boolean(user?.providerData?.some((p) => p.providerId === "google.com"));
+  const isGoogleUser = Boolean(
+    firebaseUser?.providerData?.some((p) => p.providerId === "google.com"),
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -374,18 +380,25 @@ export function SettingsPage() {
     try {
       const identity = await createPurchaseSession();
       if (!identity.isActive) {
-        const store = await loadBillingStore(identity);
+        const store = await loadBillingStore(identity, currency);
         await store.restore();
       }
       const access = await verifyMyPremium();
       await queryClient.invalidateQueries({ queryKey: ["entitlement"] });
+      if (user?.id) {
+        await queryClient.invalidateQueries({ queryKey: ["user-flow-progress", user.id] });
+      }
       if (access.isPremium) {
         toast.success("Subscription restored and active.");
       } else {
         toast.info("No active store subscription found for this account.");
       }
-    } catch {
-      toast.error("Could not restore purchases right now. Please try again.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error && /configured|available|REVENUECAT/i.test(error.message)
+          ? error.message
+          : "Could not restore purchases right now. Please try again.",
+      );
     } finally {
       setRestoring(false);
     }
@@ -436,7 +449,13 @@ export function SettingsPage() {
   function handleAppearanceChange(nextMode: ThemeMode) {
     setMode(nextMode);
     const label =
-      nextMode === "light" ? "Light mode" : nextMode === "dark" ? "Dark mode" : "System default";
+      nextMode === "light"
+        ? "Light"
+        : nextMode === "dark"
+          ? "Dark"
+          : nextMode === "dark-premium"
+            ? "Dark Premium"
+            : "System default";
     toast.success(`Appearance set to ${label}`);
   }
 
@@ -964,20 +983,45 @@ export function SettingsPage() {
           <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
             <div className="p-4 sm:p-5">
               <div className="mb-3">
-                <div className="text-sm font-medium text-foreground">Theme mode</div>
+                <div className="text-sm font-medium text-foreground">Appearance</div>
                 <div className="text-xs text-muted-foreground">
-                  Switch between Light, Dark, or follow your device&apos;s system setting
+                  Choose Light, Dark, Dark Premium, or follow your device&apos;s system setting
                 </div>
               </div>
               <div
                 role="radiogroup"
                 aria-label="Appearance mode"
-                className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-secondary p-1"
+                className="grid grid-cols-2 gap-2.5 sm:grid-cols-4"
               >
                 {[
-                  { id: "light" as ThemeMode, label: "Light", icon: Sun },
-                  { id: "dark" as ThemeMode, label: "Dark", icon: Moon },
-                  { id: "system" as ThemeMode, label: "System", icon: Monitor },
+                  {
+                    id: "light" as ThemeMode,
+                    label: "Light",
+                    sub: "Crisp white surface",
+                    swatch: "linear-gradient(135deg, #ffffff 55%, #e4e4e7 100%)",
+                    icon: Sun,
+                  },
+                  {
+                    id: "dark" as ThemeMode,
+                    label: "Dark",
+                    sub: "Charcoal & black",
+                    swatch: "linear-gradient(135deg, #080808 55%, #262626 100%)",
+                    icon: Moon,
+                  },
+                  {
+                    id: "dark-premium" as ThemeMode,
+                    label: "Dark Premium",
+                    sub: "Midnight & periwinkle",
+                    swatch: "linear-gradient(135deg, #050814 45%, #5b6cfa 100%)",
+                    icon: Contrast,
+                  },
+                  {
+                    id: "system" as ThemeMode,
+                    label: "System",
+                    sub: "Match device setting",
+                    swatch: "linear-gradient(135deg, #fafafa 50%, #09090b 50%)",
+                    icon: Monitor,
+                  },
                 ].map((opt) => {
                   const active = mode === opt.id;
                   const Icon = opt.icon;
@@ -988,17 +1032,29 @@ export function SettingsPage() {
                       role="radio"
                       aria-checked={active}
                       onClick={() => handleAppearanceChange(opt.id)}
-                      className={`flex min-h-[40px] items-center justify-center gap-2 rounded-lg text-xs font-medium transition-all ${
+                      className={`flex flex-col items-start justify-between rounded-xl border p-3 text-left transition-all ${
                         active
-                          ? "bg-card text-foreground shadow-sm ring-1 ring-border"
-                          : "text-muted-foreground hover:text-foreground"
+                          ? "border-[var(--periwinkle)] bg-[var(--periwinkle-soft)] text-foreground shadow-sm"
+                          : "border-border bg-secondary text-foreground hover:border-foreground/25"
                       }`}
                     >
-                      <Icon
-                        size={14}
-                        className={active ? "text-[var(--periwinkle)]" : "text-muted-foreground"}
-                      />
-                      <span>{opt.label}</span>
+                      <div className="flex w-full items-center justify-between gap-2">
+                        <span
+                          className="h-5 w-5 shrink-0 rounded-md border border-border/80"
+                          style={{ background: opt.swatch }}
+                          aria-hidden="true"
+                        />
+                        <Icon
+                          size={14}
+                          className={active ? "text-[var(--periwinkle)]" : "text-muted-foreground"}
+                        />
+                      </div>
+                      <div className="mt-2.5">
+                        <div className="text-xs font-medium leading-tight">{opt.label}</div>
+                        <div className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
+                          {opt.sub}
+                        </div>
+                      </div>
                     </button>
                   );
                 })}

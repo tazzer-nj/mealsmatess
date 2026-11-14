@@ -41,8 +41,9 @@ const EXPIRE_TYPES = new Set(["EXPIRATION", "CANCELLATION", "REFUND", "SUBSCRIPT
 
 function tierFromProduct(
   productId: string | undefined,
-): "monthly" | "annual" | "lifetime" | "promo" {
+): "monthly" | "annual" | "family" | "lifetime" | "promo" {
   const p = (productId ?? "").toLowerCase();
+  if (p.includes("family")) return "family";
   if (p.includes("annual") || p.includes("year")) return "annual";
   if (p.includes("lifetime") || p.includes("forever")) return "lifetime";
   if (p.includes("monthly") || p.includes("month")) return "monthly";
@@ -51,7 +52,7 @@ function tierFromProduct(
 
 function storeFrom(
   s: string | undefined,
-): "app_store" | "play_store" | "stripe" | "promo" | "admin" {
+): "app_store" | "play_store" | "stripe" | "rc_billing" | "paddle" | "promo" | "admin" {
   switch ((s ?? "").toUpperCase()) {
     case "APP_STORE":
     case "MAC_APP_STORE":
@@ -60,6 +61,10 @@ function storeFrom(
       return "play_store";
     case "STRIPE":
       return "stripe";
+    case "RC_BILLING":
+      return "rc_billing";
+    case "PADDLE":
+      return "paddle";
     case "PROMOTIONAL":
       return "promo";
     default:

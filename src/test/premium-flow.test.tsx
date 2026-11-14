@@ -38,7 +38,6 @@ vi.mock("@/lib/billing.functions", () => ({
   verifyCheckout: mocks.verify,
   getIntroCompletion: mocks.intro,
   completeIntro: mocks.complete,
-  redeemPromoCode: vi.fn(),
 }));
 vi.mock("@/lib/preferences.functions", () => ({ getMyPreferences: () => mocks.prefs() }));
 vi.mock("@/lib/billing-client", async (original) => ({
@@ -123,6 +122,15 @@ describe("onboarding and mandatory paywall", () => {
     expect(mocks.verify).not.toHaveBeenCalled();
     expect(screen.queryByText(/Continue Free|Skip|Close paywall/)).not.toBeInTheDocument();
     expect(screen.getByText(/7 days free, then R399.00 every year/)).toBeInTheDocument();
+  });
+
+  it("handles pending store payments without opening the app", async () => {
+    mocks.purchase.mockRejectedValue({ errorCode: 20, name: "PaymentPendingError" });
+    mount(<PremiumPaywall />);
+    fireEvent.click(await screen.findByRole("button", { name: "Start 7-day free trial" }));
+    await screen.findByText(/pending confirmation/);
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Check subscription access" })).toBeEnabled();
   });
 
   it("waits for server verification after payment before opening app tour or sign-in", async () => {

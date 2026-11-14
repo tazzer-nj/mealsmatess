@@ -158,11 +158,33 @@ describe("RevenueCat authority", () => {
       parseRevenueCatAccess(
         {
           ...data,
-          subscriptions: { monthly: { ...data.subscriptions.monthly, expires_date: purchased } },
+          subscriptions: {
+            monthly: { ...data.subscriptions.monthly, expires_date: purchased },
+          },
         },
         now,
       ).isPremium,
     ).toBe(false);
+    expect(
+      parseRevenueCatAccess(
+        {
+          ...data,
+          subscriptions: { monthly: { ...data.subscriptions.monthly, store: "test_store" } },
+        },
+        now,
+        false,
+      ).isPremium,
+    ).toBe(false);
+    expect(
+      parseRevenueCatAccess(
+        {
+          ...data,
+          subscriptions: { monthly: { ...data.subscriptions.monthly, store: "test_store" } },
+        },
+        now,
+        true,
+      ).isPremium,
+    ).toBe(true);
   });
   it("preserves lifetime entitlements only when the matching transaction is verified", () => {
     const lifetime = subscriber(null);

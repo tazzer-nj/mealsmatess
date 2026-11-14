@@ -57,6 +57,21 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const url = new URL(request.url);
+      if (
+        (request.method === "GET" || request.method === "HEAD") &&
+        url.pathname === "/googlefa95a1a25b45551e.html"
+      ) {
+        return new Response(
+          request.method === "HEAD"
+            ? null
+            : "google-site-verification: googlefa95a1a25b45551e.html",
+          {
+            status: 200,
+            headers: { "content-type": "text/html; charset=utf-8" },
+          },
+        );
+      }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response, request);

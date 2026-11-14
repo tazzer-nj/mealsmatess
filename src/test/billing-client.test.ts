@@ -31,6 +31,7 @@ const identity = {
   appUserId: "server-issued",
   offering: "default" as const,
   androidApiKey: "synthetic-public-android",
+  iosApiKey: null,
   webApiKey: "synthetic-public-web",
 };
 const option = {
@@ -87,5 +88,79 @@ describe("Android RevenueCat store adapter", () => {
     mocks.offerings.mockResolvedValue({ all: { other: { availablePackages: [] } } });
     const { loadBillingStore } = await import("@/lib/billing-client");
     await expect(loadBillingStore(identity)).rejects.toThrow("temporarily unavailable");
+  });
+});
+
+describe("Web RevenueCat store adapter", () => {
+  it("fails closed when webApiKey is missing instead of inventing prices", async () => {
+    mocks.native = false;
+    const { loadBillingStore } = await import("@/lib/billing-client");
+    await expect(loadBillingStore({ ...identity, webApiKey: null })).rejects.toThrow(
+      "REVENUECAT_WEB_PUBLIC_KEY",
+    );
+  });
+
+  it("loads live ZAR offerings for premium_monthly, premium_yearly and premium_family_monthly", async () => {
+    mocks.native = false;
+    const getOfferings = vi.fn().mockResolvedValue({
+      all: {
+        default: {
+          availablePackages: [
+            {
+              identifier: "$rc_family",
+              product: {
+                identifier: "premium_family_monthly",
+                price: { formattedPrice: "R 249.00" },
+                period: { number: 1, unit: "month" },
+                freeTrialPhase: null,
+                introPricePhase: null,
+              },
+            },
+            {
+              identifier: "$rc_monthly",
+              product: {
+                identifier: "premium_monthly",
+                price: { formattedPrice: "R 189.00" },
+                period: { number: 1, unit: "month" },
+                freeTrialPhase: null,
+                introPricePhase: null,
+              },
+            },
+            {
+              identifier: "$rc_annual",
+              product: {
+                identifier: "premium_yearly",
+                price: { formattedPrice: "R 1,399.00" },
+                period: { number: 1, unit: "year" },
+                freeTrialPhase: { periodDuration: "P7D" },
+                introPricePhase: null,
+              },
+            },
+          ],
+        },
+      },
+    });
+    const purchase = vi.fn().mockResolvedValue({ customerInfo: {} });
+    const getCustomerInfo = vi.fn().mockResolvedValue({});
+    mocks.web.mockReturnValue({ getOfferings, purchase, getCustomerInfo, changeUser: vi.fn() });
+
+    const { loadBillingStore, purchaseIsPending, purchaseWasCancelled } =
+      await import("@/lib/billing-client");
+    const store = await loadBillingStore(identity, "ZAR");
+    expect(getOfferings).toHaveBeenCalledWith({ offeringIdentifier: "default", currency: "ZAR" });
+    expect(store.plans.map((p) => [p.kind, p.price, p.period, p.trialDays])).toEqual([
+      ["monthly", "R 189.00", "month", 0],
+      ["yearly", "R 1,399.00", "year", 7],
+      ["family", "R 249.00", "month", 0],
+    ]);
+    await store.plans[1].purchase();
+    expect(purchase).toHaveBeenCalledWith({
+      rcPackage: expect.objectContaining({ identifier: "$rc_annual" }),
+      skipSuccessPage: true,
+    });
+    await store.restore();
+    expect(getCustomerInfo).toHaveBeenCalledOnce();
+    expect(purchaseWasCancelled({ errorCode: 1 })).toBe(true);
+    expect(purchaseIsPending({ errorCode: 20 })).toBe(true);
   });
 });

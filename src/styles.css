@@ -225,6 +225,89 @@ html[data-font="fraunces"] {
   --sidebar-ring: #7c8cff;
 }
 
+/* Dark Premium — Midnight navy canvas, restrained sapphire atmospheric lighting & crisp periwinkle accents */
+html.dark-premium,
+html[data-theme="dark-premium"],
+.dark-premium {
+  color-scheme: dark;
+  --positive: #34d399;
+  --negative: #f87171;
+  --periwinkle: #8594ff;
+  --periwinkle-soft: rgba(133, 148, 255, 0.16);
+  --cream: #0e162e;
+  --ink: #f8faff;
+  --ember: #a5b4fc;
+  --leaf: #8594ff;
+  --market-hero: #f8faff;
+  --background: #050814;
+  --foreground: #f8faff;
+  --card: #0d152b;
+  --card-foreground: #f8faff;
+  --popover: #121c38;
+  --popover-foreground: #f8faff;
+  --primary: #eef2ff;
+  --primary-foreground: #050814;
+  --secondary: #0a1022;
+  --secondary-foreground: #f8faff;
+  --muted: #131c38;
+  --muted-foreground: #96a4c2;
+  --accent: #172242;
+  --accent-foreground: #f8faff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: rgba(133, 148, 255, 0.2);
+  --input: rgba(133, 148, 255, 0.28);
+  --ring: #8594ff;
+  --chart-1: #eef2ff;
+  --chart-2: #8594ff;
+  --chart-3: #60a5fa;
+  --chart-4: #96a4c2;
+  --chart-5: #3b4b75;
+  --sidebar: #090f20;
+  --sidebar-foreground: #f8faff;
+  --sidebar-primary: #8594ff;
+  --sidebar-primary-foreground: #050814;
+  --sidebar-accent: #131c38;
+  --sidebar-accent-foreground: #f8faff;
+  --sidebar-border: rgba(133, 148, 255, 0.2);
+  --sidebar-ring: #8594ff;
+  --shadow-admin: 0 12px 32px -16px rgba(5, 8, 20, 0.85), 0 0 0 1px rgba(133, 148, 255, 0.08);
+  --shadow-cooking: 0 14px 36px -14px rgba(5, 8, 20, 0.9), 0 0 28px -12px rgba(91, 108, 250, 0.28);
+}
+
+html[data-theme="dark-premium"] .theme-backdrop,
+html[data-theme="dark-premium"] .paywall-redesign,
+html[data-theme="dark-premium"] .onboarding-shell,
+html[data-theme="dark-premium"] .auth-redesign,
+html[data-theme="dark-premium"] .app-tour-shell {
+  background-color: #050814;
+  background-image:
+    radial-gradient(ellipse 90% 42% at 50% -8%, rgba(91, 108, 250, 0.16), transparent 72%),
+    radial-gradient(circle at 88% 92%, rgba(56, 189, 248, 0.08), transparent 52%);
+}
+
+html[data-theme="dark-premium"] #app-header,
+html[data-theme="dark-premium"] #app-nav {
+  background-color: rgba(6, 10, 24, 0.84);
+  border-color: rgba(133, 148, 255, 0.18);
+  box-shadow: 0 8px 30px -16px rgba(5, 8, 20, 0.85);
+}
+
+html[data-theme="dark-premium"] .paywall-grid,
+html[data-theme="dark-premium"] .onboarding-surface,
+html[data-theme="dark-premium"] .tour-step-card,
+html[data-theme="dark-premium"] .mia-voice-panel {
+  background-color: rgba(13, 21, 43, 0.92);
+  border-color: rgba(133, 148, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 20px 44px -22px rgba(3, 6, 18, 0.92);
+}
+
+html[data-theme="dark-premium"] .splash-screen {
+  background: radial-gradient(circle at 50% 40%, #101936 0%, #050814 70%);
+}
+
 @layer base {
   * {
     border-color: var(--color-border);

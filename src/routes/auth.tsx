@@ -741,23 +741,49 @@ function AuthPage() {
               </div>
             )}
 
-            <p className="mt-7 border-t border-border pt-5 text-center text-xs leading-relaxed text-muted-foreground">
-              By continuing, you agree to our{" "}
-              <Link
-                to="/legal/terms"
-                className="font-medium text-foreground underline underline-offset-4 transition-colors hover:text-[var(--periwinkle)]"
+            <footer className="mt-7 border-t border-border pt-5 text-center">
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                By continuing, you agree to our Terms and Privacy Policy.
+              </p>
+              <nav
+                aria-label="Authentication footer links"
+                className="mt-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 text-xs text-muted-foreground"
               >
-                Terms
-              </Link>{" "}
-              and{" "}
-              <Link
-                to="/legal/privacy"
-                className="font-medium text-foreground underline underline-offset-4 transition-colors hover:text-[var(--periwinkle)]"
-              >
-                Privacy Policy
-              </Link>
-              .
-            </p>
+                <Link
+                  to="/legal/privacy"
+                  className="font-medium text-foreground transition-colors hover:text-[var(--periwinkle)] hover:underline hover:underline-offset-4"
+                >
+                  Privacy
+                </Link>
+                <span aria-hidden="true" className="text-border">
+                  |
+                </span>
+                <Link
+                  to="/support"
+                  className="font-medium text-foreground transition-colors hover:text-[var(--periwinkle)] hover:underline hover:underline-offset-4"
+                >
+                  Help
+                </Link>
+                <span aria-hidden="true" className="text-border">
+                  |
+                </span>
+                <Link
+                  to="/legal/terms"
+                  className="font-medium text-foreground transition-colors hover:text-[var(--periwinkle)] hover:underline hover:underline-offset-4"
+                >
+                  Terms
+                </Link>
+                <span aria-hidden="true" className="text-border">
+                  |
+                </span>
+                <Link
+                  to="/auth/founder"
+                  className="font-medium text-foreground transition-colors hover:text-[var(--periwinkle)] hover:underline hover:underline-offset-4"
+                >
+                  Founder &amp; Company
+                </Link>
+              </nav>
+            </footer>
           </div>
         </section>
       </div>

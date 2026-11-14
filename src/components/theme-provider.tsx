@@ -14,8 +14,8 @@ import {
   type AppFontId,
 } from "@/lib/app-fonts";
 
-export type ThemeMode = "light" | "dark" | "system";
-export type ResolvedTheme = "light" | "dark";
+export type ThemeMode = "light" | "dark" | "dark-premium" | "system";
+export type ResolvedTheme = "light" | "dark" | "dark-premium";
 
 const STORAGE_KEY = "mealmate-theme";
 
@@ -29,9 +29,13 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function systemPref(): ResolvedTheme {
+function systemPref(): "light" | "dark" {
   if (typeof window === "undefined") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function resolveTheme(mode: ThemeMode): ResolvedTheme {
+  return mode === "system" ? systemPref() : mode;
 }
 
 const DARK_APP_ICON = "/favicon.png";
@@ -39,11 +43,16 @@ const LIGHT_APP_ICON = "/favicon.png";
 
 function applyTheme(resolved: ResolvedTheme) {
   const root = document.documentElement;
-  root.classList.toggle("dark", resolved === "dark");
+  const isDark = resolved === "dark" || resolved === "dark-premium";
+  root.classList.toggle("dark", isDark);
+  root.classList.toggle("dark-premium", resolved === "dark-premium");
   root.dataset["theme"] = resolved;
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-  if (meta) meta.content = resolved === "dark" ? "#080808" : "#fafafa";
-  const icon = resolved === "dark" ? DARK_APP_ICON : LIGHT_APP_ICON;
+  if (meta) {
+    meta.content =
+      resolved === "dark-premium" ? "#050814" : resolved === "dark" ? "#080808" : "#fafafa";
+  }
+  const icon = isDark ? DARK_APP_ICON : LIGHT_APP_ICON;
   for (const rel of ["icon", "apple-touch-icon"]) {
     const link = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
     if (link) link.href = icon;
@@ -63,9 +72,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
     const initial: ThemeMode =
-      stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+      stored === "light" || stored === "dark" || stored === "dark-premium" || stored === "system"
+        ? stored
+        : "system";
     setModeState(initial);
-    const r = initial === "system" ? systemPref() : initial;
+    const r = resolveTheme(initial);
     setResolved(r);
     applyTheme(r);
 
@@ -91,7 +102,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setMode = useCallback((m: ThemeMode) => {
     setModeState(m);
     window.localStorage.setItem(STORAGE_KEY, m);
-    const r = m === "system" ? systemPref() : m;
+    const r = resolveTheme(m);
     setResolved(r);
     applyTheme(r);
   }, []);

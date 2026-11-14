@@ -12,6 +12,7 @@ const ROUTE_SMOKE_PATHS = [
   "/admin",
   "/auth",
   "/auth/callback",
+  "/auth/founder",
   "/chat",
   "/checkout",
   "/coach",

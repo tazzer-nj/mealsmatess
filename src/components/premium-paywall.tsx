@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -18,17 +18,18 @@ import {
 import { useSession } from "@/hooks/use-session";
 import {
   createPurchaseSession,
-  redeemPromoCode,
   verifyCheckout,
   verifyMyPremium,
   getIntroCompletion,
 } from "@/lib/billing.functions";
 import {
   loadBillingStore,
+  purchaseIsPending,
   purchaseWasCancelled,
   type BillingStore,
   type PlanKind,
 } from "@/lib/billing-client";
+import { useCurrency } from "@/lib/currency";
 import { MealMateLogo } from "@/components/mealmate-logo";
 import { ChefMascot } from "@/components/chef-mascot";
 import paywallHeroImage from "@/assets/images/paywall_editorial_hero_1794594256521.jpg";
@@ -73,6 +74,7 @@ const VALUE_BENEFITS = [
 
 export function PremiumPaywall() {
   const { user, loading: sessionLoading } = useSession();
+  const { currency } = useCurrency();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [store, setStore] = useState<BillingStore | null>(null);
@@ -83,10 +85,12 @@ export function PremiumPaywall() {
   const [message, setMessage] = useState("");
   const [pendingVerification, setPendingVerification] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [promoCode, setPromoCode] = useState("");
-  const [promoBusy, setPromoBusy] = useState(false);
   const [heroFailed, setHeroFailed] = useState(false);
   const lock = useRef(false);
+  const currencyRef = useRef(currency);
+  currencyRef.current = currency;
+  const identityRef = useRef<Awaited<ReturnType<typeof createPurchaseSession>> | null>(null);
+  const loadedCurrencyRef = useRef<string | null>(null);
   const userId = user?.id;
 
   useEffect(() => {
@@ -100,7 +104,7 @@ export function PremiumPaywall() {
     };
   }, []);
 
-  async function routeNext() {
+  const routeNext = useCallback(async () => {
     if (!userId) {
       await navigate({ to: "/auth", replace: true });
       return;
@@ -111,11 +115,13 @@ export function PremiumPaywall() {
     } else {
       await navigate({ to: "/", replace: true });
     }
-  }
+  }, [navigate, userId]);
 
   useEffect(() => {
     if (sessionLoading) return;
     let active = true;
+    identityRef.current = null;
+    loadedCurrencyRef.current = null;
     setLoading(true);
     setStore(null);
     setMessage("");
@@ -126,7 +132,12 @@ export function PremiumPaywall() {
           await routeNext();
           return null;
         }
-        return loadBillingStore(identity);
+        const targetCurrency = currencyRef.current;
+        const nextStore = await loadBillingStore(identity, targetCurrency);
+        if (!active) return null;
+        identityRef.current = identity;
+        loadedCurrencyRef.current = targetCurrency;
+        return nextStore;
       })
       .then((next) => {
         if (!active || !next) return;
@@ -150,7 +161,31 @@ export function PremiumPaywall() {
     return () => {
       active = false;
     };
-  }, [userId, sessionLoading, attempt, navigate]);
+  }, [userId, sessionLoading, attempt, routeNext]);
+
+  useEffect(() => {
+    const identity = identityRef.current;
+    if (!identity || identity.isActive || loadedCurrencyRef.current === currency) return;
+    let active = true;
+    loadedCurrencyRef.current = currency;
+    void loadBillingStore(identity, currency)
+      .then((next) => {
+        if (!active) return;
+        setStore(next);
+        const best = next.plans.find((p) => p.kind === "yearly") ?? next.plans[0];
+        if (best) setSelected(best.kind);
+      })
+      .catch((error) => {
+        if (!active) return;
+        const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+        if (/unavailable|temporarily|not available|plans|not configured|REVENUECAT/i.test(raw)) {
+          setMessage(raw);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [currency]);
 
   async function confirm() {
     for (let i = 0; i < 3; i++) {
@@ -171,33 +206,6 @@ export function PremiumPaywall() {
     );
   }
 
-  async function applyPromo() {
-    if (!userId) {
-      setMessage("Sign in first, then enter your promo code.");
-      return;
-    }
-    if (!promoCode.trim() || promoBusy || lock.current) return;
-    lock.current = true;
-    setPromoBusy(true);
-    setMessage("");
-    try {
-      const access = await redeemPromoCode({ data: { code: promoCode.trim() } });
-      if (access.isPremium) {
-        await queryClient.invalidateQueries({ queryKey: ["entitlement"] });
-        await queryClient.invalidateQueries({ queryKey: ["user-flow-progress", userId] });
-        setMessage("Promo applied — Premium is unlocked.");
-        await routeNext();
-        return;
-      }
-      setMessage("Promo could not be applied. Try again.");
-    } catch {
-      setMessage("That promo code is not valid, or you need to sign in and try again.");
-    } finally {
-      lock.current = false;
-      setPromoBusy(false);
-    }
-  }
-
   async function perform(action: "purchase" | "restore" | "verify") {
     if (lock.current || !online) return;
     lock.current = true;
@@ -214,12 +222,19 @@ export function PremiumPaywall() {
       }
       await confirm();
     } catch (error) {
-      setMessage(
-        purchaseWasCancelled(error)
-          ? "Checkout cancelled. Choose a plan whenever you’re ready."
-          : "We couldn’t confirm your subscription. Please try again or restore purchases. If you were charged, check access before purchasing again.",
-      );
-      if (!purchaseWasCancelled(error) && action === "purchase") setPendingVerification(true);
+      if (purchaseWasCancelled(error)) {
+        setMessage("Checkout cancelled. Choose a plan whenever you’re ready.");
+      } else if (purchaseIsPending(error)) {
+        setPendingVerification(true);
+        setMessage(
+          "Your payment is pending confirmation from the store. Once completed, tap Check subscription access below.",
+        );
+      } else {
+        setMessage(
+          "We couldn’t confirm your subscription. Please try again or restore purchases. If you were charged, check access before purchasing again.",
+        );
+        if (action === "purchase") setPendingVerification(true);
+      }
     } finally {
       lock.current = false;
       setBusy(false);
@@ -419,52 +434,6 @@ export function PremiumPaywall() {
                 Cancel anytime before renewal in your store settings.
               </p>
             )}
-
-            <div className="premium-promo">
-              <label className="premium-promo-label" htmlFor="promo-code">
-                Have an access or promo code?
-              </label>
-              <div className="premium-promo-row">
-                <input
-                  id="promo-code"
-                  type="text"
-                  className="premium-promo-input"
-                  placeholder="ENTER CODE"
-                  value={promoCode}
-                  autoCapitalize="characters"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  disabled={busy || promoBusy || !online}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      void applyPromo();
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  className="premium-promo-button"
-                  disabled={busy || promoBusy || !online || !promoCode.trim()}
-                  onClick={() => void applyPromo()}
-                >
-                  {promoBusy ? <Loader2 className="animate-spin" size={15} /> : "Apply"}
-                </button>
-              </div>
-              {!userId && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  <Link
-                    to="/auth"
-                    search={{ mode: "signin" }}
-                    className="underline hover:text-foreground"
-                  >
-                    Sign in
-                  </Link>{" "}
-                  to redeem your code.
-                </p>
-              )}
-            </div>
 
             <div className="mt-5 flex flex-col items-center gap-2.5">
               <button

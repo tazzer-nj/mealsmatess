@@ -101,6 +101,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "viewport",
         content: "width=device-width, initial-scale=1, viewport-fit=cover",
       },
+      {
+        name: "google-site-verification",
+        content: "U6Y3az-2aYiYoygTitJ1URIuTNWCwkbfNVznjygMimg",
+      },
       { name: "theme-color", content: "#080808" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
@@ -207,9 +211,7 @@ function RootComponent() {
                 ) : (
                   <ConsumerAccessGate>
                     <MiaProvider>
-                      <div
-                        className={`theme-backdrop h-dvh w-full overflow-hidden bg-background ${isMarketplace ? "marketplace-dark" : ""}`}
-                      >
+                      <div className="theme-backdrop h-dvh w-full overflow-hidden bg-background">
                         {showAppHeader && <AppHeader />}
                         <div
                           id="app-scroll"

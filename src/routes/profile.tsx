@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   ChevronRight,
+  Contrast,
   DollarSign,
   FileText,
   Globe,
@@ -12,6 +13,7 @@ import {
   Lock,
   LogOut,
   Mail,
+  Monitor,
   Moon,
   Share2,
   Shield,
@@ -32,7 +34,7 @@ import { requestBrowserPushToken, revokeBrowserPushToken } from "@/lib/push-clie
 import { useSession, signOutUnified } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme, type ThemeMode } from "@/components/theme-provider";
 import { GamificationCard } from "@/components/gamification-card";
 import { ThemePicker } from "@/components/theme-picker";
 import {
@@ -133,7 +135,7 @@ function SettingsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { resolved, setMode } = useTheme();
+  const { mode, resolved, setMode } = useTheme();
 
   const notificationPreferences = useQuery({
     queryKey: ["notification-preferences", user?.id],
@@ -455,19 +457,57 @@ function SettingsPage() {
         title="Appearance"
         items={[
           {
-            label: resolved === "dark" ? "Dark mode" : "Light mode",
+            label:
+              resolved === "dark-premium"
+                ? "Dark Premium"
+                : resolved === "dark"
+                  ? "Dark mode"
+                  : "Light mode",
             description:
-              resolved === "dark"
-                ? "Minimal black & white dark interface"
-                : "Clean neutral light interface",
-            icon: resolved === "dark" ? Moon : Sun,
-            onClick: () => setMode(resolved === "dark" ? "light" : "dark"),
+              mode === "system"
+                ? `Following system setting (${resolved})`
+                : resolved === "dark-premium"
+                  ? "Midnight navy & periwinkle interface"
+                  : resolved === "dark"
+                    ? "Minimal black & white dark interface"
+                    : "Clean neutral light interface",
+            icon: resolved === "dark-premium" ? Contrast : resolved === "dark" ? Moon : Sun,
             trailing: (
-              <Switch
-                checked={resolved === "dark"}
-                onCheckedChange={(v) => setMode(v ? "dark" : "light")}
-                aria-label="Dark mode"
-              />
+              <div onClick={(e) => e.stopPropagation()}>
+                <Select value={mode} onValueChange={(v) => setMode(v as ThemeMode)}>
+                  <SelectTrigger
+                    aria-label="Appearance theme"
+                    className="h-9 w-[150px] rounded-xl border-border bg-secondary text-xs text-foreground"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    align="end"
+                    className="border-border bg-popover text-popover-foreground"
+                  >
+                    <SelectItem value="light">
+                      <span className="inline-flex items-center gap-2">
+                        <Sun className="h-3.5 w-3.5" /> Light
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="dark">
+                      <span className="inline-flex items-center gap-2">
+                        <Moon className="h-3.5 w-3.5" /> Dark
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="dark-premium">
+                      <span className="inline-flex items-center gap-2">
+                        <Contrast className="h-3.5 w-3.5 text-[var(--periwinkle)]" /> Dark Premium
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="system">
+                      <span className="inline-flex items-center gap-2">
+                        <Monitor className="h-3.5 w-3.5" /> System
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             ),
           },
         ]}

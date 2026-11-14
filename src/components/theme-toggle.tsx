@@ -1,4 +1,4 @@
-import { Sun, Moon, Monitor, Check } from "lucide-react";
+import { Sun, Moon, Monitor, Check, Contrast } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,12 +11,13 @@ import { useTheme, type ThemeMode } from "@/components/theme-provider";
 const OPTIONS: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
   { value: "light", label: "Light", icon: Sun },
   { value: "dark", label: "Dark", icon: Moon },
+  { value: "dark-premium", label: "Dark Premium", icon: Contrast },
   { value: "system", label: "System", icon: Monitor },
 ];
 
 export function ThemeToggle() {
   const { mode, resolved, setMode } = useTheme();
-  const Icon = resolved === "dark" ? Moon : Sun;
+  const Icon = resolved === "dark-premium" ? Contrast : resolved === "dark" ? Moon : Sun;
 
   return (
     <DropdownMenu>
@@ -31,7 +32,7 @@ export function ThemeToggle() {
           <Icon className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[9rem]">
+      <DropdownMenuContent align="end" className="min-w-[10.5rem]">
         {OPTIONS.map((o) => {
           const O = o.icon;
           const active = mode === o.value;
