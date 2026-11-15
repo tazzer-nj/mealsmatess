@@ -34,7 +34,7 @@ service cloud.firestore {
     function validUserProfile(uid, data) {
       return data.keys().hasOnly([
           'id', 'email', 'displayName', 'photoURL', 'goal', 'createdAt',
-          'onboarding_completed', 'currency', 'locale', 'theme'
+          'onboarding_completed', 'currency', 'locale', 'theme', 'isAdmin', 'role', 'updatedAt'
         ])
         && data.id == uid
         && data.email is string && data.email.size() <= 254
@@ -45,7 +45,10 @@ service cloud.firestore {
         && validOptionalString(data, 'currency', 3)
         && validOptionalString(data, 'locale', 12)
         && validOptionalString(data, 'theme', 40)
-        && (!('onboarding_completed' in data) || data.onboarding_completed is bool);
+        && (!('onboarding_completed' in data) || data.onboarding_completed is bool)
+        && (!('isAdmin' in data) || data.isAdmin is bool)
+        && (!('role' in data) || (data.role is string && data.role.size() <= 40))
+        && (!('updatedAt' in data) || validTimestampString(data, 'updatedAt'));
     }
 
     function validTimestampString(data, field) {
@@ -115,11 +118,16 @@ service cloud.firestore {
     match /users/{uid} {
       allow get: if isOwner(uid);
       allow list: if false;
-      allow create: if isOwner(uid) && validUserProfile(uid, request.resource.data);
+      allow create: if isOwner(uid)
+        && validUserProfile(uid, request.resource.data)
+        && (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false)
+        && (!('role' in request.resource.data) || request.resource.data.role == 'user');
       allow update: if isOwner(uid)
         && validUserProfile(uid, request.resource.data)
         && request.resource.data.id == resource.data.id
-        && request.resource.data.createdAt == resource.data.createdAt;
+        && request.resource.data.createdAt == resource.data.createdAt
+        && (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == resource.data.get('isAdmin', false))
+        && (!('role' in request.resource.data) || request.resource.data.role == resource.data.get('role', 'user'));
       allow delete: if false;
 
       match /notifications/{notificationId} {

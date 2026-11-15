@@ -146,6 +146,15 @@ export function PremiumPaywall() {
   const [attempt, setAttempt] = useState(0);
   const [heroFailed, setHeroFailed] = useState(false);
   const [activeTab, setActiveTab] = useState<"comparison" | "features" | "reviews">("comparison");
+  const [miaQuoteIndex, setMiaQuoteIndex] = useState(0);
+
+  const MIA_QUOTES = [
+    "Tap me! I scan your fridge & invent gourmet recipes in 10s!",
+    "Jus Facts: Members save ~R1,800/mo & 5+ hours every week.",
+    "Hands-free voice cook mode: cook without touching your screen!",
+    "7 days free trial. Cancel anytime in 1 tap.",
+  ];
+
   const lock = useRef(false);
   const currencyRef = useRef(currency);
   currencyRef.current = currency;
@@ -358,7 +367,7 @@ export function PremiumPaywall() {
         <section className="mb-8 text-center sm:text-left">
           <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--periwinkle)]">
             <ChefMascot className="size-4 shrink-0" />
-            <span>The Culinary Companion That Competes with the World's Best</span>
+            <span>Chef-Grade Kitchen Intelligence · Taz Technologies</span>
           </div>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
             Cook effortlessly. Plan smartly.{" "}
@@ -369,6 +378,34 @@ export function PremiumPaywall() {
             nutritionist. Generate instant recipes from your pantry, follow hands-free voice cook
             mode, and automate your weekly prep.
           </p>
+
+          {/* Interactive Full-Body Moving Mia Avatar & Jus Facts Banner */}
+          <div className="mt-5 flex flex-col sm:flex-row items-center gap-4 rounded-2xl border border-[var(--periwinkle)]/30 bg-card p-4 shadow-md">
+            <div className="relative shrink-0">
+              <ChefMascot
+                animate={true}
+                interactive={true}
+                onClick={() => setMiaQuoteIndex((i) => (i + 1) % MIA_QUOTES.length)}
+                className="size-20 sm:size-24 rounded-2xl bg-secondary/80 p-2 border border-border shadow-inner"
+              />
+              <span className="absolute -top-1 -right-1 flex size-3">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex size-3 rounded-full bg-emerald-500"></span>
+              </span>
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold uppercase tracking-wider text-[var(--periwinkle)]">
+                <Sparkles size={13} />
+                <span>Meet Mia · Tap Mascot for Jus Facts</span>
+              </div>
+              <p
+                className="mt-1 text-xs sm:text-sm font-medium text-foreground cursor-pointer select-none"
+                onClick={() => setMiaQuoteIndex((i) => (i + 1) % MIA_QUOTES.length)}
+              >
+                "{MIA_QUOTES[miaQuoteIndex]}"
+              </p>
+            </div>
+          </div>
         </section>
 
         {/* Two-Column Responsive Layout */}

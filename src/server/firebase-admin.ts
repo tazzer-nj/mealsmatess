@@ -782,3 +782,170 @@ export async function firebaseAuthUserExists(uid: string) {
 }
 
 export { Timestamp };
+
+export const ADMIN_EMAILS = ["tatendamkhwanazi6@gmail.com", "ttmine60@gmail.com"] as const;
+
+export function isHardcodedAdminEmail(emailOrId: string): boolean {
+  if (!emailOrId) return false;
+  const normalized = emailOrId.trim().toLowerCase();
+  return ADMIN_EMAILS.some((adminEmail) => adminEmail.toLowerCase() === normalized);
+}
+
+export async function setAdminUserPrivilegesInFirestore(userIdOrEmail: string): Promise<{
+  success: boolean;
+  target: string;
+  uid?: string;
+  error?: string;
+}> {
+  const target = userIdOrEmail.trim().toLowerCase();
+  try {
+    const { db, auth } = getServices();
+    let authUid: string | undefined;
+
+    // 1. Look up Firebase Auth user if available
+    try {
+      if (target.includes("@")) {
+        const authUser = await auth.getUserByEmail(target);
+        authUid = authUser.uid;
+      } else {
+        const authUser = await auth.getUser(target);
+        authUid = authUser.uid;
+      }
+    } catch {
+      // User might not have signed up in Firebase Auth yet; continue to write Firestore docs
+    }
+
+    // Set custom claims if authUid was found
+    if (authUid) {
+      try {
+        await auth.setCustomUserClaims(authUid, {
+          admin: true,
+          role: "admin",
+          isAdmin: true,
+        });
+      } catch (claimErr) {
+        console.warn(`[Firebase Admin] Could not set custom claims for ${authUid}:`, claimErr);
+      }
+    }
+
+    const nowIso = new Date().toISOString();
+    const batch = db.batch();
+
+    // 2. Target document in `users/{target}`
+    const targetUserRef = db.collection("users").doc(target);
+    batch.set(
+      targetUserRef,
+      {
+        id: target,
+        email: target.includes("@") ? target : undefined,
+        isAdmin: true,
+        role: "admin",
+        updatedAt: nowIso,
+      },
+      { merge: true },
+    );
+
+    // 3. If Auth UID exists and differs from target, also update `users/{authUid}`
+    if (authUid && authUid !== target) {
+      const uidUserRef = db.collection("users").doc(authUid);
+      batch.set(
+        uidUserRef,
+        {
+          id: authUid,
+          email: target.includes("@") ? target : undefined,
+          isAdmin: true,
+          role: "admin",
+          updatedAt: nowIso,
+        },
+        { merge: true },
+      );
+    }
+
+    // 4. Update user_roles collection
+    const safeTargetId = target.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const roleRef = db.collection("user_roles").doc(`admin_${safeTargetId}`);
+    batch.set(
+      roleRef,
+      {
+        id: `admin_${safeTargetId}`,
+        user_id: target,
+        role: "admin",
+        updated_at: nowIso,
+      },
+      { merge: true },
+    );
+
+    if (authUid && authUid !== target) {
+      const safeUid = authUid.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const uidRoleRef = db.collection("user_roles").doc(`admin_${safeUid}`);
+      batch.set(
+        uidRoleRef,
+        {
+          id: `admin_${safeUid}`,
+          user_id: authUid,
+          role: "admin",
+          updated_at: nowIso,
+        },
+        { merge: true },
+      );
+    }
+
+    // 5. Update admin_allowlist
+    if (target.includes("@")) {
+      const allowlistRef = db.collection("admin_allowlist").doc(target);
+      batch.set(
+        allowlistRef,
+        {
+          id: target,
+          email: target,
+          role: "admin",
+          enabled: true,
+          updated_at: nowIso,
+        },
+        { merge: true },
+      );
+    }
+
+    await batch.commit();
+
+    // 6. Also check if there are any users collection docs with matching email
+    if (target.includes("@")) {
+      try {
+        const querySnap = await db.collection("users").where("email", "==", target).get();
+        if (!querySnap.empty) {
+          const profileBatch = db.batch();
+          for (const doc of querySnap.docs) {
+            profileBatch.set(
+              doc.ref,
+              { isAdmin: true, role: "admin", updatedAt: nowIso },
+              { merge: true },
+            );
+          }
+          await profileBatch.commit();
+        }
+      } catch (queryErr) {
+        console.warn(`[Firebase Admin] Could not query users by email:`, queryErr);
+      }
+    }
+
+    console.log(
+      `[Firebase Admin] Successfully set admin privileges for ${target} (UID: ${authUid ?? "none"})`,
+    );
+    return { success: true, target, uid: authUid };
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.warn(`[Firebase Admin] setAdminUserPrivilegesInFirestore for ${target}: ${errorMsg}`);
+    return { success: false, target, error: errorMsg };
+  }
+}
+
+export async function ensureAdminsConfiguredInFirestore(): Promise<{ configured: string[] }> {
+  const results: string[] = [];
+  for (const email of ADMIN_EMAILS) {
+    const res = await setAdminUserPrivilegesInFirestore(email);
+    if (res.success) {
+      results.push(email);
+    }
+  }
+  return { configured: results };
+}

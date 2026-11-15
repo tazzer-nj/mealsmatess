@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { firebaseAdmin } from "@/server/firebase-admin";
+import {
+  firebaseAdmin,
+  ADMIN_EMAILS,
+  isHardcodedAdminEmail,
+  setAdminUserPrivilegesInFirestore,
+  ensureAdminsConfiguredInFirestore,
+} from "@/server/firebase-admin";
 
 // Keep the database boundary in memory while exercising the real query adapter.
 const fixture = vi.hoisted(() => {
@@ -77,7 +83,16 @@ vi.mock("firebase-admin/app", () => ({
   getApps: () => [],
   initializeApp: () => ({}),
 }));
-vi.mock("firebase-admin/auth", () => ({ getAuth: () => ({}) }));
+vi.mock("firebase-admin/auth", () => ({
+  getAuth: () => ({
+    getUserByEmail: vi.fn().mockImplementation(async (email: string) => ({
+      uid: `uid_${email.replace(/[^a-zA-Z0-9]/g, "_")}`,
+      email,
+    })),
+    getUser: vi.fn().mockImplementation(async (uid: string) => ({ uid })),
+    setCustomUserClaims: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
 vi.mock("firebase-admin/firestore", () => ({
   getFirestore: () => fixture.db,
   Timestamp: class Timestamp {},
@@ -267,5 +282,59 @@ describe("shared Hub and Consumer restaurant records", () => {
       }),
     ).rejects.toMatchObject({ status: 403 });
     expect(restaurantBlob.put).not.toHaveBeenCalled();
+  });
+});
+
+describe("Admin privileges configuration and verification", () => {
+  it("includes tatendamkhwanazi6@gmail.com and ttmine60@gmail.com in ADMIN_EMAILS", () => {
+    expect(ADMIN_EMAILS).toContain("tatendamkhwanazi6@gmail.com");
+    expect(ADMIN_EMAILS).toContain("ttmine60@gmail.com");
+    expect(isHardcodedAdminEmail("tatendamkhwanazi6@gmail.com")).toBe(true);
+    expect(isHardcodedAdminEmail("TATENDAMKHWANAZI6@GMAIL.COM")).toBe(true);
+    expect(isHardcodedAdminEmail("ttmine60@gmail.com")).toBe(true);
+    expect(isHardcodedAdminEmail("TTMINE60@GMAIL.COM")).toBe(true);
+    expect(isHardcodedAdminEmail("regular_user@example.com")).toBe(false);
+  });
+
+  it("sets isAdmin: true, role: 'admin' in Firestore for target admin accounts", async () => {
+    const targetEmail = "tatendamkhwanazi6@gmail.com";
+    const res = await setAdminUserPrivilegesInFirestore(targetEmail);
+    expect(res.success).toBe(true);
+    expect(res.target).toBe(targetEmail);
+
+    const userDoc = fixture.table("users").get(targetEmail);
+    expect(userDoc).toBeDefined();
+    expect(userDoc?.isAdmin).toBe(true);
+    expect(userDoc?.role).toBe("admin");
+
+    const allowlistDoc = fixture.table("admin_allowlist").get(targetEmail);
+    expect(allowlistDoc).toBeDefined();
+    expect(allowlistDoc?.role).toBe("admin");
+    expect(allowlistDoc?.enabled).toBe(true);
+
+    const roleDoc = fixture
+      .table("user_roles")
+      .get(`admin_${targetEmail.replace(/[^a-zA-Z0-9_-]/g, "_")}`);
+    expect(roleDoc).toBeDefined();
+    expect(roleDoc?.role).toBe("admin");
+  });
+
+  it("configures all designated admin accounts via ensureAdminsConfiguredInFirestore", async () => {
+    const res = await ensureAdminsConfiguredInFirestore();
+    expect(res.configured).toContain("tatendamkhwanazi6@gmail.com");
+    expect(res.configured).toContain("ttmine60@gmail.com");
+
+    for (const email of ADMIN_EMAILS) {
+      const userDoc = fixture.table("users").get(email);
+      expect(userDoc?.isAdmin).toBe(true);
+      expect(userDoc?.role).toBe("admin");
+    }
+  });
+
+  it("grants admin privileges in marketplace logic for admin emails", async () => {
+    const { isAdmin: isMarketplaceAdmin } = await import("@/lib/marketplace.server");
+    expect(await isMarketplaceAdmin("tatendamkhwanazi6@gmail.com")).toBe(true);
+    expect(await isMarketplaceAdmin("ttmine60@gmail.com")).toBe(true);
+    expect(await isMarketplaceAdmin("outsider@example.com")).toBe(false);
   });
 });

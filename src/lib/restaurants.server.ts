@@ -1,6 +1,6 @@
 import { storeRestaurantImage } from "@/lib/restaurant-media.server";
 // Server-only restaurant marketplace logic. Never import from client code.
-import { firebaseAdmin } from "@/server/firebase-admin";
+import { firebaseAdmin, isHardcodedAdminEmail } from "@/server/firebase-admin";
 import { slugify } from "@/lib/slug";
 import { auditLog } from "@/lib/security.server";
 import {
@@ -13,13 +13,30 @@ import {
 } from "@/lib/restaurants.schemas";
 
 async function isAdmin(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  if (isHardcodedAdminEmail(userId)) return true;
+
   const { data } = await firebaseAdmin
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
     .eq("role", "admin")
     .maybeSingle();
-  return !!data;
+  if (data) return true;
+
+  const { data: profile } = await firebaseAdmin
+    .from("profiles")
+    .select("isAdmin,role,email")
+    .eq("id", userId)
+    .maybeSingle();
+  if (
+    profile?.isAdmin === true ||
+    profile?.role === "admin" ||
+    (profile?.email && isHardcodedAdminEmail(String(profile.email)))
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /** Throws unless the user owns (or staffs) the restaurant, or is an admin. */

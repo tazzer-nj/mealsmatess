@@ -281,15 +281,37 @@ export const redeemPromoCode = createServerFn({ method: "POST" })
   });
 
 // ---------- Admin ----------
-async function assertAdmin(userId: string) {
-  const { firebaseAdmin } = await loadFirebaseAdmin();
+async function checkIsAdmin(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  const { firebaseAdmin, isHardcodedAdminEmail } = await loadFirebaseAdmin();
+  if (isHardcodedAdminEmail(userId)) return true;
+
   const { data } = await firebaseAdmin
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
     .eq("role", "admin")
     .maybeSingle();
-  if (!data) throw new Error("Forbidden");
+  if (data) return true;
+
+  const { data: profile } = await firebaseAdmin
+    .from("profiles")
+    .select("isAdmin,role,email")
+    .eq("id", userId)
+    .maybeSingle();
+  if (
+    profile?.isAdmin === true ||
+    profile?.role === "admin" ||
+    (profile?.email && isHardcodedAdminEmail(String(profile.email)))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+async function assertAdmin(userId: string) {
+  const isAdm = await checkIsAdmin(userId);
+  if (!isAdm) throw new Error("Forbidden");
 }
 
 export const adminListSubscribers = createServerFn({ method: "GET" })
@@ -519,12 +541,18 @@ export const adminRevokePremium = createServerFn({ method: "POST" })
 export const adminIsAdmin = createServerFn({ method: "GET" })
   .middleware([requireFirebaseAuth])
   .handler(async ({ context }) => {
-    const { firebaseAdmin } = await loadFirebaseAdmin();
-    const { data } = await firebaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    return { isAdmin: !!data };
+    const isAdmin = await checkIsAdmin(context.userId);
+    return { isAdmin };
+  });
+
+export const setFirestoreAdminPrivileges = createServerFn({ method: "POST" })
+  .middleware([requireFirebaseAuth])
+  .validator((v: unknown) =>
+    z.object({ emailOrId: z.string().min(3).max(128).optional() }).parse(v),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const target = data.emailOrId ?? context.userId;
+    const { setAdminUserPrivilegesInFirestore } = await loadFirebaseAdmin();
+    return setAdminUserPrivilegesInFirestore(target);
   });

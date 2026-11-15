@@ -8,8 +8,20 @@ type ServerEntry = {
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
+let adminInitTriggered = false;
+
+function triggerAdminInit() {
+  if (adminInitTriggered) return;
+  adminInitTriggered = true;
+  import("./server/firebase-admin")
+    .then((m) => m.ensureAdminsConfiguredInFirestore())
+    .catch((err) => {
+      console.warn("[Server] Admin init deferred:", err?.message || err);
+    });
+}
 
 async function getServerEntry(): Promise<ServerEntry> {
+  triggerAdminInit();
   if (!serverEntryPromise) {
     serverEntryPromise = import("@tanstack/react-start/server-entry").then(
       (m) => (m.default ?? m) as ServerEntry,

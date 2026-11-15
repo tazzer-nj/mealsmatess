@@ -5,7 +5,7 @@
  * Money, availability and promotion rules are resolved here against the
  * database — the frontend never decides what an order costs.
  */
-import { firebaseAdmin } from "@/server/firebase-admin";
+import { firebaseAdmin, isHardcodedAdminEmail } from "@/server/firebase-admin";
 import { auditLog } from "@/lib/security.server";
 import {
   MarketplaceError,
@@ -31,13 +31,30 @@ import type {
 /* ---------------- Authorization ---------------- */
 
 export async function isAdmin(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  if (isHardcodedAdminEmail(userId)) return true;
+
   const { data } = await firebaseAdmin
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
     .eq("role", "admin")
     .maybeSingle();
-  return !!data;
+  if (data) return true;
+
+  const { data: profile } = await firebaseAdmin
+    .from("profiles")
+    .select("isAdmin,role,email")
+    .eq("id", userId)
+    .maybeSingle();
+  if (
+    profile?.isAdmin === true ||
+    profile?.role === "admin" ||
+    (profile?.email && isHardcodedAdminEmail(String(profile.email)))
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /** Roles allowed to change what customers can see/buy. */
