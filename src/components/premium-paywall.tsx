@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -10,16 +10,13 @@ import {
   CheckCircle2,
   Clock,
   HeartHandshake,
-  HelpCircle,
   Loader2,
   Lock,
-  MessageCircle,
   Mic,
   Refrigerator,
   ShieldCheck,
   Sparkles,
   Star,
-  Users,
   UtensilsCrossed,
   XCircle,
 } from "lucide-react";
@@ -50,84 +47,109 @@ interface FeatureCard {
   metric: string;
 }
 
-const MIA_SUPERPOWERS: FeatureCard[] = [
+const MIA_FACTS = [
+  {
+    id: "scan",
+    label: "Fridge Scan",
+    quote:
+      "Snap a photo of what’s in your fridge — I’ll build a complete recipe in under 10 seconds.",
+  },
+  {
+    id: "voice",
+    label: "Voice Mode",
+    quote:
+      "Hands covered in flour? Talk to me hands-free for step-by-step guidance & instant swaps.",
+  },
+  {
+    id: "save",
+    label: "Save Money",
+    quote: "MealMate households cut food waste and save an average of R1,800/month on groceries.",
+  },
+  {
+    id: "trial",
+    label: "7-Day Trial",
+    quote: "Unlock every feature today for free. We’ll remind you on Day 5 before anything bills.",
+  },
+] as const;
+
+const INCLUDED_BENEFITS: FeatureCard[] = [
   {
     icon: Camera,
-    tag: "Visual Intelligence",
-    title: "Mia Pantry & Food Scanner",
-    desc: "Snap a photo of your fridge, counter, or random ingredients. Mia invents gourmet recipes in seconds with exact portions.",
-    metric: "Instant recipe generation",
+    tag: "Visual AI",
+    title: "Pantry & Fridge Photo Scanner",
+    desc: "Snap your counter or fridge. Mia generates balanced recipes sized for your household.",
+    metric: "10s recipe match",
   },
   {
     icon: Mic,
-    tag: "Voice Cook Mode",
-    title: "Hands-Free Voice Kitchen Guide",
-    desc: "Cook with messy hands without touching your phone. Mia speaks steps aloud and answers real-time cooking substitutions.",
+    tag: "Hands-Free",
+    title: "Voice Cook Mode & Live Swaps",
+    desc: "Hear every step aloud without touching your screen. Ask for missing ingredient swaps live.",
     metric: "100% hands-free",
   },
   {
     icon: Refrigerator,
-    tag: "Zero Food Waste",
+    tag: "Zero Waste",
     title: "Smart Pantry & Expiry Guard",
-    desc: "Track ingredients you already own. Mia prioritizes what is expiring soon so you save money and never toss wilted herbs again.",
-    metric: "Save ~30% on groceries",
+    desc: "Track what you own so Mia prioritizes ingredients nearing expiry before they spoil.",
+    metric: "Save ~30% monthly",
   },
   {
     icon: CalendarCheck,
-    tag: "Effortless Prep",
-    title: "Weekly Planner & Aisle Grocery Sync",
-    desc: "1-tap meal schedules tuned to your household size and dietary goals. Auto-generates organized, categorized shopping checklists.",
-    metric: "5+ hours saved weekly",
+    tag: "Auto-Sorted",
+    title: "Weekly Planner & Aisle Lists",
+    desc: "One-tap weekly meal plans synced to aisle-by-aisle and alphabetical grocery lists.",
+    metric: "5+ hrs saved weekly",
   },
 ];
 
 const COMPARISON_ROWS = [
   {
-    feature: "Dinner Planning",
-    without: "30+ mins stressed wondering what to cook",
-    withMealMate: "Instant personalized recipe from your ingredients",
+    feature: "Dinner Decisions",
+    without: "30+ mins debating takeout or scrolling ads",
+    withMealMate: "10-second recipe matched to your fridge",
   },
   {
-    feature: "Kitchen Cooking",
-    without: "Messy hands tapping ads on static recipe blogs",
-    withMealMate: "Hands-free conversational voice guidance with Mia",
+    feature: "While Cooking",
+    without: "Dirty fingers unlocking static recipe blogs",
+    withMealMate: "Hands-free conversational voice guide with Mia",
   },
   {
-    feature: "Pantry & Groceries",
-    without: "R1,000s wasted on spoiled, forgotten food",
-    withMealMate: "Auto-deduct pantry sync & aisle-by-aisle shopping lists",
+    feature: "Grocery Spend",
+    without: "Forgotten produce spoiling in the back drawer",
+    withMealMate: "Expiry-first meal plans & aisle-sorted lists",
   },
   {
-    feature: "Diet & Personalization",
-    without: "Generic recipes that don't match your macros",
-    withMealMate: "Customized to your exact taste, calories & family size",
+    feature: "Macros & Household",
+    without: "Generic serving sizes & manual math",
+    withMealMate: "Auto-scaled to your diet, allergies & family",
   },
 ];
 
 const REVIEWS = [
   {
     quote:
-      "Mia has completely changed our family routine. We stopped ordering takeout out of exhaustion because Mia gives us dinner ideas in 10 seconds from what we already have.",
+      "We stopped ordering expensive takeout on weeknights because Mia gives us dinner ideas in 10 seconds from what is already in our fridge.",
     author: "Sipho & Lerato M.",
     role: "Family of 4 · Johannesburg",
     rating: 5,
-    highlight: "Saved R1,800/mo on groceries",
+    highlight: "Saved R1,800/mo",
   },
   {
     quote:
-      "The hands-free voice cook mode is pure magic. I can ask Mia for a substitution while searing fish without getting butter on my phone screen.",
+      "Voice cook mode is a lifesaver. I can ask Mia for a swap while searing fish without getting butter all over my phone.",
     author: "Elena R.",
-    role: "Home Cook & Fitness Enthusiast · Cape Town",
+    role: "Home Cook · Cape Town",
     rating: 5,
-    highlight: "5+ hours saved every week",
+    highlight: "5+ hrs saved/week",
   },
   {
     quote:
-      "Better than every recipe app I have tried. It feels like having a private chef and nutritionist who actually knows what is inside my fridge.",
+      "Having my pantry, weekly plan, and aisle-sorted shopping list connected in one clean app pays for itself in the first week.",
     author: "David K.",
-    role: "Verified Subscriber · Durban",
+    role: "Verified Member · Durban",
     rating: 5,
-    highlight: "Zero food waste achieved",
+    highlight: "Zero food waste",
   },
 ];
 
@@ -145,15 +167,9 @@ export function PremiumPaywall() {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [heroFailed, setHeroFailed] = useState(false);
-  const [activeTab, setActiveTab] = useState<"comparison" | "features" | "reviews">("comparison");
-  const [miaQuoteIndex, setMiaQuoteIndex] = useState(0);
-
-  const MIA_QUOTES = [
-    "Tap me! I scan your fridge & invent gourmet recipes in 10s!",
-    "Jus Facts: Members save ~R1,800/mo & 5+ hours every week.",
-    "Hands-free voice cook mode: cook without touching your screen!",
-    "7 days free trial. Cancel anytime in 1 tap.",
-  ];
+  const [activeTab, setActiveTab] = useState<"benefits" | "comparison" | "reviews">("benefits");
+  const [factIndex, setFactIndex] = useState(0);
+  const [mascotPulseKey, setMascotPulseKey] = useState(0);
 
   const lock = useRef(false);
   const currencyRef = useRef(currency);
@@ -161,7 +177,6 @@ export function PremiumPaywall() {
   const identityRef = useRef<Awaited<ReturnType<typeof createPurchaseSession>> | null>(null);
   const loadedCurrencyRef = useRef<string | null>(null);
   const userId = user?.id;
-  const radioGroupId = useId();
 
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
@@ -312,8 +327,15 @@ export function PremiumPaywall() {
   }
 
   const plan = store?.plans.find((p) => p.kind === selected);
+  const currentFact = MIA_FACTS[factIndex]!;
 
-  // Helper to extract monthly breakdown approximation for yearly plans
+  function handleMascotInteract(nextIndex?: number) {
+    setMascotPulseKey((k) => k + 1);
+    setFactIndex((prev) =>
+      typeof nextIndex === "number" ? nextIndex : (prev + 1) % MIA_FACTS.length,
+    );
+  }
+
   const getMonthlyBreakdown = (priceStr?: string) => {
     if (!priceStr) return null;
     const match = priceStr.match(/([^\d]*)([\d,.]+)/);
@@ -322,34 +344,26 @@ export function PremiumPaywall() {
     const num = parseFloat(match[2].replace(/,/g, ""));
     if (isNaN(num)) return null;
     const perMonth = Math.round(num / 12);
-    return `${prefix ? prefix + " " : ""}${perMonth}/mo`;
+    return `≈ ${prefix ? `${prefix} ` : ""}${perMonth}/mo`;
   };
 
   return (
     <main className="premium-flow paywall paywall-redesign">
       <div className="paywall-shell">
-        {/* Navigation Bar / Trust Banner */}
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-4">
-          <div className="flex items-center gap-3">
-            <MealMateLogo
-              imageClassName="size-9 rounded-xl border border-border/80 shadow-sm"
-              showName
-            />
-            <div className="hidden h-4 w-px bg-border/80 sm:block" />
-            <span className="hidden text-xs font-medium text-muted-foreground sm:inline-block">
-              Premium with Mia
+        {/* Compact Brand Bar */}
+        <header className="mb-5 flex items-center justify-between gap-3 border-b border-border/70 pb-3.5">
+          <div className="flex items-center gap-2.5">
+            <MealMateLogo imageClassName="size-8 rounded-xl border border-border/80" showName />
+            <span className="hidden rounded-md bg-[var(--periwinkle-soft)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--periwinkle)] sm:inline-flex">
+              Premium
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 rounded-full border border-border/80 bg-secondary/80 px-3 py-1 text-xs font-medium text-foreground">
-              <div className="flex text-amber-500" aria-hidden="true">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={11} className="fill-amber-500" />
-                ))}
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground">
+              <Star size={11} className="fill-amber-500 text-amber-500" aria-hidden="true" />
               <span className="tabular-nums font-semibold">4.9</span>
-              <span className="text-muted-foreground">· 250k+ cooks</span>
+              <span className="hidden text-muted-foreground sm:inline">· 250k+ cooks</span>
             </div>
 
             <button
@@ -363,56 +377,89 @@ export function PremiumPaywall() {
           </div>
         </header>
 
-        {/* Hero Section */}
-        <section className="mb-8 text-center sm:text-left">
-          <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--periwinkle)]">
-            <ChefMascot className="size-4 shrink-0" />
-            <span>Chef-Grade Kitchen Intelligence · Taz Technologies</span>
-          </div>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-            Cook effortlessly. Plan smartly.{" "}
-            <span className="text-[var(--periwinkle)]">Never waste food.</span>
-          </h1>
-          <p className="mt-2.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            MealMate Premium pairs you with <strong>Mia</strong> — your private AI chef and
-            nutritionist. Generate instant recipes from your pantry, follow hands-free voice cook
-            mode, and automate your weekly prep.
-          </p>
-
-          {/* Interactive Full-Body Moving Mia Avatar & Jus Facts Banner */}
-          <div className="mt-5 flex flex-col sm:flex-row items-center gap-4 rounded-2xl border border-[var(--periwinkle)]/30 bg-card p-4 shadow-md">
-            <div className="relative shrink-0">
-              <ChefMascot
-                animate={true}
-                interactive={true}
-                onClick={() => setMiaQuoteIndex((i) => (i + 1) % MIA_QUOTES.length)}
-                className="size-20 sm:size-24 rounded-2xl bg-secondary/80 p-2 border border-border shadow-inner"
-              />
-              <span className="absolute -top-1 -right-1 flex size-3">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex size-3 rounded-full bg-emerald-500"></span>
-              </span>
-            </div>
-            <div className="flex-1 text-center sm:text-left">
-              <div className="flex items-center justify-center sm:justify-start gap-2 text-xs font-bold uppercase tracking-wider text-[var(--periwinkle)]">
-                <Sparkles size={13} />
-                <span>Meet Mia · Tap Mascot for Jus Facts</span>
-              </div>
-              <p
-                className="mt-1 text-xs sm:text-sm font-medium text-foreground cursor-pointer select-none"
-                onClick={() => setMiaQuoteIndex((i) => (i + 1) % MIA_QUOTES.length)}
+        {/* Interactive Full-Body Mia Stage + Just-the-Facts Hero */}
+        <section className="mb-5 rounded-2xl border border-border bg-card p-4 sm:p-5">
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
+            {/* Full-body moving & interactive Mia mascot */}
+            <div className="relative flex shrink-0 flex-col items-center">
+              <button
+                type="button"
+                onClick={() => handleMascotInteract()}
+                aria-label="Tap Mia to hear culinary facts"
+                className="group relative flex flex-col items-center rounded-2xl p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--periwinkle)]"
               >
-                "{MIA_QUOTES[miaQuoteIndex]}"
+                <div key={mascotPulseKey} className="relative flex items-center justify-center">
+                  <ChefMascot animate interactive className="h-28 w-28 sm:h-32 sm:w-32" />
+                </div>
+                <span className="mia-ground-shadow -mt-1.5" aria-hidden="true" />
+                <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors group-hover:border-[var(--periwinkle)] group-hover:text-foreground">
+                  <Sparkles size={10} className="text-[var(--periwinkle)]" aria-hidden="true" />
+                  Tap Mia
+                </span>
+              </button>
+            </div>
+
+            {/* Speech Bubble + Interactive Topic Pills */}
+            <div className="flex-1 text-center sm:text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--periwinkle)]">
+                Chef-Grade Kitchen Intelligence · Taz Technologies
               </p>
+              <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                Cook effortlessly. Waste zero food.
+              </h1>
+
+              {/* Interactive Mia Speech Bubble */}
+              <div
+                onClick={() => handleMascotInteract()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleMascotInteract();
+                  }
+                }}
+                className="mt-3 cursor-pointer rounded-xl border border-border bg-secondary/70 px-3.5 py-2.5 text-left transition-colors hover:border-[var(--periwinkle)]/60"
+              >
+                <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-[var(--periwinkle)]">
+                  <span>Mia · {currentFact.label}</span>
+                  <span className="text-[10px] font-normal text-muted-foreground">
+                    {factIndex + 1}/{MIA_FACTS.length}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs leading-relaxed text-foreground sm:text-sm">
+                  “{currentFact.quote}”
+                </p>
+              </div>
+
+              {/* Topic Selector Chips */}
+              <div className="mt-2.5 flex flex-wrap items-center justify-center gap-1.5 sm:justify-start">
+                {MIA_FACTS.map((fact, idx) => {
+                  const active = idx === factIndex;
+                  return (
+                    <button
+                      key={fact.id}
+                      type="button"
+                      onClick={() => handleMascotInteract(idx)}
+                      className={`rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-all ${
+                        active
+                          ? "border-[var(--periwinkle)] bg-[var(--periwinkle-soft)] text-[var(--periwinkle)]"
+                          : "border-border bg-secondary/60 text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {fact.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Two-Column Responsive Layout */}
-        <div className="paywall-grid shadow-xl">
-          {/* Left Column: Visual Showcase, Comparison & Social Proof */}
-          <section className="paywall-editorial flex flex-col justify-between">
-            {/* Visual Hero Photo with Mia Overlay */}
+        {/* Main Responsive Split: Mobile puts Checkout & Prices immediately visible; Desktop displays Editorial Left + Sticky Checkout Right */}
+        <div className="paywall-grid shadow-sm">
+          {/* Benefits & Proof Column */}
+          <section className="paywall-editorial">
             <div className="paywall-photo relative" aria-hidden="true">
               {heroFailed ? (
                 <div className="flex h-full w-full items-center justify-center bg-secondary text-muted-foreground">
@@ -421,104 +468,63 @@ export function PremiumPaywall() {
               ) : (
                 <img
                   src={paywallHeroImage}
-                  alt="Pan-seared gourmet dish prepared with Mia"
+                  alt="Freshly cooked meal prepared with Mia"
                   onError={() => setHeroFailed(true)}
-                  className="size-full object-cover"
                 />
               )}
               <div className="paywall-photo-badge">
                 <ChefMascot className="size-4 shrink-0" />
-                <span>Mia AI Chef · Master Cook Suite</span>
+                <span>MealMate Premium · Just the Facts</span>
               </div>
             </div>
 
             <div className="paywall-editorial-body">
-              {/* Tab Navigation for Value Exploration */}
-              <div className="mb-6 flex items-center justify-start gap-1 rounded-xl border border-border/80 bg-secondary/80 p-1">
+              {/* Segmented Tabs */}
+              <div className="mb-4 flex items-center gap-1 rounded-xl border border-border bg-card p-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("benefits")}
+                  className={`flex-1 rounded-lg py-2 text-xs font-medium transition-all ${
+                    activeTab === "benefits"
+                      ? "bg-foreground text-background shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  What You Get
+                </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("comparison")}
                   className={`flex-1 rounded-lg py-2 text-xs font-medium transition-all ${
                     activeTab === "comparison"
-                      ? "bg-card text-foreground shadow-sm"
+                      ? "bg-foreground text-background shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Why MealMate
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("features")}
-                  className={`flex-1 rounded-lg py-2 text-xs font-medium transition-all ${
-                    activeTab === "features"
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Mia's Superpowers
+                  Before vs. After
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("reviews")}
                   className={`flex-1 rounded-lg py-2 text-xs font-medium transition-all ${
                     activeTab === "reviews"
-                      ? "bg-card text-foreground shadow-sm"
+                      ? "bg-foreground text-background shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Member Stories
+                  Reviews
                 </button>
               </div>
 
-              {/* TAB 1: CAL AI STYLE BEFORE VS AFTER COMPARISON */}
-              {activeTab === "comparison" && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-border/60 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    <span>Routine Kitchen Frustrations</span>
-                    <span className="text-[var(--periwinkle)]">With MealMate + Mia</span>
-                  </div>
-
-                  <div className="space-y-3">
-                    {COMPARISON_ROWS.map((row) => (
-                      <div
-                        key={row.feature}
-                        className="rounded-xl border border-border/60 bg-card/60 p-3.5 transition-colors hover:bg-card"
-                      >
-                        <div className="text-xs font-semibold text-foreground">{row.feature}</div>
-                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                            <XCircle className="size-4 shrink-0 text-destructive mt-0.5" />
-                            <span>{row.without}</span>
-                          </div>
-                          <div className="flex items-start gap-2 text-xs font-medium text-foreground">
-                            <CheckCircle2 className="size-4 shrink-0 text-emerald-500 mt-0.5" />
-                            <span>{row.withMealMate}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between rounded-xl border border-[var(--periwinkle)]/30 bg-[var(--periwinkle-soft)] p-3 text-xs text-foreground">
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <Clock size={15} className="text-[var(--periwinkle)]" /> Average time saved
-                      per home:
-                    </span>
-                    <span className="font-bold text-[var(--periwinkle)]">5.4 Hours / Week</span>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: RECIME STYLE CULINARY POWER CARDS */}
-              {activeTab === "features" && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {MIA_SUPERPOWERS.map((feature) => (
+              {activeTab === "benefits" && (
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  {INCLUDED_BENEFITS.map((feature) => (
                     <div
                       key={feature.title}
-                      className="flex flex-col justify-between rounded-xl border border-border/60 bg-card/70 p-3.5"
+                      className="flex flex-col justify-between rounded-xl border border-border bg-card p-3.5"
                     >
                       <div>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2">
                           <div className="flex size-8 items-center justify-center rounded-lg bg-[var(--periwinkle-soft)] text-[var(--periwinkle)]">
                             <feature.icon size={16} />
                           </div>
@@ -526,14 +532,14 @@ export function PremiumPaywall() {
                             {feature.tag}
                           </span>
                         </div>
-                        <h3 className="mt-2.5 text-xs font-bold text-foreground">
+                        <h3 className="mt-2.5 text-xs font-semibold text-foreground">
                           {feature.title}
                         </h3>
                         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                           {feature.desc}
                         </p>
                       </div>
-                      <div className="mt-3 border-t border-border/50 pt-2 text-[11px] font-semibold text-[var(--periwinkle)]">
+                      <div className="mt-2.5 border-t border-border/60 pt-2 text-[11px] font-semibold text-[var(--periwinkle)]">
                         ✓ {feature.metric}
                       </div>
                     </div>
@@ -541,26 +547,52 @@ export function PremiumPaywall() {
                 </div>
               )}
 
-              {/* TAB 3: MEMBER REVIEWS & PROOF */}
-              {activeTab === "reviews" && (
-                <div className="space-y-3">
-                  {REVIEWS.map((rev) => (
+              {activeTab === "comparison" && (
+                <div className="space-y-2.5">
+                  {COMPARISON_ROWS.map((row) => (
                     <div
-                      key={rev.author}
-                      className="rounded-xl border border-border/60 bg-card/70 p-3.5"
+                      key={row.feature}
+                      className="rounded-xl border border-border bg-card p-3.5"
                     >
+                      <div className="text-xs font-semibold text-foreground">{row.feature}</div>
+                      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                          <XCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+                          <span>{row.without}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-xs font-medium text-foreground">
+                          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[var(--positive)]" />
+                          <span>{row.withMealMate}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between rounded-xl border border-[var(--periwinkle)]/30 bg-[var(--periwinkle-soft)] px-3.5 py-2.5 text-xs text-foreground">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Clock size={14} className="text-[var(--periwinkle)]" /> Avg. household time
+                      saved
+                    </span>
+                    <span className="font-bold text-[var(--periwinkle)]">5.4 Hours / Week</span>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "reviews" && (
+                <div className="space-y-2.5">
+                  {REVIEWS.map((rev) => (
+                    <div key={rev.author} className="rounded-xl border border-border bg-card p-3.5">
                       <div className="flex items-center justify-between">
                         <div className="flex text-amber-500">
                           {[...Array(rev.rating)].map((_, i) => (
                             <Star key={i} size={12} className="fill-amber-500" />
                           ))}
                         </div>
-                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        <span className="rounded-md bg-[var(--periwinkle-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--periwinkle)]">
                           {rev.highlight}
                         </span>
                       </div>
                       <p className="mt-2 text-xs italic leading-relaxed text-foreground">
-                        "{rev.quote}"
+                        “{rev.quote}”
                       </p>
                       <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
                         <span className="font-semibold text-foreground">{rev.author}</span>
@@ -573,27 +605,26 @@ export function PremiumPaywall() {
             </div>
           </section>
 
-          {/* Right Column: Plans, Guarantee & Checkout */}
-          <section className="paywall-checkout flex flex-col justify-between">
+          {/* Plans & Checkout Column (Appears immediately below Mia on mobile) */}
+          <section className="paywall-checkout">
             <div>
-              <div className="mb-5">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-[var(--periwinkle-soft)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--periwinkle)]">
+              <div className="mb-4">
+                <div className="inline-flex items-center gap-1.5 rounded-md bg-[var(--periwinkle-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--periwinkle)]">
                   <ShieldCheck size={13} />
-                  <span>100% Risk-Free Guarantee</span>
+                  <span>Cancel Anytime · Transparent Pricing</span>
                 </div>
-                <h2 className="mt-2 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-                  Choose your membership
+                <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                  Choose your plan
                 </h2>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Experience full access to Mia. Cancel anytime with one tap in your store settings
-                  before your trial ends.
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Full access to Mia AI Chef, pantry scanner, meal planner & aisle-sorted lists.
                 </p>
               </div>
 
               {/* Plan Cards */}
               <fieldset className="premium-plans" disabled={busy || loading}>
                 <legend className="sr-only">Choose a subscription plan</legend>
-                {(["monthly", "yearly", "family"] as const).map((kind) => {
+                {(["yearly", "monthly", "family"] as const).map((kind) => {
                   const option = store?.plans.find((p) => p.kind === kind);
                   const isSelected = selected === kind && !!option;
                   const perMonth =
@@ -602,11 +633,9 @@ export function PremiumPaywall() {
                   return (
                     <label
                       key={kind}
-                      className={`premium-plan group relative flex items-center justify-between gap-3 p-4 rounded-xl transition-all cursor-pointer border ${
-                        isSelected
-                          ? "selected border-[var(--periwinkle)] bg-card shadow-md ring-1 ring-[var(--periwinkle)]"
-                          : "border-border/80 bg-secondary/70 hover:border-border hover:bg-secondary"
-                      } ${!option ? "unavailable opacity-50 cursor-not-allowed" : ""}`}
+                      className={`premium-plan ${isSelected ? "selected" : ""} ${
+                        !option ? "unavailable" : ""
+                      }`}
                       onClick={() => {
                         if (option) setSelected(kind);
                       }}
@@ -618,14 +647,13 @@ export function PremiumPaywall() {
                         checked={isSelected}
                         disabled={!option}
                         onChange={() => setSelected(kind)}
-                        className="sr-only"
                       />
 
-                      <div className="flex items-center gap-3.5">
+                      <div className="flex items-center gap-3">
                         <div
                           className={`flex size-5 shrink-0 items-center justify-center rounded-full border transition-all ${
                             isSelected
-                              ? "border-[var(--periwinkle)] bg-[var(--periwinkle)] text-white shadow-sm"
+                              ? "border-[var(--periwinkle)] bg-[var(--periwinkle)] text-white"
                               : "border-border bg-card"
                           }`}
                         >
@@ -633,7 +661,7 @@ export function PremiumPaywall() {
                         </div>
 
                         <div className="plan-name">
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <span className="font-semibold text-foreground">
                               {kind === "monthly"
                                 ? "Monthly Plan"
@@ -642,31 +670,27 @@ export function PremiumPaywall() {
                                   : "Family Plan"}
                             </span>
                             {kind === "yearly" && (
-                              <span className="plan-badge rounded-md bg-[var(--periwinkle-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--periwinkle)] uppercase tracking-wide">
-                                Best Value · Save 50%
-                              </span>
+                              <span className="plan-badge">Best Value · Save 50%</span>
                             )}
                             {kind === "family" && (
-                              <span className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                              <span className="rounded-md bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground border border-border">
                                 Up to 5 Accounts
                               </span>
                             )}
                           </div>
                           {option?.trialDays === 7 ? (
-                            <span className="plan-trial text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                              7-day free trial included
-                            </span>
+                            <span className="plan-trial">7-day free trial included</span>
                           ) : (
                             <span className="text-[11px] text-muted-foreground">
                               {kind === "monthly"
                                 ? "Flexible month-to-month"
-                                : "Shared kitchen sync"}
+                                : "Shared family pantry & lists"}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <div className="plan-price text-right">
+                      <div className="plan-price">
                         {loading ? (
                           <span className="text-xs font-normal text-muted-foreground">
                             Loading…
@@ -675,10 +699,7 @@ export function PremiumPaywall() {
                           <div className="flex flex-col items-end">
                             <div className="text-sm font-bold text-foreground sm:text-base tabular-nums">
                               <span>{option.price}</span>
-                              <small className="text-xs font-normal text-muted-foreground">
-                                {" "}
-                                / {option.period}
-                              </small>
+                              <small> / {option.period}</small>
                             </div>
                             {perMonth && (
                               <span className="text-[11px] font-semibold text-[var(--periwinkle)] tabular-nums">
@@ -697,48 +718,46 @@ export function PremiumPaywall() {
                 })}
               </fieldset>
 
-              {/* CAL AI SIGNATURE: 3-STEP TRIAL TIMELINE */}
+              {/* 3-Step Free Trial Timeline */}
               {plan?.trialDays === 7 && (
-                <div className="mb-5 rounded-xl border border-border/80 bg-secondary/50 p-3.5">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    How Your Free Trial Works
+                <div className="mb-4 rounded-xl border border-border bg-secondary/60 p-3.5">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    How your 7-day free trial works
                   </div>
-                  <div className="mt-3 relative pl-6 space-y-3.5 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
+                  <div className="relative mt-2.5 space-y-2.5 pl-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
                     <div className="relative">
-                      <div className="absolute -left-6 top-0.5 size-4 rounded-full border-2 border-[var(--periwinkle)] bg-background flex items-center justify-center">
+                      <div className="absolute -left-6 top-0.5 flex size-4 items-center justify-center rounded-full border-2 border-[var(--periwinkle)] bg-background">
                         <div className="size-1.5 rounded-full bg-[var(--periwinkle)]" />
                       </div>
-                      <div className="text-xs font-bold text-foreground">
-                        Today · Instant Unlock
+                      <div className="text-xs font-semibold text-foreground">
+                        Today · Instant full unlock
                       </div>
                       <div className="text-[11px] text-muted-foreground">
-                        Get immediate unlimited access to Mia, ingredient scanning, and voice cook
-                        mode.
+                        Unlimited Mia AI Chef, pantry scanner & voice cook mode — R0 due today.
                       </div>
                     </div>
 
                     <div className="relative">
-                      <div className="absolute -left-6 top-0.5 size-4 rounded-full border-2 border-border bg-background flex items-center justify-center">
+                      <div className="absolute -left-6 top-0.5 flex size-4 items-center justify-center rounded-full border-2 border-border bg-background">
                         <Bell size={9} className="text-muted-foreground" />
                       </div>
-                      <div className="text-xs font-bold text-foreground">
-                        Day 5 · Gentle Reminder
+                      <div className="text-xs font-semibold text-foreground">
+                        Day 5 · Trial reminder
                       </div>
                       <div className="text-[11px] text-muted-foreground">
-                        We send you a reminder notification before your trial converts.
+                        We notify you 48 hours before your trial ends.
                       </div>
                     </div>
 
                     <div className="relative">
-                      <div className="absolute -left-6 top-0.5 size-4 rounded-full border-2 border-emerald-500 bg-background flex items-center justify-center">
-                        <Check size={9} className="text-emerald-500" strokeWidth={3} />
+                      <div className="absolute -left-6 top-0.5 flex size-4 items-center justify-center rounded-full border-2 border-[var(--positive)] bg-background">
+                        <Check size={9} className="text-[var(--positive)]" strokeWidth={3} />
                       </div>
-                      <div className="text-xs font-bold text-foreground">
-                        Day 7 · Membership Starts
+                      <div className="text-xs font-semibold text-foreground">
+                        Day 7 · Plan starts ({plan.price}/{plan.period})
                       </div>
                       <div className="text-[11px] text-muted-foreground">
-                        Billed at {plan.price}/{plan.period}. Cancel anytime in 1 tap if not
-                        satisfied.
+                        Cancel anytime in 1 tap before Day 7 and pay nothing.
                       </div>
                     </div>
                   </div>
@@ -747,19 +766,19 @@ export function PremiumPaywall() {
 
               {/* Notices */}
               {!online && (
-                <p role="alert" className="premium-notice mb-4">
+                <p role="alert" className="premium-notice">
                   You’re offline. Connect to verify your subscription or make a purchase.
                 </p>
               )}
               {message && (
-                <p role="status" className="premium-notice mb-4">
+                <p role="status" className="premium-notice">
                   {message}
                 </p>
               )}
               {!store && !loading && (
                 <button
                   type="button"
-                  className="premium-secondary w-full"
+                  className="premium-secondary"
                   onClick={() => setAttempt((n) => n + 1)}
                   disabled={busy || !online}
                 >
@@ -771,7 +790,7 @@ export function PremiumPaywall() {
               {pendingVerification ? (
                 <button
                   type="button"
-                  className="premium-primary shadow-lg shadow-[var(--periwinkle)]/20"
+                  className="premium-primary"
                   disabled={busy || !online}
                   onClick={() => void perform("verify")}
                 >
@@ -784,7 +803,7 @@ export function PremiumPaywall() {
               ) : (
                 <button
                   type="button"
-                  className="premium-primary shadow-lg shadow-[var(--periwinkle)]/20 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                  className="premium-primary"
                   disabled={loading || busy || !online || !plan}
                   onClick={() => void perform("purchase")}
                 >
@@ -810,14 +829,14 @@ export function PremiumPaywall() {
               )}
             </div>
 
-            {/* Reassurance Footer */}
-            <div className="mt-6 pt-4 border-t border-border/60">
+            {/* Footer */}
+            <div className="mt-5 border-t border-border/70 pt-4">
               <div className="flex flex-col items-center gap-2">
                 <button
                   type="button"
                   onClick={() => void perform("restore")}
                   disabled={busy || loading || !online}
-                  className="text-xs font-semibold text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+                  className="text-xs font-semibold text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground disabled:opacity-50"
                 >
                   Restore Purchases
                 </button>
@@ -832,9 +851,9 @@ export function PremiumPaywall() {
                 )}
               </div>
 
-              <div className="mt-4 flex items-center justify-center gap-4 text-[11px] text-muted-foreground">
+              <div className="mt-3.5 flex items-center justify-center gap-3 text-[11px] text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  <Lock size={12} className="text-emerald-500" /> Secure Checkout
+                  <Lock size={12} className="text-[var(--positive)]" /> Secure Checkout
                 </span>
                 <span>·</span>
                 <span className="flex items-center gap-1">
@@ -842,7 +861,7 @@ export function PremiumPaywall() {
                 </span>
               </div>
 
-              <div className="premium-footer-links mt-4">
+              <div className="premium-footer-links">
                 <Link to="/legal/terms">Terms</Link>
                 <span>·</span>
                 <Link to="/legal/privacy">Privacy</Link>

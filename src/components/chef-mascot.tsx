@@ -1,10 +1,10 @@
 import chef from "@/assets/mealmate-chef.png";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function ChefMascot({
   className,
-  animate = true,
+  animate = false,
   interactive = false,
   onClick,
 }: {
@@ -14,6 +14,13 @@ export function ChefMascot({
   onClick?: () => void;
 }) {
   const [bouncing, setBouncing] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   return (
     <img
@@ -24,14 +31,15 @@ export function ChefMascot({
       onClick={() => {
         if (interactive) {
           setBouncing(true);
-          setTimeout(() => setBouncing(false), 800);
+          if (timerRef.current) clearTimeout(timerRef.current);
+          timerRef.current = setTimeout(() => setBouncing(false), 550);
         }
         onClick?.();
       }}
       className={cn(
         "object-contain select-none transition-transform duration-300",
-        animate && "mascot-float",
-        bouncing && "scale-110 rotate-6",
+        animate && !bouncing && "mascot-float",
+        bouncing && "mia-hop",
         interactive && "cursor-pointer hover:scale-105 active:scale-95",
         className,
       )}

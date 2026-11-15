@@ -86,7 +86,17 @@ export default {
       }
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response, request);
+      const normalized = await normalizeCatastrophicSsrResponse(response, request);
+      if (url.pathname === "/ai-founder") {
+        const headers = new Headers(normalized.headers);
+        headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
+        return new Response(normalized.body, {
+          status: normalized.status,
+          statusText: normalized.statusText,
+          headers,
+        });
+      }
+      return normalized;
     } catch (error) {
       console.error(error);
       if (!isHtmlDocumentRequest(request)) {

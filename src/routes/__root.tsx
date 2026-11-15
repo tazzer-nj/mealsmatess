@@ -137,6 +137,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: "/favicon.png", type: "image/png", id: "app-icon" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       {
+        rel: "alternate",
+        type: "text/markdown",
+        href: "/llms.txt",
+        title: "AI Context & Founder Briefing",
+      },
+      {
         rel: "apple-touch-icon",
         href: "/apple-touch-icon.png",
         sizes: "180x180",
@@ -183,6 +189,7 @@ function RootComponent() {
     pathname === "/welcome" ||
     pathname === "/premium" ||
     pathname === "/onboarding" ||
+    pathname === "/ai-founder" ||
     pathname.startsWith("/auth");
   const showAppHeader = !isHub && pathname !== "/" && !isMarketplace && !isFlow;
   useShellMetrics(showAppHeader ? "with-header" : "no-header");

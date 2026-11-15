@@ -1,4 +1,4 @@
-/* MealMate Consumer Paywall — Editorial Light/Dark Split Layout with Restrained Periwinkle */
+/* MealMate Consumer Paywall — Mobile-First Facts, Interactive Full-Body Mia & Theme-Aware Checkout */
 .paywall-redesign {
   min-height: 100dvh;
   background-color: var(--background);
@@ -8,58 +8,125 @@
 
 .paywall-redesign .paywall-shell {
   width: 100%;
-  max-width: 1140px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: max(20px, env(safe-area-inset-top)) 16px max(40px, env(safe-area-inset-bottom));
+  padding: max(16px, env(safe-area-inset-top)) 16px max(40px, env(safe-area-inset-bottom));
 }
 
 @media (min-width: 768px) {
   .paywall-redesign .paywall-shell {
-    padding: 32px 24px 56px;
+    padding: 28px 24px 56px;
   }
 }
 
+/* Interactive Mia Stage */
+@keyframes mia-hop {
+  0% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+  30% {
+    transform: translateY(-12px) scale(1.06) rotate(-5deg);
+  }
+  65% {
+    transform: translateY(-4px) scale(1.03) rotate(4deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes mia-shadow-pulse {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.22;
+  }
+  50% {
+    transform: scaleX(0.84);
+    opacity: 0.12;
+  }
+}
+
+.mia-hop {
+  animation: mia-hop 0.52s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.paywall-redesign .mia-ground-shadow {
+  width: 68px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--foreground);
+  filter: blur(5px);
+  animation: mia-shadow-pulse 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mia-hop,
+  .paywall-redesign .mia-ground-shadow {
+    animation: none;
+  }
+}
+
+/* Main Split Grid: Plans first on mobile, Split Editorial + Sticky Checkout on desktop */
 .paywall-redesign .paywall-grid {
   display: grid;
   grid-template-columns: 1fr;
-  border-radius: 24px;
+  border-radius: 22px;
   overflow: hidden;
   border: 1px solid var(--border);
   background: var(--card);
 }
 
-@media (min-width: 960px) {
-  .paywall-redesign .paywall-grid {
-    grid-template-columns: 1.12fr 0.88fr;
-  }
+.paywall-redesign .paywall-checkout {
+  order: 1;
+  padding: 22px 18px 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
 }
 
-/* Left Column: Editorial Hero & Benefits */
 .paywall-redesign .paywall-editorial {
+  order: 2;
   display: flex;
   flex-direction: column;
   background: var(--secondary);
-  border-bottom: 1px solid var(--border);
 }
 
 @media (min-width: 960px) {
+  .paywall-redesign .paywall-grid {
+    grid-template-columns: 1.06fr 0.94fr;
+    border-radius: 24px;
+  }
+
   .paywall-redesign .paywall-editorial {
-    border-bottom: none;
+    order: 1;
     border-right: 1px solid var(--border);
+  }
+
+  .paywall-redesign .paywall-checkout {
+    order: 2;
+    border-bottom: none;
+    padding: 32px;
+    position: sticky;
+    top: 24px;
+    align-self: start;
   }
 }
 
+/* Editorial Photo Banner */
 .paywall-redesign .paywall-photo {
   position: relative;
-  height: 220px;
+  height: 156px;
   overflow: hidden;
   border-bottom: 1px solid var(--border);
-  background: #111111;
+  background: var(--secondary);
 }
 
 @media (min-width: 960px) {
   .paywall-redesign .paywall-photo {
-    height: 270px;
+    height: 196px;
   }
 }
 
@@ -68,7 +135,7 @@
   height: 100%;
   object-fit: cover;
   object-position: center;
-  filter: brightness(0.92) contrast(1.04);
+  filter: brightness(0.9) contrast(1.04);
 }
 
 .paywall-redesign .paywall-photo::after {
@@ -81,26 +148,26 @@
 
 .paywall-redesign .paywall-photo-badge {
   position: absolute;
-  left: 20px;
-  bottom: 18px;
+  left: 16px;
+  bottom: 14px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 5px 10px;
   border-radius: 8px;
-  background: rgba(15, 15, 18, 0.8);
+  background: rgba(15, 15, 18, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.16);
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #ffffff;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
 }
 
 .paywall-redesign .paywall-editorial-body {
-  padding: 26px 24px 28px;
+  padding: 20px 18px 24px;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -108,99 +175,18 @@
 
 @media (min-width: 960px) {
   .paywall-redesign .paywall-editorial-body {
-    padding: 32px 36px 36px;
+    padding: 28px 30px 32px;
   }
 }
 
-.paywall-redesign .premium-eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--periwinkle);
-  margin: 0 0 8px;
-}
-
-.paywall-redesign h1 {
-  font-size: clamp(28px, 4vw, 36px);
-  line-height: 1.14;
-  font-weight: 500;
-  letter-spacing: -0.025em;
-  margin: 0 0 10px;
-  color: var(--foreground);
-}
-
-.paywall-redesign .premium-description {
-  color: var(--muted-foreground);
-  margin: 0 0 24px;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.paywall-redesign .paywall-benefits {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.paywall-redesign .paywall-benefit-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.paywall-redesign .paywall-benefit-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: var(--periwinkle-soft);
-  color: var(--periwinkle);
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.paywall-redesign .paywall-benefit-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--foreground);
-  line-height: 1.35;
-}
-
-.paywall-redesign .paywall-benefit-desc {
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--muted-foreground);
-  margin-top: 1px;
-}
-
-/* Right Column: Checkout & Plans */
-.paywall-redesign .paywall-checkout {
-  padding: 26px 24px 32px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  background: var(--card);
-}
-
-@media (min-width: 960px) {
-  .paywall-redesign .paywall-checkout {
-    padding: 36px;
-    position: sticky;
-    top: 24px;
-    align-self: start;
-  }
-}
-
+/* Plan Cards */
 .paywall-redesign .premium-plans {
   display: flex;
   flex-direction: column;
   gap: 10px;
   border: none;
   padding: 0;
-  margin: 0 0 20px;
+  margin: 0 0 18px;
 }
 
 .paywall-redesign .premium-plan {
@@ -209,7 +195,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px;
+  padding: 14px 16px;
   border-radius: 14px;
   background: var(--secondary);
   border: 1px solid var(--border);
@@ -254,11 +240,11 @@
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 6px;
   background: var(--periwinkle-soft);
   color: var(--periwinkle);
@@ -273,7 +259,7 @@
 }
 
 .paywall-redesign .plan-price small {
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--muted-foreground);
 }
@@ -281,30 +267,37 @@
 .paywall-redesign .plan-trial {
   display: block;
   font-size: 12px;
-  color: var(--periwinkle);
+  color: var(--positive);
   font-weight: 500;
   margin-top: 1px;
 }
 
+/* Primary & Secondary Action Buttons */
 .paywall-redesign .premium-primary {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
-  height: 50px;
-  border-radius: 12px;
+  height: 52px;
+  border-radius: 13px;
   background: var(--foreground);
   color: var(--background);
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: opacity 0.16s ease;
+  transition:
+    opacity 0.16s ease,
+    transform 0.12s ease;
 }
 
 .paywall-redesign .premium-primary:hover:not(:disabled) {
-  opacity: 0.9;
+  opacity: 0.92;
+}
+
+.paywall-redesign .premium-primary:active:not(:disabled) {
+  transform: scale(0.99);
 }
 
 .paywall-redesign .premium-primary:disabled {
@@ -342,7 +335,7 @@
   line-height: 1.5;
   color: var(--muted-foreground);
   text-align: center;
-  margin: 14px 0 0;
+  margin: 12px 0 0;
 }
 
 .paywall-redesign .premium-notice {
@@ -360,7 +353,7 @@
   display: flex;
   justify-content: center;
   gap: 14px;
-  margin-top: 18px;
+  margin-top: 14px;
   font-size: 12px;
   color: var(--muted-foreground);
 }
