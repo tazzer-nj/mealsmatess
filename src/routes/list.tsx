@@ -35,6 +35,7 @@ function ListPage() {
   const queryClient = useQueryClient();
   const { data: items } = useQuery({ ...myGroceryQuery(), enabled: !!user });
   const [name, setName] = useState("");
+  const [sortMode, setSortMode] = useState<"aisle" | "alphabetical">("aisle");
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", replace: true });
@@ -81,17 +82,65 @@ function ListPage() {
 
   const checkedCount = items?.filter((i) => i.checked).length ?? 0;
 
+  const sortedItems = (() => {
+    if (!items) return [];
+    const copy = [...items];
+    if (sortMode === "alphabetical") {
+      return copy.sort((a, b) => {
+        if (a.checked !== b.checked) return a.checked ? 1 : -1;
+        return a.name.localeCompare(b.name);
+      });
+    } else {
+      // Sort by aisle/category first, then checked state, then name
+      return copy.sort((a, b) => {
+        if (a.checked !== b.checked) return a.checked ? 1 : -1;
+        const catA = (a.category || "Other").trim();
+        const catB = (b.category || "Other").trim();
+        if (catA !== catB) return catA.localeCompare(catB);
+        return a.name.localeCompare(b.name);
+      });
+    }
+  })();
+
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 bg-background px-4 py-8 text-foreground">
-      <div className="flex items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground">
-          <ShoppingCart className="h-5 w-5 text-[var(--periwinkle)]" />
-        </span>
-        <div>
-          <h1 className="text-3xl font-medium tracking-tight text-foreground">Grocery list</h1>
-          <p className="text-sm text-muted-foreground">
-            {items?.length ?? 0} items · {checkedCount} checked
-          </p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground">
+            <ShoppingCart className="h-5 w-5 text-[var(--periwinkle)]" />
+          </span>
+          <div>
+            <h1 className="text-3xl font-medium tracking-tight text-foreground">Grocery list</h1>
+            <p className="text-sm text-muted-foreground">
+              {items?.length ?? 0} items · {checkedCount} checked
+            </p>
+          </div>
+        </div>
+
+        {/* Sort Toggle */}
+        <div className="flex items-center rounded-xl border border-border bg-secondary/80 p-1">
+          <button
+            type="button"
+            onClick={() => setSortMode("aisle")}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+              sortMode === "aisle"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Aisle
+          </button>
+          <button
+            type="button"
+            onClick={() => setSortMode("alphabetical")}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+              sortMode === "alphabetical"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            A-Z
+          </button>
         </div>
       </div>
 
@@ -134,41 +183,61 @@ function ListPage() {
               <Skeleton className="h-4 max-w-[60%] flex-1 bg-secondary" />
             </li>
           ))
-        ) : items.length === 0 ? (
+        ) : sortedItems.length === 0 ? (
           <li className="rounded-2xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
             Your list is empty. Add items or save ingredients from a recipe.
           </li>
         ) : (
-          items.map((item, idx) => (
-            <li
-              key={item.id}
-              style={{ animationDelay: `${Math.min(idx, 8) * 30}ms` }}
-              className="rise-in flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
-            >
-              <Checkbox
-                checked={item.checked}
-                onCheckedChange={(v) => toggle(item.id, v === true)}
-                aria-label={`Mark ${item.name} as ${item.checked ? "not done" : "done"}`}
-              />
-              <div className="flex-1">
-                <span
-                  className={`text-sm ${item.checked ? "text-muted-foreground line-through" : "text-foreground"}`}
-                >
-                  {item.name}
-                </span>
-                {item.quantity && (
-                  <span className="ml-2 text-xs text-muted-foreground">{item.quantity}</span>
+          sortedItems.map((item, idx) => {
+            const showCategoryHeader =
+              sortMode === "aisle" &&
+              (idx === 0 ||
+                (sortedItems[idx - 1].category || "Other").trim() !==
+                  (item.category || "Other").trim());
+            const categoryLabel = (item.category || "Other").trim();
+
+            return (
+              <div key={item.id} className="space-y-1">
+                {showCategoryHeader && (
+                  <div className="pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-[var(--periwinkle)]">
+                    {categoryLabel}
+                  </div>
                 )}
+                <li
+                  style={{ animationDelay: `${Math.min(idx, 8) * 30}ms` }}
+                  className="rise-in flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
+                >
+                  <Checkbox
+                    checked={item.checked}
+                    onCheckedChange={(v) => toggle(item.id, v === true)}
+                    aria-label={`Mark ${item.name} as ${item.checked ? "not done" : "done"}`}
+                  />
+                  <div className="flex-1">
+                    <span
+                      className={`text-sm ${item.checked ? "text-muted-foreground line-through" : "text-foreground"}`}
+                    >
+                      {item.name}
+                    </span>
+                    {item.quantity && (
+                      <span className="ml-2 text-xs text-muted-foreground">{item.quantity}</span>
+                    )}
+                    {sortMode === "alphabetical" && item.category && (
+                      <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">
+                        {item.category}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => remove(item.id)}
+                    aria-label={`Remove ${item.name}`}
+                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
               </div>
-              <button
-                onClick={() => remove(item.id)}
-                aria-label={`Remove ${item.name}`}
-                className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </li>
-          ))
+            );
+          })
         )}
       </ul>
     </main>

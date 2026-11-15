@@ -67,6 +67,7 @@ export type GroceryRecord = FirestoreRecord & {
   name: string;
   checked: boolean;
   quantity?: string | null;
+  category?: string | null;
 };
 export type PantryRecord = FirestoreRecord & {
   name: string;
