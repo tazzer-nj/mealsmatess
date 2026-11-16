@@ -165,7 +165,7 @@ describe("Theme registry & global ThemeProvider", () => {
     expect(document.documentElement.dataset["appTheme"]).toBe("midnight-pro");
     expect(localStorage.getItem("mealmate-theme")).toBe("dark-premium");
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(
-      "#050814",
+      "#060b16",
     );
 
     view.unmount();
@@ -243,6 +243,12 @@ describe("Theme registry & global ThemeProvider", () => {
         theme.tokens.themeColor,
       );
     }
+
+    const classic = MEALMATE_THEMES.find((t) => t.id === "classic-light")!;
+    const midnight = MEALMATE_THEMES.find((t) => t.id === "midnight-black")!;
+    expect(classic.tokens.primary).toBe("#13341b");
+    expect(classic.tokens.periwinkle).toBe("#3d7c1b");
+    expect(midnight.tokens.periwinkle).toBe("#59b533");
   });
 
   it("restores saved account theme automatically across devices and avoids flash via THEME_BOOT_SCRIPT", async () => {

@@ -105,7 +105,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "google-site-verification",
         content: "U6Y3az-2aYiYoygTitJ1URIuTNWCwkbfNVznjygMimg",
       },
-      { name: "theme-color", content: "#080808" },
+      { name: "theme-color", content: "#f8faf6" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
@@ -171,7 +171,7 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body
         suppressHydrationWarning
-        className="bg-background text-foreground antialiased selection:bg-[var(--periwinkle)] selection:text-white"
+        className="bg-background text-foreground antialiased selection:bg-[var(--periwinkle)] selection:text-[var(--primary-foreground)]"
       >
         {children}
         <Scripts />

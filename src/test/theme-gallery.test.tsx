@@ -128,6 +128,8 @@ describe("ThemeGallery UI & live preview", () => {
       </ThemeProvider>,
     );
 
+    await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalled());
+
     const auroraCard = screen.getByRole("radio", { name: /Aurora theme \(Premium\)/i });
     fireEvent.click(auroraCard);
 
@@ -162,6 +164,8 @@ describe("ThemeGallery UI & live preview", () => {
         <ThemeGallery />
       </ThemeProvider>,
     );
+
+    await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalled());
 
     const auroraCard = screen.getByRole("radio", { name: /Aurora theme/i });
     fireEvent.click(auroraCard);

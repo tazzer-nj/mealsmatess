@@ -360,7 +360,7 @@ export function PremiumPaywall() {
                           <div
                             className={`flex size-4 shrink-0 items-center justify-center rounded-full border transition-all ${
                               isSelected
-                                ? "border-[var(--periwinkle)] bg-[var(--periwinkle)] text-white"
+                                ? "border-[var(--periwinkle)] bg-[var(--periwinkle)] text-[var(--primary-foreground)]"
                                 : "border-border bg-card"
                             }`}
                           >

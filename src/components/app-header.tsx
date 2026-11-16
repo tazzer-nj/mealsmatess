@@ -102,7 +102,7 @@ export function AppHeader() {
             >
               <Bell aria-hidden="true" className="h-4 w-4" />
               {(unread.data?.unreadCount ?? 0) > 0 && (
-                <span className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-md bg-[var(--periwinkle)] px-1 text-[10px] font-semibold leading-4 text-white">
+                <span className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-md bg-[var(--periwinkle)] px-1 text-[10px] font-semibold leading-4 text-[var(--primary-foreground)]">
                   {(unread.data?.unreadCount ?? 0) > 99 ? "99+" : unread.data?.unreadCount}
                 </span>
               )}

@@ -116,57 +116,57 @@ html[data-font="fraunces"] {
   --radius: 0.75rem;
   --app-header-h: calc(4rem + env(safe-area-inset-top, 0px));
   --app-nav-h: calc(4.25rem + env(safe-area-inset-bottom, 0px));
-  --shadow-admin: 0 4px 20px -12px rgba(9, 9, 11, 0.12);
+  --shadow-admin: 0 4px 20px -12px rgba(19, 52, 27, 0.12);
 
-  /* Light Mode — Crisp white & warm neutral palette */
-  --background: #fafafa;
-  --foreground: #09090b;
+  /* Classic Light — Fresh botanical white, bowl green & forest ink matching MealMate logo */
+  --background: #f8faf6;
+  --foreground: #13341b;
   --card: #ffffff;
-  --card-foreground: #09090b;
+  --card-foreground: #13341b;
   --popover: #ffffff;
-  --popover-foreground: #09090b;
-  --primary: #09090b;
+  --popover-foreground: #13341b;
+  --primary: #13341b;
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #09090b;
-  --muted: #f4f4f5;
-  --muted-foreground: #52525b;
-  --accent: #f4f4f5;
-  --accent-foreground: #09090b;
-  --periwinkle: #4f5fe8;
-  --periwinkle-soft: rgba(79, 95, 232, 0.11);
-  --nav-background: rgba(250, 250, 250, 0.92);
-  --header-background: rgba(250, 250, 250, 0.92);
-  --destructive: #dc2626;
+  --secondary: #edf3e9;
+  --secondary-foreground: #13341b;
+  --muted: #eaf1e5;
+  --muted-foreground: #445948;
+  --accent: #e2ecdb;
+  --accent-foreground: #13341b;
+  --periwinkle: #3d7c1b;
+  --periwinkle-soft: rgba(61, 124, 27, 0.12);
+  --nav-background: rgba(248, 250, 246, 0.92);
+  --header-background: rgba(248, 250, 246, 0.92);
+  --destructive: #d93424;
   --destructive-foreground: #ffffff;
-  --border: #e4e4e7;
-  --input: #d4d4d8;
-  --ring: #4f5fe8;
-  --positive: #15803d;
-  --negative: #dc2626;
-  --setup-mint: #f4f4f5;
-  --setup-coral: #f4f4f5;
-  --setup-sky: #f4f4f5;
-  --setup-yellow: #f4f4f5;
-  --setup-ink: #09090b;
+  --border: #dae5d4;
+  --input: #c1d2b8;
+  --ring: #3d7c1b;
+  --positive: #2f7d18;
+  --negative: #d93424;
+  --setup-mint: #edf3e9;
+  --setup-coral: #edf3e9;
+  --setup-sky: #edf3e9;
+  --setup-yellow: #edf3e9;
+  --setup-ink: #13341b;
   --cream: #ffffff;
-  --ink: #09090b;
-  --ember: #4f5fe8;
-  --leaf: #15803d;
-  --market-hero: #09090b;
-  --chart-1: #09090b;
-  --chart-2: #4f5fe8;
-  --chart-3: #52525b;
-  --chart-4: #a1a1aa;
-  --chart-5: #d4d4d8;
+  --ink: #13341b;
+  --ember: #3d7c1b;
+  --leaf: #2f7d18;
+  --market-hero: #13341b;
+  --chart-1: #13341b;
+  --chart-2: #3d7c1b;
+  --chart-3: #445948;
+  --chart-4: #8fa392;
+  --chart-5: #c1d2b8;
   --sidebar: #ffffff;
-  --sidebar-foreground: #09090b;
-  --sidebar-primary: #09090b;
+  --sidebar-foreground: #13341b;
+  --sidebar-primary: #13341b;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f4f4f5;
-  --sidebar-accent-foreground: #09090b;
-  --sidebar-border: #e4e4e7;
-  --sidebar-ring: #4f5fe8;
+  --sidebar-accent: #edf3e9;
+  --sidebar-accent-foreground: #13341b;
+  --sidebar-border: #dae5d4;
+  --sidebar-ring: #3d7c1b;
 }
 
 .marketplace-promo-overlay {
@@ -182,56 +182,56 @@ html[data-font="fraunces"] {
 
 .dark {
   color-scheme: dark;
-  --positive: #22c55e;
+  --positive: #59b533;
   --negative: #ef4444;
-  --periwinkle: #7c8cff;
-  --periwinkle-soft: rgba(124, 140, 255, 0.15);
-  --cream: #141414;
-  --ink: #ffffff;
-  --ember: #7c8cff;
-  --leaf: #22c55e;
-  --background: #080808;
-  --foreground: #ffffff;
-  --card: #141414;
-  --card-foreground: #ffffff;
-  --popover: #181818;
-  --popover-foreground: #ffffff;
-  --primary: #ffffff;
-  --primary-foreground: #080808;
-  --secondary: #111111;
-  --secondary-foreground: #ffffff;
-  --muted: #1a1a1a;
-  --muted-foreground: #a1a1aa;
-  --accent: #1c1c1e;
-  --accent-foreground: #ffffff;
-  --nav-background: rgba(8, 8, 8, 0.92);
-  --header-background: rgba(8, 8, 8, 0.92);
+  --periwinkle: #59b533;
+  --periwinkle-soft: rgba(89, 181, 51, 0.16);
+  --cream: #111612;
+  --ink: #f5faf3;
+  --ember: #59b533;
+  --leaf: #59b533;
+  --background: #070a07;
+  --foreground: #f5faf3;
+  --card: #111612;
+  --card-foreground: #f5faf3;
+  --popover: #161d17;
+  --popover-foreground: #f5faf3;
+  --primary: #f5faf3;
+  --primary-foreground: #070a07;
+  --secondary: #0e140f;
+  --secondary-foreground: #f5faf3;
+  --muted: #18211a;
+  --muted-foreground: #9bb09e;
+  --accent: #1d281f;
+  --accent-foreground: #f5faf3;
+  --nav-background: rgba(7, 10, 7, 0.92);
+  --header-background: rgba(7, 10, 7, 0.92);
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #262626;
-  --input: #303030;
-  --ring: #7c8cff;
-  --chart-1: #ffffff;
-  --chart-2: #7c8cff;
-  --chart-3: #a1a1aa;
-  --chart-4: #71717a;
-  --chart-5: #52525b;
-  --sidebar: #141414;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #080808;
-  --sidebar-accent: #111111;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #262626;
-  --sidebar-ring: #7c8cff;
+  --border: #222e24;
+  --input: #2e3d30;
+  --ring: #59b533;
+  --chart-1: #f5faf3;
+  --chart-2: #59b533;
+  --chart-3: #9bb09e;
+  --chart-4: #657867;
+  --chart-5: #3f4f42;
+  --sidebar: #111612;
+  --sidebar-foreground: #f5faf3;
+  --sidebar-primary: #f5faf3;
+  --sidebar-primary-foreground: #070a07;
+  --sidebar-accent: #0e140f;
+  --sidebar-accent-foreground: #f5faf3;
+  --sidebar-border: #222e24;
+  --sidebar-ring: #59b533;
 }
 
 /* Midnight Pro refined shadows */
 html.dark-premium,
 html[data-theme="dark-premium"],
 html[data-app-theme="midnight-pro"] {
-  --shadow-admin: 0 12px 32px -16px rgba(5, 8, 20, 0.85), 0 0 0 1px rgba(133, 148, 255, 0.08);
-  --shadow-cooking: 0 14px 36px -14px rgba(5, 8, 20, 0.9), 0 0 28px -12px rgba(91, 108, 250, 0.28);
+  --shadow-admin: 0 12px 32px -16px rgba(6, 11, 22, 0.85), 0 0 0 1px rgba(91, 147, 255, 0.08);
+  --shadow-cooking: 0 14px 36px -14px rgba(6, 11, 22, 0.9), 0 0 28px -12px rgba(91, 147, 255, 0.28);
 }
 
 #app-header {

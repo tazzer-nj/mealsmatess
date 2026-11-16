@@ -112,7 +112,7 @@ function ThemeMiniPreview({
           className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-md shadow-sm"
           style={{
             backgroundColor: t.periwinkle,
-            color: t.primaryForeground === t.periwinkle ? "#ffffff" : "#ffffff",
+            color: theme.colorScheme === "dark" ? t.background : "#ffffff",
           }}
         >
           <Check className="h-3 w-3 stroke-[2.5]" />
@@ -121,7 +121,10 @@ function ThemeMiniPreview({
       {!active && previewing && (
         <span
           className="absolute right-1.5 top-1.5 rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
-          style={{ backgroundColor: t.periwinkle, color: "#ffffff" }}
+          style={{
+            backgroundColor: t.periwinkle,
+            color: theme.colorScheme === "dark" ? t.background : "#ffffff",
+          }}
         >
           Preview
         </span>
