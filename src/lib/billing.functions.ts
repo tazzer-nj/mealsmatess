@@ -7,12 +7,16 @@ const billing = createServerOnlyFn(() => import("@/server/revenuecat"));
 const COOKIE = "mealmate_purchase";
 export const createPurchaseSession = createServerFn({ method: "POST" }).handler(async () => {
   let userId: string | undefined;
+  let claims:
+    { email?: string | null; admin?: unknown; isAdmin?: unknown; role?: unknown } | undefined;
   const authorization = getRequest().headers.get("authorization");
   if (authorization) {
     const match = /^Bearer\s+(.+)$/i.exec(authorization);
     if (!match) throw new Response("Unauthorized", { status: 401 });
     try {
-      userId = (await (await loadFirebaseAdmin()).verifyFirebaseIdToken(match[1]!)).uid;
+      const verified = await (await loadFirebaseAdmin()).verifyFirebaseIdToken(match[1]!);
+      userId = verified.uid;
+      claims = verified;
     } catch {
       throw new Response("Unauthorized", { status: 401 });
     }
@@ -28,9 +32,11 @@ export const createPurchaseSession = createServerFn({ method: "POST" }).handler(
       path: "/",
       maxAge: 90 * 86400,
     });
-  let isActive = (await service.verifyRevenueCatCustomer(identity.customerId)).isPremium;
-  if (!isActive && userId) {
-    isActive = (await service.verifyAccountAccess(userId, getCookie(COOKIE))).isPremium;
+  let isActive = userId
+    ? (await service.verifyAccountAccess(userId, getCookie(COOKIE), claims)).isPremium
+    : false;
+  if (!isActive) {
+    isActive = (await service.verifyRevenueCatCustomer(identity.customerId)).isPremium;
   }
   return {
     appUserId: identity.customerId,
@@ -51,7 +57,7 @@ export const verifyMyPremium = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const service = await billing();
     service.assertBillingOrigin(getRequest());
-    return service.verifyAccountAccess(context.userId, getCookie(COOKIE));
+    return service.verifyAccountAccess(context.userId, getCookie(COOKIE), context.claims);
   });
 
 // Intro progress is presentation state only and never participates in entitlement checks.

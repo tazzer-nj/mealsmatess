@@ -18,7 +18,7 @@ export const getMyEntitlement = createServerFn({ method: "GET" })
   .middleware([requireFirebaseAuth])
   .handler(async ({ context }) => {
     const { verifyAccountAccess } = await loadPremiumService();
-    return verifyAccountAccess(context.userId);
+    return verifyAccountAccess(context.userId, undefined, context.claims);
   });
 
 // ---------- Usage ----------
@@ -281,36 +281,20 @@ export const redeemPromoCode = createServerFn({ method: "POST" })
   });
 
 // ---------- Admin ----------
-async function checkIsAdmin(userId: string): Promise<boolean> {
+async function checkIsAdmin(
+  userId: string,
+  claims?: { email?: string | null; admin?: unknown; isAdmin?: unknown; role?: unknown },
+): Promise<boolean> {
   if (!userId) return false;
-  const { firebaseAdmin, isHardcodedAdminEmail } = await loadFirebaseAdmin();
-  if (isHardcodedAdminEmail(userId)) return true;
-
-  const { data } = await firebaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (data) return true;
-
-  const { data: profile } = await firebaseAdmin
-    .from("profiles")
-    .select("isAdmin,role,email")
-    .eq("id", userId)
-    .maybeSingle();
-  if (
-    profile?.isAdmin === true ||
-    profile?.role === "admin" ||
-    (profile?.email && isHardcodedAdminEmail(String(profile.email)))
-  ) {
-    return true;
-  }
-  return false;
+  const { isAdminAccount } = await loadFirebaseAdmin();
+  return isAdminAccount(userId, claims);
 }
 
-async function assertAdmin(userId: string) {
-  const isAdm = await checkIsAdmin(userId);
+async function assertAdmin(
+  userId: string,
+  claims?: { email?: string | null; admin?: unknown; isAdmin?: unknown; role?: unknown },
+) {
+  const isAdm = await checkIsAdmin(userId, claims);
   if (!isAdm) throw new Error("Forbidden");
 }
 
@@ -541,7 +525,7 @@ export const adminRevokePremium = createServerFn({ method: "POST" })
 export const adminIsAdmin = createServerFn({ method: "GET" })
   .middleware([requireFirebaseAuth])
   .handler(async ({ context }) => {
-    const isAdmin = await checkIsAdmin(context.userId);
+    const isAdmin = await checkIsAdmin(context.userId, context.claims);
     return { isAdmin };
   });
 

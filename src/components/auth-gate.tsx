@@ -8,6 +8,8 @@ import { reload, sendEmailVerification } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
+import { isHardcodedAdminEmail } from "@/lib/admin-emails";
+
 // MealMate entry: auth → onboarding → paywall → app.
 // Only these routes are reachable without a signed-in, verified user.
 const PUBLIC_PREFIXES = ["/auth", "/reset-password", "/legal", "/about", "/support", "/ai-founder"];
@@ -74,8 +76,8 @@ export function AuthGate({
     return <RedirectToAuth />;
   }
 
-  // Email verification enforcement: block until confirmed_at or emailVerified is set.
-  const confirmed = Boolean(user.emailVerified);
+  // Email verification enforcement: block until confirmed_at or emailVerified is set (admins go straight in).
+  const confirmed = Boolean(user.emailVerified) || isHardcodedAdminEmail(user.email);
   if (user.email && !confirmed) {
     return <VerifyEmailPrompt email={user.email} />;
   }

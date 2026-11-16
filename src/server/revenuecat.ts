@@ -244,7 +244,44 @@ export async function verifyPurchaseSession(token?: string) {
   return verifyRevenueCatCustomer(session.customerId);
 }
 
-export async function verifyAccountAccess(userId: string, token?: string): Promise<PremiumAccess> {
+export function adminPremiumAccess(now = Date.now()): PremiumAccess {
+  return {
+    isPremium: true,
+    tier: "admin",
+    status: "active",
+    trialActive: false,
+    periodEnd: null,
+    trialEnd: null,
+    store: "admin",
+    autoRenew: false,
+    isManual: true,
+    verifiedUntil: now + LEASE_MS,
+  };
+}
+
+async function safeIsAdminAccount(
+  userId: string,
+  claims?: { email?: string | null; admin?: unknown; isAdmin?: unknown; role?: unknown },
+): Promise<boolean> {
+  try {
+    const mod = await import("@/server/firebase-admin");
+    if (typeof mod.isAdminAccount === "function") {
+      return await mod.isAdminAccount(userId, claims);
+    }
+  } catch {
+    // Non-admin fallback if firebase-admin is partially mocked in unit tests.
+  }
+  return false;
+}
+
+export async function verifyAccountAccess(
+  userId: string,
+  token?: string,
+  claims?: { email?: string | null; admin?: unknown; isAdmin?: unknown; role?: unknown },
+): Promise<PremiumAccess> {
+  if (await safeIsAdminAccount(userId, claims)) {
+    return adminPremiumAccess();
+  }
   const db = getFirebaseAdminFirestore();
   const linkRef = db.collection("billing_links").doc(userId);
   const link = await linkRef.get();
@@ -284,8 +321,11 @@ export async function verifyAccountAccess(userId: string, token?: string): Promi
     });
   return access;
 }
-export async function requireActivePremium(userId: string) {
-  const access = await verifyAccountAccess(userId);
+export async function requireActivePremium(
+  userId: string,
+  claims?: { email?: string | null; admin?: unknown; isAdmin?: unknown; role?: unknown },
+) {
+  const access = await verifyAccountAccess(userId, undefined, claims);
   if (!access.isPremium)
     throw new Response("An active MealMate Premium subscription is required.", { status: 402 });
   return access;

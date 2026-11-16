@@ -45,7 +45,7 @@ export function ConsumerAccessGate({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const { state, user, access } = useFlowController();
+  const { state, user, access, isAdmin } = useFlowController();
   const isPublic = isPublicPath(pathname);
 
   useEffect(() => {
@@ -72,12 +72,17 @@ export function ConsumerAccessGate({ children }: { children: ReactNode }) {
         void navigate({ to: "/welcome", replace: true });
       }
     } else if (state === "application_ready") {
-      // If user visits auth/onboarding/welcome/premium when fully completed, redirect to home
-      if (pathname === "/auth" || pathname === "/onboarding" || pathname === "/welcome") {
+      // If user visits auth/onboarding/welcome (or paywall as an admin) when ready, redirect straight home
+      if (
+        pathname === "/auth" ||
+        pathname === "/onboarding" ||
+        pathname === "/welcome" ||
+        (isAdmin && pathname === "/premium")
+      ) {
         void navigate({ to: "/", replace: true });
       }
     }
-  }, [state, pathname, isPublic, online, navigate]);
+  }, [state, pathname, isPublic, isAdmin, online, navigate]);
 
   if (isPublic) return <>{children}</>;
 

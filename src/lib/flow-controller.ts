@@ -3,6 +3,8 @@ import { usePremium } from "@/hooks/use-premium";
 import { useQuery } from "@tanstack/react-query";
 import { getMyPreferences } from "@/lib/preferences.functions";
 import { getIntroCompletion } from "@/lib/billing.functions";
+import { adminIsAdmin } from "@/lib/premium.functions";
+import { isHardcodedAdminEmail } from "@/lib/admin-emails";
 
 export type FlowState =
   | "loading"
@@ -15,7 +17,18 @@ export type FlowState =
 export function useFlowController() {
   const { user, loading: sessionLoading } = useSession();
   const userId = user?.id;
+  const emailAdmin = isHardcodedAdminEmail(user?.email);
   const access = usePremium();
+
+  const adminQuery = useQuery({
+    queryKey: ["admin-flow-access", userId],
+    queryFn: () => adminIsAdmin().catch(() => ({ isAdmin: false })),
+    enabled: !!userId && !emailAdmin,
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const isAdmin = Boolean(userId && (emailAdmin || adminQuery.data?.isAdmin));
 
   const userProgress = useQuery({
     queryKey: ["user-flow-progress", userId],
@@ -30,20 +43,36 @@ export function useFlowController() {
         tourCompleted: Boolean(introCompleted),
       };
     },
-    enabled: !!userId,
+    enabled: !!userId && !isAdmin,
     staleTime: 10_000,
   });
 
   if (sessionLoading) {
-    return { state: "loading" as FlowState, user, access, progress: null };
+    return { state: "loading" as FlowState, user, access, progress: null, isAdmin: false };
   }
 
   if (!user) {
-    return { state: "unauthenticated" as FlowState, user: null, access, progress: null };
+    return {
+      state: "unauthenticated" as FlowState,
+      user: null,
+      access,
+      progress: null,
+      isAdmin: false,
+    };
   }
 
-  if (userProgress.isPending || access.loading) {
-    return { state: "loading" as FlowState, user, access, progress: null };
+  if (isAdmin) {
+    return {
+      state: "application_ready" as FlowState,
+      user,
+      access: { ...access, isPremium: true, loading: false, error: null },
+      progress: { onboardingCompleted: true, tourCompleted: true, isPremium: true },
+      isAdmin: true,
+    };
+  }
+
+  if (adminQuery.isPending || userProgress.isPending || access.loading) {
+    return { state: "loading" as FlowState, user, access, progress: null, isAdmin: false };
   }
 
   const onboardingCompleted = Boolean(userProgress.data?.onboardingCompleted);
@@ -66,5 +95,6 @@ export function useFlowController() {
     user,
     access,
     progress: { onboardingCompleted, tourCompleted, isPremium },
+    isAdmin: false,
   };
 }

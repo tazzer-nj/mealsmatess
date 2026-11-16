@@ -783,12 +783,77 @@ export async function firebaseAuthUserExists(uid: string) {
 
 export { Timestamp };
 
-export const ADMIN_EMAILS = ["tatendamkhwanazi6@gmail.com", "ttmine60@gmail.com"] as const;
+import { ADMIN_EMAILS, isHardcodedAdminEmail } from "@/lib/admin-emails";
 
-export function isHardcodedAdminEmail(emailOrId: string): boolean {
-  if (!emailOrId) return false;
-  const normalized = emailOrId.trim().toLowerCase();
-  return ADMIN_EMAILS.some((adminEmail) => adminEmail.toLowerCase() === normalized);
+export { ADMIN_EMAILS, isHardcodedAdminEmail };
+
+export async function isAdminAccount(
+  userId: string,
+  claims?: {
+    email?: string | null;
+    admin?: unknown;
+    isAdmin?: unknown;
+    role?: unknown;
+  },
+): Promise<boolean> {
+  if (!userId) return false;
+  if (claims?.admin === true || claims?.isAdmin === true || claims?.role === "admin") {
+    return true;
+  }
+  if (claims?.email && isHardcodedAdminEmail(claims.email)) return true;
+  if (isHardcodedAdminEmail(userId)) return true;
+
+  try {
+    const { data: roleRow } = await firebaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (roleRow) return true;
+
+    const { data: profile } = await firebaseAdmin
+      .from("profiles")
+      .select("isAdmin,role,email")
+      .eq("id", userId)
+      .maybeSingle();
+    if (
+      profile?.isAdmin === true ||
+      profile?.role === "admin" ||
+      (profile?.email && isHardcodedAdminEmail(String(profile.email)))
+    ) {
+      return true;
+    }
+
+    if (claims?.email) {
+      const normalizedEmail = claims.email.trim().toLowerCase();
+      const { data: allowlisted } = await firebaseAdmin
+        .from("admin_allowlist")
+        .select("enabled,role")
+        .eq("email", normalizedEmail)
+        .maybeSingle();
+      if (allowlisted?.enabled && allowlisted?.role === "admin") return true;
+    }
+  } catch {
+    // Fall through to Firebase Auth lookup if Firestore query fails.
+  }
+
+  try {
+    const { auth } = getServices();
+    const authUser = await auth.getUser(userId);
+    if (
+      (authUser.email && isHardcodedAdminEmail(authUser.email)) ||
+      authUser.customClaims?.["admin"] === true ||
+      authUser.customClaims?.["isAdmin"] === true ||
+      authUser.customClaims?.["role"] === "admin"
+    ) {
+      return true;
+    }
+  } catch {
+    // User record may not exist in Auth (e.g., unit tests).
+  }
+
+  return false;
 }
 
 export async function setAdminUserPrivilegesInFirestore(userIdOrEmail: string): Promise<{

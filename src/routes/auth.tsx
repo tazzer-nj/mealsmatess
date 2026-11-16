@@ -19,6 +19,19 @@ import {
 } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { sendEmailVerification } from "firebase/auth";
+import { isHardcodedAdminEmail } from "@/lib/admin-emails";
+import { adminIsAdmin } from "@/lib/premium.functions";
+
+async function resolvePostAuthRoute(email?: string | null): Promise<"/" | "/onboarding"> {
+  if (isHardcodedAdminEmail(email)) return "/";
+  try {
+    const res = await adminIsAdmin();
+    if (res?.isAdmin) return "/";
+  } catch {
+    // Non-admins proceed to onboarding flow check.
+  }
+  return "/onboarding";
+}
 
 type AuthView = "entry" | "signin" | "signup";
 
@@ -169,7 +182,8 @@ function AuthPage() {
         try {
           await ensureUserProfile(result.user);
           toast.success("Welcome to MealMate!");
-          navigate({ to: "/onboarding", replace: true });
+          const dest = await resolvePostAuthRoute(result.user.email);
+          if (active) navigate({ to: dest, replace: true });
         } catch (error) {
           console.error("[Auth] Google redirect completion failed:", error);
           toast.error("Google sign-in completed, but your profile could not be loaded.");
@@ -186,7 +200,14 @@ function AuthPage() {
   }, [navigate]);
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/onboarding", replace: true });
+    if (loading || !user) return;
+    let active = true;
+    void resolvePostAuthRoute(user.email).then((dest) => {
+      if (active) navigate({ to: dest, replace: true });
+    });
+    return () => {
+      active = false;
+    };
   }, [user, loading, navigate]);
 
   function clearErrors() {
@@ -218,7 +239,8 @@ function AuthPage() {
           console.warn("[Auth] Could not create Firestore profile:", dbErr);
         }
         toast.success("Welcome to MealMate!");
-        navigate({ to: "/onboarding", replace: true });
+        const dest = await resolvePostAuthRoute(cred.user.email);
+        navigate({ to: dest, replace: true });
         return;
       }
     } catch (error) {
@@ -303,7 +325,8 @@ function AuthPage() {
             } catch {
               toast.success("Welcome to MealMate!");
             }
-            navigate({ to: "/onboarding", replace: true });
+            const dest = await resolvePostAuthRoute(cred.user.email);
+            navigate({ to: dest, replace: true });
             return;
           }
         } catch (fbErr: unknown) {
@@ -326,7 +349,8 @@ function AuthPage() {
           const cred = await signInWithFirebaseEmail(normalizedEmail, password);
           if (cred?.user) {
             toast.success("Welcome back!");
-            navigate({ to: "/onboarding", replace: true });
+            const dest = await resolvePostAuthRoute(cred.user.email);
+            navigate({ to: dest, replace: true });
             return;
           }
         } catch (fbErr: unknown) {

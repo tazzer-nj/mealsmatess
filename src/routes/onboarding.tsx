@@ -4,6 +4,8 @@ import { Loader2 } from "lucide-react";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { useSession } from "@/hooks/use-session";
 
+import { isHardcodedAdminEmail } from "@/lib/admin-emails";
+
 export const Route = createFileRoute("/onboarding")({
   head: () => ({ meta: [{ title: "Personalize MealMate — Onboarding" }] }),
   component: OnboardingPage,
@@ -14,8 +16,11 @@ function OnboardingPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+    if (!user) {
       void navigate({ to: "/auth", replace: true });
+    } else if (isHardcodedAdminEmail(user.email)) {
+      void navigate({ to: "/", replace: true });
     }
   }, [user, loading, navigate]);
 
