@@ -270,8 +270,8 @@ function RestaurantsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-36 text-foreground">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl">
+    <div className="min-h-screen overflow-x-hidden bg-background pb-36 text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border bg-[var(--header-background)] px-3.5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl sm:px-4">
         <div className="mx-auto max-w-3xl">
           <Sheet>
             <SheetTrigger asChild>
@@ -570,7 +570,7 @@ function RestaurantsPage() {
 
       {count > 0 && (
         <Button
-          className="fixed inset-x-4 bottom-20 z-40 mx-auto h-12 max-w-md justify-between rounded-xl bg-primary px-5 text-primary-foreground shadow-xl hover:bg-primary/90"
+          className="fixed inset-x-4 bottom-[calc(var(--app-nav-h,4.25rem)+14px)] z-30 mx-auto h-12 max-w-md justify-between rounded-xl bg-primary px-5 text-primary-foreground shadow-xl hover:bg-primary/90"
           onClick={() => navigate({ to: "/checkout" })}
         >
           <span className="flex items-center gap-2 font-medium">

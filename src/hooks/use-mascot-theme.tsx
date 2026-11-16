@@ -1,115 +1,49 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import { toast } from "sonner";
-import { firebaseData } from "@/lib/firebase-data";
-import { useSession } from "@/hooks/use-session";
-import {
-  THEME_STORAGE_KEY,
-  applyTheme,
-  getTheme,
-  type MascotTheme,
-  type MascotThemeId,
-} from "@/lib/mascot-theme";
+import { useCallback, useMemo } from "react";
+import { useOptionalTheme, useTheme } from "@/components/theme-provider";
+import { getTheme, type MascotTheme, type MascotThemeId } from "@/lib/mascot-theme";
 
-type Ctx = { theme: MascotTheme; setTheme: (id: MascotThemeId) => Promise<void>; saving: boolean };
-const ThemeCtx = createContext<Ctx | null>(null);
-
-export function MascotThemeProvider({ children }: { children: ReactNode }) {
-  const { user } = useSession();
-  const [themeId, setThemeId] = useState<MascotThemeId>("classic");
-  const [saving, setSaving] = useState(false);
-
-  // Local theme first (works signed out).
-  useEffect(() => {
-    try {
-      const local = window.localStorage.getItem(THEME_STORAGE_KEY);
-      if (local) setThemeId(getTheme(local).id);
-    } catch {
-      /* storage unavailable */
-    }
-  }, []);
-
-  // Account theme wins when signed in, so it follows the user across devices.
-  useEffect(() => {
-    if (!user) return;
-    let active = true;
-    firebaseData
-      .from("profiles")
-      .select("theme")
-      .eq("id", user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("[theme] load failed", error);
-          return;
-        }
-        const remote = (data as { theme?: string } | null)?.theme;
-        if (active && remote) {
-          const id = getTheme(remote).id;
-          setThemeId(id);
-          try {
-            window.localStorage.setItem(THEME_STORAGE_KEY, id);
-          } catch {
-            /* ignore */
-          }
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [user]);
-
-  useEffect(() => {
-    applyTheme(themeId);
-  }, [themeId]);
-
-  const setTheme = useCallback(
-    async (id: MascotThemeId) => {
-      const previous = themeId;
-      applyTheme(id, true);
-      setThemeId(id);
-      try {
-        window.localStorage.setItem(THEME_STORAGE_KEY, id);
-      } catch {
-        /* ignore */
-      }
-      if (!user) return;
-      setSaving(true);
-      const { error } = await firebaseData
-        .from("profiles")
-        .update({ theme: id } as never)
-        .eq("id", user.id);
-      setSaving(false);
-      if (error) {
-        console.error("[theme] save failed", error);
-        toast.error("Couldn't save your theme to your account. Please try again.");
-        applyTheme(previous, true);
-        setThemeId(previous);
-      }
-    },
-    [themeId, user],
-  );
-
-  const value = useMemo(
-    () => ({ theme: getTheme(themeId), setTheme, saving }),
-    [themeId, setTheme, saving],
-  );
-  return <ThemeCtx.Provider value={value}>{children}</ThemeCtx.Provider>;
+/**
+ * Compatibility bridge for components consuming mascot theme metadata.
+ * Backed directly by the unified <ThemeProvider> so there is a single source of truth.
+ */
+export function MascotThemeProvider({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
 }
 
 export function useMascotTheme() {
-  const ctx = useContext(ThemeCtx);
-  if (!ctx) throw new Error("useMascotTheme must be used inside <MascotThemeProvider>");
-  return ctx;
+  const ctx = useTheme();
+  const theme: MascotTheme = useMemo(() => getTheme(ctx.displayThemeId), [ctx.displayThemeId]);
+  const setTheme = useCallback(
+    async (id: MascotThemeId) => {
+      await ctx.applyTheme(id);
+    },
+    [ctx],
+  );
+  return {
+    theme,
+    setTheme,
+    saving: ctx.saveStatus === "saving",
+    saveStatus: ctx.saveStatus,
+    saveError: ctx.saveError,
+  };
 }
 
 export function useOptionalMascotTheme() {
-  return useContext(ThemeCtx);
+  const ctx = useOptionalTheme();
+  const setTheme = useCallback(
+    async (id: MascotThemeId) => {
+      if (ctx) await ctx.applyTheme(id);
+    },
+    [ctx],
+  );
+  return useMemo(() => {
+    if (!ctx) return null;
+    return {
+      theme: getTheme(ctx.displayThemeId),
+      setTheme,
+      saving: ctx.saveStatus === "saving",
+      saveStatus: ctx.saveStatus,
+      saveError: ctx.saveError,
+    };
+  }, [ctx, setTheme]);
 }

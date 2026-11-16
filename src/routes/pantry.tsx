@@ -163,17 +163,19 @@ function PantryPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 bg-background px-4 py-8 text-foreground">
+    <main className="mx-auto w-full max-w-2xl flex-1 overflow-x-hidden bg-background px-3.5 py-6 text-foreground sm:px-4 sm:py-8">
       {/* Top Header */}
-      <div className="flex items-center justify-between">
-        <div className="min-w-0">
-          <h1 className="text-3xl font-medium tracking-tight text-foreground">Your Pantry</h1>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
+            Your Pantry
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {items.length} {items.length === 1 ? "ingredient" : "ingredients"} logged and ready to
             cook.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Button
             asChild
             variant="outline"
@@ -205,7 +207,7 @@ function PantryPage() {
           e.preventDefault();
           void add();
         }}
-        className="mt-6 grid grid-cols-[minmax(0,1fr)_90px_auto] gap-2 rounded-2xl border border-border bg-card p-2"
+        className="mt-6 grid grid-cols-[minmax(0,1fr)_82px_44px] gap-1.5 rounded-2xl border border-border bg-card p-2 sm:grid-cols-[minmax(0,1fr)_100px_44px] sm:gap-2"
       >
         <Input
           aria-label="Ingredient name"
@@ -296,55 +298,59 @@ function PantryPage() {
                   className="group flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-3 text-foreground transition-all hover:border-foreground/20"
                 >
                   {isEditing ? (
-                    <div className="flex flex-1 items-center gap-2">
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-nowrap">
                       <Input
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         placeholder="Ingredient name"
-                        className="h-9 rounded-lg border-border bg-secondary px-2 text-sm text-foreground"
+                        className="h-10 min-w-[120px] flex-1 rounded-lg border-border bg-secondary px-2.5 text-sm text-foreground"
                         autoFocus
                       />
                       <Input
                         value={editQuantity}
                         onChange={(e) => setEditQuantity(e.target.value)}
                         placeholder="Qty"
-                        className="h-9 w-24 rounded-lg border-border bg-secondary px-2 text-center text-xs text-foreground"
+                        className="h-10 w-20 shrink-0 rounded-lg border-border bg-secondary px-2 text-center text-xs text-foreground sm:w-24"
                       />
-                      <button
-                        type="button"
-                        onClick={() => saveEdit(item.id)}
-                        disabled={savingEdit || !editName.trim()}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-opacity hover:bg-primary/90"
-                        title="Save changes"
-                      >
-                        {savingEdit ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Check className="h-4 w-4" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={cancelEdit}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground hover:text-foreground"
-                        title="Cancel"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => saveEdit(item.id)}
+                          disabled={savingEdit || !editName.trim()}
+                          className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-opacity hover:bg-primary/90"
+                          title="Save changes"
+                        >
+                          {savingEdit ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground hover:text-foreground"
+                          title="Cancel"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
                         {item.quantity && (
-                          <p className="mt-0.5 text-xs text-muted-foreground">{item.quantity}</p>
+                          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                            {item.quantity}
+                          </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex shrink-0 items-center gap-1">
                         <button
                           type="button"
                           onClick={() => startEdit(item)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground opacity-70 transition-all hover:bg-secondary hover:text-foreground group-hover:opacity-100"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground opacity-80 transition-all hover:bg-secondary hover:text-foreground group-hover:opacity-100"
                           title="Edit"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
@@ -353,7 +359,7 @@ function PantryPage() {
                           type="button"
                           onClick={() => remove(item.id)}
                           disabled={removing === item.id}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground opacity-70 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground opacity-80 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
                           title="Delete"
                         >
                           {removing === item.id ? (

@@ -89,7 +89,7 @@ function ChatPage() {
   const latestTurn = turns.at(-1);
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col bg-background px-4 py-8 text-foreground">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-x-hidden bg-background px-3.5 py-6 text-foreground sm:px-4 sm:py-8">
       {turns.length === 0 ? (
         <div className="flex flex-col items-center py-6 text-center">
           <ChefMascot animate className="h-32 w-32" />
@@ -168,11 +168,11 @@ function ChatPage() {
 
         {turns.map((t) => (
           <div key={t.id} className="space-y-3">
-            <div className="ml-auto max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-sm font-medium text-primary-foreground">
+            <div className="ml-auto max-w-[88%] break-words rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-sm font-medium text-primary-foreground">
               {t.question}
             </div>
             {t.answer && (
-              <div className="mr-auto max-w-[90%] rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3.5 text-sm leading-relaxed text-foreground [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-1.5 [&_h2]:mt-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-medium [&_li]:my-0.5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p+p]:mt-2 [&_strong]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5">
+              <div className="mr-auto max-w-[94%] overflow-x-hidden break-words rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3.5 text-sm leading-relaxed text-foreground [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-1.5 [&_h2]:mt-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-medium [&_li]:my-0.5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p+p]:mt-2 [&_pre]:overflow-x-auto [&_strong]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5">
                 <ReactMarkdown>{t.answer}</ReactMarkdown>
               </div>
             )}
@@ -241,7 +241,7 @@ function ChatPage() {
           role="dialog"
           aria-modal="true"
           aria-label="Mia Voice Mode"
-          className="fixed inset-0 z-50 flex flex-col justify-between bg-background px-6 py-8 text-foreground"
+          className="fixed inset-0 z-50 flex flex-col justify-between overflow-y-auto bg-background px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))] text-foreground"
         >
           <div className="mx-auto flex w-full max-w-md items-center justify-between">
             <div>

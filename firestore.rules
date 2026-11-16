@@ -33,22 +33,29 @@ service cloud.firestore {
 
     function validUserProfile(uid, data) {
       return data.keys().hasOnly([
-          'id', 'email', 'displayName', 'photoURL', 'goal', 'createdAt',
-          'onboarding_completed', 'currency', 'locale', 'theme', 'isAdmin', 'role', 'updatedAt'
+          'id', 'email', 'displayName', 'display_name', 'name', 'photoURL', 'goal', 'createdAt',
+          'onboarding_completed', 'onboarding_step', 'household_size', 'preferences',
+          'currency', 'locale', 'theme', 'theme_updated_at', 'isAdmin', 'role', 'updatedAt', 'updated_at'
         ])
         && data.id == uid
-        && data.email is string && data.email.size() <= 254
+        && validOptionalString(data, 'email', 254)
         && validOptionalString(data, 'displayName', 100)
+        && validOptionalString(data, 'display_name', 100)
+        && validOptionalString(data, 'name', 100)
         && validOptionalString(data, 'photoURL', 2048)
-        && validOptionalString(data, 'goal', 80)
+        && (!('goal' in data) || data.goal == null || (data.goal is string && data.goal.size() <= 80))
         && validOptionalString(data, 'createdAt', 40)
         && validOptionalString(data, 'currency', 3)
         && validOptionalString(data, 'locale', 12)
         && validOptionalString(data, 'theme', 40)
+        && validOptionalString(data, 'theme_updated_at', 40)
+        && (!('household_size' in data) || data.household_size == null || (data.household_size is string && data.household_size.size() <= 40))
+        && (!('onboarding_step' in data) || data.onboarding_step == null || data.onboarding_step is number)
         && (!('onboarding_completed' in data) || data.onboarding_completed is bool)
         && (!('isAdmin' in data) || data.isAdmin is bool)
         && (!('role' in data) || (data.role is string && data.role.size() <= 40))
-        && (!('updatedAt' in data) || validTimestampString(data, 'updatedAt'));
+        && (!('updatedAt' in data) || validTimestampString(data, 'updatedAt'))
+        && (!('updated_at' in data) || validTimestampString(data, 'updated_at'));
     }
 
     function validTimestampString(data, field) {
@@ -125,7 +132,7 @@ service cloud.firestore {
       allow update: if isOwner(uid)
         && validUserProfile(uid, request.resource.data)
         && request.resource.data.id == resource.data.id
-        && request.resource.data.createdAt == resource.data.createdAt
+        && (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
         && (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == resource.data.get('isAdmin', false))
         && (!('role' in request.resource.data) || request.resource.data.role == resource.data.get('role', 'user'));
       allow delete: if false;

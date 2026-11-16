@@ -7,7 +7,6 @@ import {
   Bot,
   Check,
   ChevronRight,
-  Contrast,
   CreditCard,
   Download,
   ExternalLink,
@@ -21,12 +20,9 @@ import {
   Mail,
   MessageCircle,
   Mic,
-  Monitor,
-  Moon,
   Scale,
   Shield,
   Sliders,
-  Sun,
   Trash2,
   Type,
   User,
@@ -37,7 +33,8 @@ import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
 import { usePremium } from "@/hooks/use-premium";
 import { usePreferences } from "@/hooks/use-preferences";
-import { useTheme, type ThemeMode } from "@/components/theme-provider";
+import { useTheme } from "@/components/theme-provider";
+import { ThemeGallery } from "@/components/theme-gallery";
 import { APP_FONTS, type AppFontId } from "@/lib/app-fonts";
 import { createPurchaseSession, verifyMyPremium } from "@/lib/billing.functions";
 import { loadBillingStore } from "@/lib/billing-client";
@@ -171,7 +168,7 @@ function SettingsPage() {
   const { currency } = useCurrency();
   const { isPremium, tier, trialActive, entitlement } = usePremium();
   const { preferences, save: savePreferences } = usePreferences();
-  const { mode, setMode, font, setFont } = useTheme();
+  const { font, setFont } = useTheme();
 
   // Dialog states
   const [editProfileOpen, setEditProfileOpen] = useState(false);
@@ -446,19 +443,6 @@ function SettingsPage() {
     toast.success(`Language set to ${names[nextLang] ?? nextLang}`);
   }
 
-  function handleAppearanceChange(nextMode: ThemeMode) {
-    setMode(nextMode);
-    const label =
-      nextMode === "light"
-        ? "Light"
-        : nextMode === "dark"
-          ? "Dark"
-          : nextMode === "dark-premium"
-            ? "Dark Premium"
-            : "System default";
-    toast.success(`Appearance set to ${label}`);
-  }
-
   function handleFontChange(nextFont: AppFontId) {
     setFont(nextFont);
     const match = APP_FONTS.find((item) => item.id === nextFont);
@@ -516,10 +500,10 @@ function SettingsPage() {
   const cuisineCount = preferences.favorite_foods.length;
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col bg-background px-4 py-8 pb-28 text-foreground">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-x-hidden bg-background px-3.5 py-6 pb-28 text-foreground sm:px-4 sm:py-8">
       {/* Page Header */}
-      <header className="mb-8 flex items-end justify-between border-b border-border pb-5">
-        <div>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-border pb-4 sm:mb-8 sm:pb-5">
+        <div className="min-w-0 flex-1">
           <span className="text-xs font-medium tracking-wide text-[var(--periwinkle)]">
             MealMate Consumer
           </span>
@@ -532,13 +516,13 @@ function SettingsPage() {
         </div>
         <Link
           to="/profile"
-          className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+          className="inline-flex h-10 shrink-0 items-center rounded-xl border border-border bg-card px-3.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
         >
           Profile
         </Link>
       </header>
 
-      <div className="space-y-8">
+      <div className="space-y-7 sm:space-y-8">
         {/* 1. PROFILE */}
         <section aria-labelledby="section-profile">
           <h2
@@ -710,21 +694,21 @@ function SettingsPage() {
               <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
             </button>
 
-            <div className="flex items-center justify-between p-4 sm:px-5">
-              <div className="flex items-center gap-3">
-                <Scale size={16} className="text-muted-foreground" />
-                <div>
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:px-5 sm:py-4">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <Scale size={16} className="shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
                   <div className="text-sm font-medium text-foreground">Measurement units</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="truncate text-xs text-muted-foreground">
                     Ingredient weights and volumes
                   </div>
                 </div>
               </div>
-              <div className="flex rounded-xl border border-border bg-secondary p-0.5 text-xs">
+              <div className="flex shrink-0 rounded-xl border border-border bg-secondary p-0.5 text-xs">
                 <button
                   type="button"
                   onClick={() => handleUnitsChange("metric")}
-                  className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
+                  className={`min-h-8 rounded-lg px-2.5 py-1.5 font-medium transition-colors sm:px-3 ${
                     units === "metric"
                       ? "bg-card text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -735,7 +719,7 @@ function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleUnitsChange("imperial")}
-                  className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
+                  className={`min-h-8 rounded-lg px-2.5 py-1.5 font-medium transition-colors sm:px-3 ${
                     units === "imperial"
                       ? "bg-card text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -746,18 +730,18 @@ function SettingsPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 sm:px-5">
-              <div className="flex items-center gap-3">
-                <Languages size={16} className="text-muted-foreground" />
-                <div>
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:px-5 sm:py-4">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <Languages size={16} className="shrink-0 text-muted-foreground" />
+                <div className="min-w-0">
                   <div className="text-sm font-medium text-foreground">Language</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="truncate text-xs text-muted-foreground">
                     Interface &amp; recipe localisation
                   </div>
                 </div>
               </div>
               <Select value={language} onValueChange={handleLanguageChange}>
-                <SelectTrigger className="h-9 w-32 rounded-xl border-border bg-secondary text-xs text-foreground">
+                <SelectTrigger className="h-9 w-28 shrink-0 rounded-xl border-border bg-secondary text-xs text-foreground sm:w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-border bg-popover text-popover-foreground">
@@ -978,87 +962,18 @@ function SettingsPage() {
             id="section-appearance"
             className="mb-3 text-xs font-medium uppercase tracking-widest text-muted-foreground"
           >
-            Appearance
+            Appearance &amp; Themes
           </h2>
           <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-            <div className="p-4 sm:p-5">
-              <div className="mb-3">
-                <div className="text-sm font-medium text-foreground">Appearance</div>
+            <div className="p-3.5 sm:p-5">
+              <div className="mb-3.5">
+                <div className="text-sm font-medium text-foreground">Theme gallery</div>
                 <div className="text-xs text-muted-foreground">
-                  Choose Light, Dark, Dark Premium, or follow your device&apos;s system setting
+                  Tap any theme to preview it live across MealMate, then tap Apply Theme to save to
+                  your account.
                 </div>
               </div>
-              <div
-                role="radiogroup"
-                aria-label="Appearance mode"
-                className="grid grid-cols-2 gap-2.5 sm:grid-cols-4"
-              >
-                {[
-                  {
-                    id: "light" as ThemeMode,
-                    label: "Light",
-                    sub: "Crisp white surface",
-                    swatch: "linear-gradient(135deg, #ffffff 55%, #e4e4e7 100%)",
-                    icon: Sun,
-                  },
-                  {
-                    id: "dark" as ThemeMode,
-                    label: "Dark",
-                    sub: "Charcoal & black",
-                    swatch: "linear-gradient(135deg, #080808 55%, #262626 100%)",
-                    icon: Moon,
-                  },
-                  {
-                    id: "dark-premium" as ThemeMode,
-                    label: "Dark Premium",
-                    sub: "Midnight & periwinkle",
-                    swatch: "linear-gradient(135deg, #050814 45%, #5b6cfa 100%)",
-                    icon: Contrast,
-                  },
-                  {
-                    id: "system" as ThemeMode,
-                    label: "System",
-                    sub: "Match device setting",
-                    swatch: "linear-gradient(135deg, #fafafa 50%, #09090b 50%)",
-                    icon: Monitor,
-                  },
-                ].map((opt) => {
-                  const active = mode === opt.id;
-                  const Icon = opt.icon;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={active}
-                      onClick={() => handleAppearanceChange(opt.id)}
-                      className={`flex flex-col items-start justify-between rounded-xl border p-3 text-left transition-all ${
-                        active
-                          ? "border-[var(--periwinkle)] bg-[var(--periwinkle-soft)] text-foreground shadow-sm"
-                          : "border-border bg-secondary text-foreground hover:border-foreground/25"
-                      }`}
-                    >
-                      <div className="flex w-full items-center justify-between gap-2">
-                        <span
-                          className="h-5 w-5 shrink-0 rounded-md border border-border/80"
-                          style={{ background: opt.swatch }}
-                          aria-hidden="true"
-                        />
-                        <Icon
-                          size={14}
-                          className={active ? "text-[var(--periwinkle)]" : "text-muted-foreground"}
-                        />
-                      </div>
-                      <div className="mt-2.5">
-                        <div className="text-xs font-medium leading-tight">{opt.label}</div>
-                        <div className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
-                          {opt.sub}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              <ThemeGallery />
             </div>
 
             <div className="p-4 sm:p-5">

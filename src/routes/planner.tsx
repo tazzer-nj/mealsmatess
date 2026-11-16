@@ -185,14 +185,14 @@ function PlannerPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 bg-background px-4 py-8 text-foreground">
+    <main className="mx-auto w-full max-w-4xl flex-1 overflow-x-hidden bg-background px-3.5 py-6 text-foreground sm:px-4 sm:py-8">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground">
             <CalendarDays className="h-5 w-5 text-[var(--periwinkle)]" />
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-3xl font-medium tracking-tight text-foreground">
+            <h1 className="truncate text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
               Meal planner
             </h1>
             <p className="text-sm text-muted-foreground">This week&apos;s plan</p>
@@ -320,7 +320,7 @@ function PlannerPage() {
               {addingDay === dayISO && (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Select value={mealType} onValueChange={setMealType}>
-                    <SelectTrigger className="w-36 rounded-xl border-border bg-secondary text-foreground">
+                    <SelectTrigger className="w-full rounded-xl border-border bg-secondary text-foreground sm:w-36">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="border-border bg-popover text-popover-foreground">
@@ -332,7 +332,7 @@ function PlannerPage() {
                     </SelectContent>
                   </Select>
                   <Select value={recipeId} onValueChange={setRecipeId}>
-                    <SelectTrigger className="min-w-48 flex-1 rounded-xl border-border bg-secondary text-foreground">
+                    <SelectTrigger className="w-full rounded-xl border-border bg-secondary text-foreground sm:min-w-48 sm:flex-1">
                       <SelectValue placeholder="Choose a saved recipe" />
                     </SelectTrigger>
                     <SelectContent className="border-border bg-popover text-popover-foreground">

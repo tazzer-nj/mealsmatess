@@ -1,7 +1,10 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireFirebaseAuth } from "@/lib/firebase-auth-middleware";
 import { normalizePreferences, type FoodPreferences } from "@/lib/preferences";
+import { getMealMateTheme, isMealMateThemeId, normalizeThemeId } from "@/lib/themes";
+
+const loadPremiumService = createServerOnlyFn(() => import("@/server/revenuecat"));
 
 const prefsSchema = z.object({
   goal: z.string().max(60).nullable().default(null),
@@ -75,4 +78,53 @@ export const saveMyPreferences = createServerFn({ method: "POST" })
     );
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+export const getMyTheme = createServerFn({ method: "GET" })
+  .middleware([requireFirebaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.firebase
+      .from("profiles")
+      .select("theme, theme_updated_at")
+      .eq("id", context.userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    const raw = (data as { theme?: string | null; theme_updated_at?: string | null } | null)?.theme;
+    if (!raw || typeof raw !== "string") {
+      return { themeId: null, updatedAt: null };
+    }
+    const normalized = isMealMateThemeId(raw) ? raw : normalizeThemeId(raw);
+    return {
+      themeId: normalized,
+      updatedAt: (data as { theme_updated_at?: string | null } | null)?.theme_updated_at ?? null,
+    };
+  });
+
+export const saveMyTheme = createServerFn({ method: "POST" })
+  .middleware([requireFirebaseAuth])
+  .validator((v: unknown) => z.object({ themeId: z.string().min(2).max(40) }).parse(v))
+  .handler(async ({ data, context }) => {
+    const theme = getMealMateTheme(data.themeId);
+    if (theme.premium) {
+      const { verifyAccountAccess } = await loadPremiumService();
+      const access = await verifyAccountAccess(context.userId, undefined, context.claims);
+      if (!access.isPremium) {
+        throw new Error(
+          `PREMIUM_REQUIRED: Upgrade to MealMate Premium to save the ${theme.name} theme to your account.`,
+        );
+      }
+    }
+
+    const updatedAt = new Date().toISOString();
+    const { error } = await context.firebase.from("profiles").upsert(
+      {
+        id: context.userId,
+        theme: theme.id,
+        theme_updated_at: updatedAt,
+        updatedAt,
+      },
+      { onConflict: "id" },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true, themeId: theme.id, updatedAt };
   });

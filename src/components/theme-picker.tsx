@@ -1,83 +1,30 @@
-import { Check, Lock, Loader2 } from "lucide-react";
-import { useMascotTheme } from "@/hooks/use-mascot-theme";
-import { usePremium } from "@/hooks/use-premium";
-import { useUpgradeModal } from "@/components/upgrade-modal";
-import { MASCOT_THEMES } from "@/lib/mascot-theme";
-import { cn } from "@/lib/utils";
+import { Link } from "@tanstack/react-router";
+import { ChevronRight, Palette } from "lucide-react";
+import { ThemeGallery } from "@/components/theme-gallery";
 
-/** Native-style mascot theme setting. Colourful themes are Premium, matching the artwork. */
+/** App theme section embedded on Profile & Settings. */
 export function ThemePicker() {
-  const { theme, setTheme, saving } = useMascotTheme();
-  const { isPremium } = usePremium();
-  const { open } = useUpgradeModal();
-
   return (
     <section className="mt-6" aria-labelledby="theme-heading">
-      <div className="mb-2 flex items-center justify-between px-1">
-        <h2
-          id="theme-heading"
-          className="text-xs font-medium uppercase tracking-widest text-muted-foreground"
-        >
-          App theme
-        </h2>
-        {saving && (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-label="Saving" />
-        )}
-      </div>
-      <div className="rounded-2xl border border-border bg-card p-3">
-        <div
-          role="radiogroup"
-          aria-label="Mascot theme"
-          className="grid grid-cols-3 gap-3 sm:grid-cols-6"
-        >
-          {MASCOT_THEMES.map((t) => {
-            const selected = t.id === theme.id;
-            const locked = t.premium && !isPremium;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                aria-label={`${t.name}${locked ? " (Premium)" : ""}`}
-                onClick={() =>
-                  locked
-                    ? open(`Unlock the ${t.name} theme with MealMate Premium.`)
-                    : void setTheme(t.id)
-                }
-                className="group flex flex-col items-center gap-2 rounded-xl p-1.5 text-center transition-transform active:scale-95"
-              >
-                <span
-                  className={cn(
-                    "relative block aspect-square w-full overflow-hidden rounded-xl border-2 transition-colors",
-                    selected ? "border-[var(--periwinkle)]" : "border-border",
-                  )}
-                >
-                  <img src={t.image} alt="" loading="lazy" className="h-full w-full object-cover" />
-                  {locked && (
-                    <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-black/80 text-white">
-                      <Lock className="h-3 w-3" />
-                    </span>
-                  )}
-                  {selected && (
-                    <span className="absolute bottom-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-lg bg-[var(--periwinkle)] text-white motion-safe:animate-in motion-safe:zoom-in-50">
-                      <Check className="h-3.5 w-3.5" />
-                    </span>
-                  )}
-                </span>
-                <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ background: t.accent }}
-                    aria-hidden="true"
-                  />
-                  {t.name}
-                </span>
-              </button>
-            );
-          })}
+      <div className="mb-2.5 flex items-center justify-between gap-2 px-1">
+        <div className="flex items-center gap-2">
+          <Palette className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
+          <h2
+            id="theme-heading"
+            className="text-xs font-medium uppercase tracking-widest text-muted-foreground"
+          >
+            Themes
+          </h2>
         </div>
+        <Link
+          to="/settings"
+          className="inline-flex items-center gap-0.5 text-xs font-medium text-[var(--periwinkle)] hover:underline"
+        >
+          All settings
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
+      <ThemeGallery compact />
     </section>
   );
 }

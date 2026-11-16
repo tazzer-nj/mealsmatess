@@ -69,7 +69,7 @@ function UpgradeSheet({ reason, onClose }: { reason?: string; onClose: () => voi
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md rounded-t-[20px] border border-border bg-card px-6 pb-8 pt-10 text-foreground shadow-2xl sm:rounded-[20px]"
+        className="relative mx-auto max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-t-[20px] border border-border bg-card px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-10 text-foreground shadow-2xl sm:mx-4 sm:rounded-[20px] sm:px-6"
         onClick={(event) => event.stopPropagation()}
       >
         <button

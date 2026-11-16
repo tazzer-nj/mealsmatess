@@ -171,7 +171,7 @@ function RootShell({ children }: { children: ReactNode }) {
       </head>
       <body
         suppressHydrationWarning
-        className="bg-background text-foreground antialiased selection:bg-[#5B6CFA] selection:text-white"
+        className="bg-background text-foreground antialiased selection:bg-[var(--periwinkle)] selection:text-white"
       >
         {children}
         <Scripts />
@@ -222,10 +222,10 @@ function RootComponent() {
                         {showAppHeader && <AppHeader />}
                         <div
                           id="app-scroll"
-                          className={`h-full overflow-y-auto overscroll-y-none ${isFlow ? "" : "pb-[var(--app-nav-h)] pt-[var(--app-header-h)]"}`}
+                          className={`h-full overflow-x-hidden overflow-y-auto overscroll-y-none ${isFlow ? "" : "pb-[calc(var(--app-nav-h)+14px)] pt-[var(--app-header-h)]"}`}
                         >
                           <div
-                            className={`mx-auto flex min-h-full w-full flex-col ${isFlow ? "" : pathname === "/admin" ? "max-w-6xl" : "max-w-3xl"}`}
+                            className={`mx-auto flex min-h-full w-full min-w-0 flex-col ${isFlow ? "" : pathname === "/admin" ? "max-w-6xl" : "max-w-3xl"}`}
                           >
                             <AuthGate>
                               <div

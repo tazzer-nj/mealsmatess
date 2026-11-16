@@ -103,14 +103,16 @@ function ListPage() {
   })();
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 bg-background px-4 py-8 text-foreground">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground">
+    <main className="mx-auto w-full max-w-2xl flex-1 overflow-x-hidden bg-background px-3.5 py-6 text-foreground sm:px-4 sm:py-8">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground">
             <ShoppingCart className="h-5 w-5 text-[var(--periwinkle)]" />
           </span>
-          <div>
-            <h1 className="text-3xl font-medium tracking-tight text-foreground">Grocery list</h1>
+          <div className="min-w-0">
+            <h1 className="truncate text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
+              Grocery list
+            </h1>
             <p className="text-sm text-muted-foreground">
               {items?.length ?? 0} items · {checkedCount} checked
             </p>
@@ -212,7 +214,7 @@ function ListPage() {
                     onCheckedChange={(v) => toggle(item.id, v === true)}
                     aria-label={`Mark ${item.name} as ${item.checked ? "not done" : "done"}`}
                   />
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1 break-words">
                     <span
                       className={`text-sm ${item.checked ? "text-muted-foreground line-through" : "text-foreground"}`}
                     >
@@ -230,7 +232,7 @@ function ListPage() {
                   <button
                     onClick={() => remove(item.id)}
                     aria-label={`Remove ${item.name}`}
-                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-destructive"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

@@ -111,7 +111,7 @@ function CoachPage() {
   const missing = ctx?.missing ?? [];
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col bg-background px-4 py-8 text-foreground">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-x-hidden bg-background px-3.5 py-6 text-foreground sm:px-4 sm:py-8">
       <header className="flex items-center gap-3">
         <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground">
           <HeartPulse className="h-5 w-5 text-[var(--periwinkle)]" />
@@ -180,13 +180,13 @@ function CoachPage() {
         {turns.map((t, i) =>
           t.role === "user" ? (
             <div key={i} className="flex justify-end">
-              <p className="rise-in max-w-[85%] rounded-2xl rounded-br-sm bg-foreground px-4 py-2.5 text-sm font-medium text-background">
+              <p className="rise-in max-w-[88%] break-words rounded-2xl rounded-br-sm bg-foreground px-4 py-2.5 text-sm font-medium text-background">
                 {t.content}
               </p>
             </div>
           ) : (
             <div key={i} className="flex justify-start">
-              <div className="rise-in max-w-[92%] space-y-2 rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3 text-sm leading-relaxed text-foreground [&_a]:underline [&_h3]:mt-2 [&_h3]:text-base [&_h3]:font-semibold [&_li]:ml-4 [&_li]:list-disc [&_strong]:font-semibold">
+              <div className="rise-in max-w-[94%] space-y-2 overflow-x-hidden break-words rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3 text-sm leading-relaxed text-foreground [&_a]:underline [&_h3]:mt-2 [&_h3]:text-base [&_h3]:font-semibold [&_li]:ml-4 [&_li]:list-disc [&_strong]:font-semibold">
                 <ReactMarkdown>{t.content}</ReactMarkdown>
               </div>
             </div>
@@ -208,7 +208,7 @@ function CoachPage() {
           e.preventDefault();
           ask(input);
         }}
-        className="sticky bottom-24 mt-6 flex gap-2 rounded-2xl border border-border bg-card p-1.5"
+        className="sticky bottom-[calc(var(--app-nav-h,4.25rem)+8px)] mt-6 flex gap-2 rounded-2xl border border-border bg-card p-1.5"
       >
         <label htmlFor="coach-input" className="sr-only">
           Ask your nutrition coach

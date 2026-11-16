@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   ChevronRight,
-  Contrast,
   DollarSign,
   FileText,
   Globe,
@@ -13,12 +12,9 @@ import {
   Lock,
   LogOut,
   Mail,
-  Monitor,
-  Moon,
   Share2,
   Shield,
   Star,
-  Sun,
   User as UserIcon,
   UserCog,
 } from "lucide-react";
@@ -34,7 +30,6 @@ import { requestBrowserPushToken, revokeBrowserPushToken } from "@/lib/push-clie
 import { useSession, signOutUnified } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { useTheme, type ThemeMode } from "@/components/theme-provider";
 import { GamificationCard } from "@/components/gamification-card";
 import { ThemePicker } from "@/components/theme-picker";
 import {
@@ -134,8 +129,6 @@ function SettingsPage() {
   const { user } = useSession();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-
-  const { mode, resolved, setMode } = useTheme();
 
   const notificationPreferences = useQuery({
     queryKey: ["notification-preferences", user?.id],
@@ -380,10 +373,10 @@ function SettingsPage() {
   ];
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 bg-background px-4 pb-24 pt-8 text-foreground">
-      <div className="rounded-2xl border border-border bg-card p-5">
-        <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-border bg-secondary text-foreground">
+    <main className="mx-auto w-full max-w-2xl flex-1 overflow-x-hidden bg-background px-3.5 pb-28 pt-6 text-foreground sm:px-4 sm:pt-8">
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+        <div className="flex items-center gap-3.5 sm:gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-secondary text-foreground sm:h-14 sm:w-14">
             <UserIcon className="h-6 w-6" />
           </div>
           <div className="min-w-0 flex-1">
@@ -454,66 +447,6 @@ function SettingsPage() {
       />
 
       <Section
-        title="Appearance"
-        items={[
-          {
-            label:
-              resolved === "dark-premium"
-                ? "Dark Premium"
-                : resolved === "dark"
-                  ? "Dark mode"
-                  : "Light mode",
-            description:
-              mode === "system"
-                ? `Following system setting (${resolved})`
-                : resolved === "dark-premium"
-                  ? "Midnight navy & periwinkle interface"
-                  : resolved === "dark"
-                    ? "Minimal black & white dark interface"
-                    : "Clean neutral light interface",
-            icon: resolved === "dark-premium" ? Contrast : resolved === "dark" ? Moon : Sun,
-            trailing: (
-              <div onClick={(e) => e.stopPropagation()}>
-                <Select value={mode} onValueChange={(v) => setMode(v as ThemeMode)}>
-                  <SelectTrigger
-                    aria-label="Appearance theme"
-                    className="h-9 w-[150px] rounded-xl border-border bg-secondary text-xs text-foreground"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent
-                    align="end"
-                    className="border-border bg-popover text-popover-foreground"
-                  >
-                    <SelectItem value="light">
-                      <span className="inline-flex items-center gap-2">
-                        <Sun className="h-3.5 w-3.5" /> Light
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="dark">
-                      <span className="inline-flex items-center gap-2">
-                        <Moon className="h-3.5 w-3.5" /> Dark
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="dark-premium">
-                      <span className="inline-flex items-center gap-2">
-                        <Contrast className="h-3.5 w-3.5 text-[var(--periwinkle)]" /> Dark Premium
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="system">
-                      <span className="inline-flex items-center gap-2">
-                        <Monitor className="h-3.5 w-3.5" /> System
-                      </span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            ),
-          },
-        ]}
-      />
-
-      <Section
         title="Region"
         items={[
           {
@@ -521,9 +454,9 @@ function SettingsPage() {
             description: "Prices shown throughout the app",
             icon: DollarSign,
             trailing: (
-              <div onClick={(e) => e.stopPropagation()}>
+              <div onClick={(e) => e.stopPropagation()} className="shrink-0">
                 <Select value={currency} onValueChange={saveCurrency}>
-                  <SelectTrigger className="h-9 w-[140px] rounded-xl border-border bg-secondary text-xs text-foreground">
+                  <SelectTrigger className="h-9 w-[112px] rounded-xl border-border bg-secondary text-xs text-foreground sm:w-[140px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent
@@ -545,9 +478,9 @@ function SettingsPage() {
             description: "Interface and recipe language",
             icon: Globe,
             trailing: (
-              <div onClick={(e) => e.stopPropagation()}>
+              <div onClick={(e) => e.stopPropagation()} className="shrink-0">
                 <Select value={lang} onValueChange={saveLanguage}>
-                  <SelectTrigger className="h-9 w-[150px] rounded-xl border-border bg-secondary text-xs text-foreground">
+                  <SelectTrigger className="h-9 w-[122px] rounded-xl border-border bg-secondary text-xs text-foreground sm:w-[150px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent
@@ -635,8 +568,8 @@ function Row({ item }: { item: Item }) {
   const Icon = item.icon;
   const showChevron = !!(item.to || item.href) && !item.trailing;
   const body = (
-    <div className="flex items-center gap-3 px-4 py-3.5 transition-colors duration-150 hover:bg-secondary">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-secondary text-foreground">
+    <div className="flex items-center gap-3 px-3.5 py-3.5 transition-colors duration-150 hover:bg-secondary sm:px-4">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-secondary text-foreground">
         <Icon className="h-[18px] w-[18px]" />
       </span>
       <div className="min-w-0 flex-1">

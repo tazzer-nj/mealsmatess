@@ -181,14 +181,14 @@ function Index() {
   }
 
   return (
-    <main className="flex-1 bg-background pb-8 text-foreground">
+    <main className="flex-1 overflow-x-hidden bg-background pb-8 text-foreground">
       {/* Greeting header */}
-      <div className="flex items-start justify-between px-4 pt-6">
-        <div>
+      <div className="flex items-start justify-between gap-2 px-3.5 pt-5 sm:px-4 sm:pt-6">
+        <div className="min-w-0 flex-1">
           <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
             {greeting()}
           </p>
-          <h1 className="mt-1 text-3xl font-medium tracking-tight text-foreground">
+          <h1 className="mt-1 truncate text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
             Hi {firstName}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">What are you craving today?</p>
@@ -303,7 +303,7 @@ function Index() {
       </section>
 
       {/* Quick actions */}
-      <section className="grid grid-cols-4 gap-2 px-4 pt-6">
+      <section className="grid grid-cols-4 gap-1.5 px-3.5 pt-6 sm:gap-2 sm:px-4">
         {[
           {
             to: "/coach",
@@ -333,10 +333,12 @@ function Index() {
           <Link
             key={a.to}
             to={a.to}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-2 py-4 text-center transition-colors hover:border-[var(--periwinkle)] hover:bg-secondary"
+            className="flex min-w-0 flex-col items-center gap-1.5 rounded-2xl border border-border bg-card px-1.5 py-3.5 text-center transition-colors hover:border-[var(--periwinkle)] hover:bg-secondary sm:gap-2 sm:px-2 sm:py-4"
           >
-            <a.icon className="h-5 w-5 text-foreground" />
-            <span className="text-xs font-medium leading-tight text-foreground">{a.label}</span>
+            <a.icon className="h-5 w-5 shrink-0 text-foreground" />
+            <span className="max-w-full truncate text-[11px] font-medium leading-tight text-foreground sm:text-xs">
+              {a.label}
+            </span>
             <span className="hidden text-[11px] leading-tight text-muted-foreground sm:block">
               {a.sub}
             </span>
@@ -510,7 +512,7 @@ function Index() {
       <Link
         to="/chat"
         aria-label="AI Assistant"
-        className="fixed bottom-24 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-xl bg-foreground text-background shadow-lg transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-[calc(var(--app-nav-h,4.25rem)+14px)] right-4 z-30 flex h-12 w-12 items-center justify-center rounded-xl bg-foreground text-background shadow-lg transition-transform hover:scale-105 active:scale-95"
       >
         <MessageCircleQuestion className="h-5 w-5" />
       </Link>

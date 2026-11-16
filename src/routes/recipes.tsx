@@ -137,7 +137,7 @@ function RecipesPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 bg-background px-4 py-8 text-foreground">
+    <main className="mx-auto w-full max-w-6xl flex-1 overflow-x-hidden bg-background px-3.5 py-6 text-foreground sm:px-4 sm:py-8">
       <div className="flex flex-col gap-1.5">
         <h1 className="text-3xl font-medium tracking-tight text-foreground">Discover recipes</h1>
         <p className="text-sm text-muted-foreground">
