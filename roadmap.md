@@ -17,3 +17,5 @@
 - [ ] Google sign-in without Lovable name — blocked: needs user's own Google OAuth client in Cloud auth settings.
 - [ ] Android AAB — blocked: no Android project in repo; needs local Android Studio build + signing key.
 - [ ] Recipe image audit — blocked: no recipes in database until data is imported.
+
+- [ ] Clarify requested authentication removal; preserve account and admin protections until scope is confirmed.
