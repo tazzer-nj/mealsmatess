@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { FoodPreferences } from "@/lib/preferences";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,13 @@ export type OnboardingWizardProps = {
   onSkipStep?: () => void;
   disabled?: boolean;
 };
+
+const HOUSEHOLD_OPTIONS = [
+  "1 person (solo)",
+  "2 people (couple)",
+  "3–4 people (family)",
+  "5+ people (large feast)",
+];
 
 const MEAL_GOALS = [
   "Eat healthier & balanced",
@@ -84,6 +92,17 @@ export function OnboardingStepContent({
   onSkipStep,
   disabled = false,
 }: OnboardingWizardProps) {
+  const { t } = useTranslation();
+
+  function getOptionMap(key: string): Record<string, string> {
+    const value = t(`onboarding.options.${key}`, { returnObjects: true });
+    return value && typeof value === "object" ? (value as Record<string, string>) : {};
+  }
+
+  function translateOption(group: string, canonical: string): string {
+    return getOptionMap(group)[canonical] ?? canonical;
+  }
+
   function toggleList(
     field: "favorite_foods" | "dietary_restrictions" | "allergies",
     option: string,
@@ -111,11 +130,12 @@ export function OnboardingStepContent({
             htmlFor="preferred-name"
             className="flex items-center gap-2 text-[13px] font-medium text-foreground"
           >
-            <Users size={15} className="text-[var(--periwinkle)]" /> What should MealMate call you?
+            <Users size={15} className="text-[var(--periwinkle)]" />{" "}
+            {t("onboarding.fields.preferredNameLabel")}
           </Label>
           <Input
             id="preferred-name"
-            placeholder="e.g. Thabo or Alex"
+            placeholder={t("onboarding.fields.preferredNamePlaceholder")}
             value={preferredName}
             onChange={(e) => onPreferredNameChange(e.target.value)}
             disabled={disabled}
@@ -126,15 +146,11 @@ export function OnboardingStepContent({
 
         <div className="onboarding-field-group mt-6">
           <Label className="mb-2.5 flex items-center gap-2 text-[13px] font-medium text-foreground">
-            <Users size={15} className="text-[var(--periwinkle)]" /> Household or serving size
+            <Users size={15} className="text-[var(--periwinkle)]" />{" "}
+            {t("onboarding.fields.householdLabel")}
           </Label>
           <div className="onboarding-chips">
-            {[
-              "1 person (solo)",
-              "2 people (couple)",
-              "3–4 people (family)",
-              "5+ people (large feast)",
-            ].map((s) => (
+            {HOUSEHOLD_OPTIONS.map((s) => (
               <button
                 type="button"
                 key={s}
@@ -142,7 +158,7 @@ export function OnboardingStepContent({
                 aria-pressed={householdSize === s}
                 onClick={() => onHouseholdSizeChange(s)}
               >
-                {s}
+                {translateOption("household", s)}
               </button>
             ))}
           </div>
@@ -156,11 +172,10 @@ export function OnboardingStepContent({
     return (
       <div className="onboarding-step-body">
         <Label className="mb-1.5 flex items-center gap-2 text-[13px] font-medium text-foreground">
-          <Target size={15} className="text-[var(--periwinkle)]" /> What is your primary meal goal?
+          <Target size={15} className="text-[var(--periwinkle)]" />{" "}
+          {t("onboarding.fields.goalLabel")}
         </Label>
-        <p className="mb-4 text-xs text-muted-foreground">
-          Select what matters most for weeknight dinners and weekly planning.
-        </p>
+        <p className="mb-4 text-xs text-muted-foreground">{t("onboarding.fields.goalHint")}</p>
         <div className="onboarding-chips">
           {MEAL_GOALS.map((goal) => (
             <button
@@ -172,7 +187,7 @@ export function OnboardingStepContent({
                 onChange({ ...preferences, goal: preferences.goal === goal ? null : goal })
               }
             >
-              {goal}
+              {translateOption("goals", goal)}
             </button>
           ))}
         </div>
@@ -187,12 +202,10 @@ export function OnboardingStepContent({
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <Label className="flex items-center gap-2 text-[13px] font-medium text-foreground">
-              <Salad size={15} className="text-[var(--periwinkle)]" /> Do you follow any dietary
-              preferences?
+              <Salad size={15} className="text-[var(--periwinkle)]" />{" "}
+              {t("onboarding.fields.dietLabel")}
             </Label>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Choose any eating styles that apply to your household.
-            </p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("onboarding.fields.dietHint")}</p>
           </div>
           {onSkipStep && (
             <button
@@ -204,7 +217,7 @@ export function OnboardingStepContent({
               }}
               className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
-              Skip if none
+              {t("onboarding.skipIfNone")}
             </button>
           )}
         </div>
@@ -222,7 +235,7 @@ export function OnboardingStepContent({
                 aria-pressed={isSelected}
                 onClick={() => toggleList("dietary_restrictions", diet)}
               >
-                {diet}
+                {translateOption("diet", diet)}
               </button>
             );
           })}
@@ -238,11 +251,11 @@ export function OnboardingStepContent({
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <Label className="flex items-center gap-2 text-[13px] font-medium text-foreground">
-              <AlertTriangle size={15} className="text-[var(--periwinkle)]" /> Any food allergies or
-              intolerances?
+              <AlertTriangle size={15} className="text-[var(--periwinkle)]" />{" "}
+              {t("onboarding.fields.allergiesLabel")}
             </Label>
             <p className="mt-1 text-xs text-muted-foreground">
-              Excluded automatically from recipe suggestions and weekly plans.
+              {t("onboarding.fields.allergiesHint")}
             </p>
           </div>
           {onSkipStep && (
@@ -255,7 +268,7 @@ export function OnboardingStepContent({
               }}
               className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
-              Skip if none
+              {t("onboarding.skipIfNone")}
             </button>
           )}
         </div>
@@ -273,7 +286,7 @@ export function OnboardingStepContent({
                 aria-pressed={isSelected}
                 onClick={() => toggleList("allergies", allergen)}
               >
-                {allergen}
+                {translateOption("allergies", allergen)}
               </button>
             );
           })}
@@ -287,11 +300,10 @@ export function OnboardingStepContent({
     return (
       <div className="onboarding-step-body">
         <Label className="mb-1.5 flex items-center gap-2 text-[13px] font-medium text-foreground">
-          <Globe size={15} className="text-[var(--periwinkle)]" /> What kind of food do you enjoy?
+          <Globe size={15} className="text-[var(--periwinkle)]" />{" "}
+          {t("onboarding.fields.flavoursLabel")}
         </Label>
-        <p className="mb-4 text-xs text-muted-foreground">
-          Select as many cuisines and styles as you like.
-        </p>
+        <p className="mb-4 text-xs text-muted-foreground">{t("onboarding.fields.flavoursHint")}</p>
         <div className="onboarding-chips">
           {FAVOURITE_CUISINS_OPTIONS(preferences.favorite_foods).map((cuisine) => {
             const isSelected = preferences.favorite_foods.includes(cuisine);
@@ -303,7 +315,7 @@ export function OnboardingStepContent({
                 aria-pressed={isSelected}
                 onClick={() => toggleList("favorite_foods", cuisine)}
               >
-                {cuisine}
+                {translateOption("cuisines", cuisine)}
               </button>
             );
           })}
@@ -314,14 +326,23 @@ export function OnboardingStepContent({
 
   // Step 5: Cooking Skill & Time
   if (step === 5) {
+    const skillTranslations = t("onboarding.options.skillLevels", {
+      returnObjects: true,
+    }) as Record<string, { label?: string; desc?: string }>;
+
     return (
       <div className="onboarding-step-body">
         <Label className="mb-2.5 flex items-center gap-2 text-[13px] font-medium text-foreground">
-          <ChefHat size={15} className="text-[var(--periwinkle)]" /> What&apos;s your cooking style?
+          <ChefHat size={15} className="text-[var(--periwinkle)]" />{" "}
+          {t("onboarding.fields.skillLabel")}
         </Label>
         <div className="mb-6 grid gap-2.5 sm:grid-cols-3">
           {SKILL_LEVELS.map((item) => {
             const active = preferences.cooking_level === item.level;
+            const translated =
+              skillTranslations && typeof skillTranslations === "object"
+                ? skillTranslations[item.level]
+                : undefined;
             return (
               <button
                 type="button"
@@ -334,13 +355,13 @@ export function OnboardingStepContent({
                 }`}
                 onClick={() => onChange({ ...preferences, cooking_level: item.level })}
               >
-                <div className="text-sm font-medium">{item.level}</div>
+                <div className="text-sm font-medium">{translated?.label ?? item.level}</div>
                 <div
                   className={`mt-1 text-xs leading-relaxed ${
                     active ? "text-background/75" : "text-muted-foreground"
                   }`}
                 >
-                  {item.desc}
+                  {translated?.desc ?? item.desc}
                 </div>
               </button>
             );
@@ -348,7 +369,8 @@ export function OnboardingStepContent({
         </div>
 
         <Label className="mb-2.5 flex items-center gap-2 text-[13px] font-medium text-foreground">
-          <Clock size={15} className="text-[var(--periwinkle)]" /> Preferred cooking time
+          <Clock size={15} className="text-[var(--periwinkle)]" />{" "}
+          {t("onboarding.fields.cookingTimeLabel")}
         </Label>
         <div className="onboarding-chips">
           {COOKING_TIMES.map((time) => (
@@ -359,7 +381,7 @@ export function OnboardingStepContent({
               aria-pressed={preferences.cooking_time === time}
               onClick={() => onChange({ ...preferences, cooking_time: time })}
             >
-              {time}
+              {translateOption("cookingTimes", time)}
             </button>
           ))}
         </div>

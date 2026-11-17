@@ -111,25 +111,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "MealMate" },
       { name: "application-name", content: "MealMate" },
-      { title: "MealMate — Make every meal better" },
+      { title: "MealMate" },
       {
         name: "description",
         content:
-          "MealMate is your personal food companion. Discover recipes, plan your week, and cook smarter with AI.",
+          "Smart cooking companion, AI recipe generator, meal planner, and pantry grocery manager.",
       },
       { name: "author", content: "MealMate" },
-      { property: "og:title", content: "MealMate — Make every meal better" },
+      { property: "og:title", content: "MealMate" },
       {
         property: "og:description",
-        content: "AI-powered recipes, smart meal planning, and kitchen intelligence.",
+        content:
+          "Smart cooking companion, AI recipe generator, meal planner, and pantry grocery manager.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "MealMate — Make every meal better" },
+      { name: "twitter:title", content: "MealMate" },
       {
         name: "twitter:description",
         content:
-          "MealMate is your personal food companion. Discover recipes, plan your week, and cook smarter with AI.",
+          "Smart cooking companion, AI recipe generator, meal planner, and pantry grocery manager.",
       },
     ],
     links: [

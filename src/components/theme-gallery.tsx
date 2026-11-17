@@ -36,10 +36,18 @@ function ThemeMiniPreview({
           borderColor: t.border,
         }}
       >
-        <div className="flex items-center gap-1">
-          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: t.periwinkle }} />
+        <div className="flex items-center gap-1.5">
+          <img
+            src={theme.mascotImage}
+            alt=""
+            width={16}
+            height={16}
+            loading="lazy"
+            decoding="async"
+            className="h-4 w-4 shrink-0 rounded object-cover"
+          />
           <span
-            className="h-1 w-7 rounded-full opacity-80"
+            className="h-1 w-7 rounded-full opacity-85"
             style={{ backgroundColor: t.foreground }}
           />
         </div>
@@ -52,29 +60,41 @@ function ThemeMiniPreview({
       {/* Mini MealMate content body */}
       <div className="space-y-1.5 p-2 pb-5">
         <div
-          className="rounded-lg border p-1.5"
+          className="flex items-center gap-2 rounded-lg border p-1.5"
           style={{
             backgroundColor: t.card,
             borderColor: t.border,
           }}
         >
-          <div className="flex items-center justify-between gap-1.5">
-            <span
-              className="h-1.5 w-12 rounded-full"
-              style={{ backgroundColor: t.foreground, opacity: 0.88 }}
-            />
-            <span className="h-2.5 w-5 rounded" style={{ backgroundColor: t.periwinkleSoft }} />
-          </div>
-          <div
-            className="mt-1 h-1 w-16 rounded-full"
-            style={{ backgroundColor: t.mutedForeground, opacity: 0.55 }}
+          <img
+            src={theme.mascotImage}
+            alt=""
+            width={28}
+            height={28}
+            loading="lazy"
+            decoding="async"
+            className="h-7 w-7 shrink-0 rounded-md border object-cover"
+            style={{ borderColor: t.border }}
           />
-          <div className="mt-1.5 flex items-center gap-1">
-            <span className="h-2.5 w-8 rounded" style={{ backgroundColor: t.primary }} />
-            <span
-              className="h-2.5 w-6 rounded border"
-              style={{ backgroundColor: t.secondary, borderColor: t.border }}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-1">
+              <span
+                className="h-1.5 w-10 rounded-full"
+                style={{ backgroundColor: t.foreground, opacity: 0.88 }}
+              />
+              <span className="h-2 w-4 rounded" style={{ backgroundColor: t.periwinkleSoft }} />
+            </div>
+            <div
+              className="mt-1 h-1 w-12 rounded-full"
+              style={{ backgroundColor: t.mutedForeground, opacity: 0.55 }}
             />
+            <div className="mt-1.5 flex items-center gap-1">
+              <span className="h-2 w-7 rounded" style={{ backgroundColor: t.primary }} />
+              <span
+                className="h-2 w-5 rounded border"
+                style={{ backgroundColor: t.secondary, borderColor: t.border }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -169,11 +189,20 @@ function ThemeCard({
     >
       <ThemeMiniPreview theme={theme} active={active} previewing={previewing} locked={locked} />
 
-      <div className="mt-2 flex min-w-0 items-center justify-between gap-1.5 px-0.5">
+      <div className="mt-2 flex min-w-0 items-center justify-between gap-2 px-0.5">
+        <img
+          src={theme.mascotImage}
+          alt={`${theme.name} logo`}
+          width={24}
+          height={24}
+          loading="lazy"
+          decoding="async"
+          className="h-6 w-6 shrink-0 rounded-lg border border-border/70 object-cover"
+        />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full border border-border/60"
+              className="h-2 w-2 shrink-0 rounded-full"
               style={{ backgroundColor: theme.tokens.periwinkle }}
               aria-hidden="true"
             />
@@ -224,12 +253,12 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
       <div className="rounded-2xl border border-border bg-card p-3 sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2.5">
-            <span
-              className="h-4 w-4 shrink-0 rounded-md border border-border"
-              style={{
-                background: `linear-gradient(135deg, ${activeTheme.tokens.background} 50%, ${activeTheme.tokens.periwinkle} 50%)`,
-              }}
-              aria-hidden="true"
+            <img
+              src={activeTheme.mascotImage}
+              alt=""
+              width={36}
+              height={36}
+              className="h-9 w-9 shrink-0 rounded-xl border border-border object-cover"
             />
             <div className="min-w-0">
               <div className="truncate text-xs font-semibold text-foreground sm:text-sm">
@@ -312,16 +341,25 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
           aria-label="Live theme preview controls"
           className="flex flex-col gap-3 rounded-2xl border-2 border-[var(--periwinkle)] bg-card p-3.5 shadow-sm sm:flex-row sm:items-center sm:justify-between"
         >
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground sm:text-sm">
-              <Sparkles className="h-3.5 w-3.5 shrink-0 text-[var(--periwinkle)]" />
-              <span className="truncate">Previewing {displayTheme.name}</span>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <img
+              src={displayTheme.mascotImage}
+              alt=""
+              width={36}
+              height={36}
+              className="h-9 w-9 shrink-0 rounded-xl border border-border object-cover"
+            />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground sm:text-sm">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-[var(--periwinkle)]" />
+                <span className="truncate">Previewing {displayTheme.name}</span>
+              </div>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {displayLocked
+                  ? "This is a Premium theme preview. Upgrade to apply & save it."
+                  : "Applied live across every screen. Tap Apply Theme to save."}
+              </p>
             </div>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {displayLocked
-                ? "This is a Premium theme preview. Upgrade to apply & save it."
-                : "Applied live across every screen. Tap Apply Theme to save."}
-            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

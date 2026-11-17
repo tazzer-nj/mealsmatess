@@ -51,12 +51,12 @@ export function ThemeToggle() {
               onClick={() => void applyTheme(t.id)}
               className="flex items-center gap-2.5"
             >
-              <span
-                className="h-3 w-3 shrink-0 rounded-full border border-border"
-                style={{
-                  background: `linear-gradient(135deg, ${t.tokens.background} 50%, ${t.tokens.periwinkle} 50%)`,
-                }}
-                aria-hidden="true"
+              <img
+                src={t.mascotImage}
+                alt=""
+                width={18}
+                height={18}
+                className="h-4.5 w-4.5 shrink-0 rounded object-cover"
               />
               <span className="flex-1 truncate">{t.name}</span>
               {active && <Check className="h-3.5 w-3.5 text-[var(--periwinkle)]" />}

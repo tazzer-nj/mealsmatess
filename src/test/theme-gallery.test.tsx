@@ -82,15 +82,19 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("ThemeGallery UI & live preview", () => {
-  it("renders all 4 free themes and 8 premium themes", () => {
+  it("renders all 4 free themes, 8 premium themes, and their 6 MealMate logos", async () => {
     render(
       <ThemeProvider>
         <ThemeGallery />
       </ThemeProvider>,
     );
 
+    await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalled());
+
     for (const theme of [...FREE_THEMES, ...PREMIUM_THEMES]) {
       expect(screen.getByText(theme.name)).toBeInTheDocument();
+      const logoImg = screen.getByRole("img", { name: `${theme.name} logo` });
+      expect(logoImg).toHaveAttribute("src", theme.mascotImage);
     }
     expect(screen.getByText("Free Themes")).toBeInTheDocument();
     expect(screen.getByText("Premium Themes")).toBeInTheDocument();

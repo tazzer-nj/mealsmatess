@@ -78,14 +78,14 @@ function HomeSurface() {
 }
 
 const CATEGORY_PILLS = [
-  { label: "Breakfast", search: { c: "Breakfast" } },
-  { label: "Lunch", search: { c: "Lunch" } },
-  { label: "Dinner", search: { c: "Dinner" } },
-  { label: "Dessert", search: { c: "Dessert" } },
-  { label: "Snacks", search: { c: "Snacks" } },
-  { label: "South African", search: { c: "South African Favorites" } },
-  { label: "Healthy", search: { c: "Healthy Meals" } },
-  { label: "Vegan", search: { c: "Vegan" } },
+  { label: "Breakfast", emoji: "🍳", search: { c: "Breakfast" } },
+  { label: "Lunch", emoji: "🥣", search: { c: "Lunch" } },
+  { label: "Dinner", emoji: "🍛", search: { c: "Dinner" } },
+  { label: "Dessert", emoji: "🍰", search: { c: "Dessert" } },
+  { label: "Snacks", emoji: "🍿", search: { c: "Snacks" } },
+  { label: "South African", emoji: "🇿🇦", search: { c: "South African Favorites" } },
+  { label: "Healthy", emoji: "🌿", search: { c: "Healthy Meals" } },
+  { label: "Vegan", emoji: "🌱", search: { c: "Vegan" } },
 ] as const;
 
 function greeting() {
@@ -183,21 +183,20 @@ function Index() {
   return (
     <main className="flex-1 overflow-x-hidden bg-background pb-8 text-foreground">
       {/* Greeting header */}
-      <div className="flex items-start justify-between gap-2 px-3.5 pt-5 sm:px-4 sm:pt-6">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+      <div className="flex items-center justify-between px-4 pt-6">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             {greeting()}
           </p>
-          <h1 className="mt-1 truncate text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
-            Hi {firstName}
+          <h1 className="font-display text-4xl leading-tight">
+            Hi {firstName} <span aria-hidden="true">👋</span>
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">What are you craving today?</p>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Link
             to="/profile"
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:border-[var(--periwinkle)] hover:text-foreground"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
             aria-label="Profile"
           >
             <UserIcon className="h-4 w-4" />
@@ -214,13 +213,13 @@ function Index() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search recipes, ingredients, cuisines…"
             maxLength={200}
-            className="h-12 rounded-xl border border-border bg-card pl-11 pr-14 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-[var(--periwinkle)] focus-visible:ring-0"
+            className="h-14 rounded-full border-none bg-card pl-11 pr-14 text-base shadow-sm"
           />
           <button
             type="submit"
             disabled={busy !== null}
             aria-label="Search"
-            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             {busy === "search" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -233,44 +232,50 @@ function Index() {
 
       {/* Category chips */}
       <section className="px-4 pt-5">
-        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex flex-wrap gap-2">
           {CATEGORY_PILLS.map((c) => (
             <Link
               key={c.label}
               to="/recipes"
               search={c.search}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-[var(--periwinkle)] hover:text-foreground"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
             >
+              <span aria-hidden="true">{c.emoji}</span>
               {c.label}
             </Link>
           ))}
           <Link
             to="/recipes"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-[var(--periwinkle)] hover:text-foreground"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
           >
+            <span aria-hidden="true">⊞⊞</span>
             More
           </Link>
         </div>
       </section>
 
       {/* Hero cards: AI Kitchen Scan + Surprise Me */}
-      <section className="grid grid-cols-1 gap-3 px-4 pt-6 sm:grid-cols-2">
+      <section className="grid grid-cols-2 gap-3 px-4 pt-6">
         <Link
           to="/scan"
-          className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-5 text-foreground transition-colors hover:border-[var(--periwinkle)]"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-ink p-5 text-background"
         >
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-[var(--periwinkle)]">
+            <p className="text-[11px] font-medium uppercase tracking-widest text-background/60">
               AI Kitchen Scan
             </p>
-            <h2 className="mt-2 text-lg font-medium tracking-tight text-foreground">
+            <h2 className="mt-2 font-display text-2xl leading-tight">
               What&apos;s in your kitchen?
             </h2>
-            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-              Point your camera at the fridge or pantry — Mia detects ingredients automatically.
+            <p className="mt-2 text-xs leading-relaxed text-background/70">
+              Point your camera at the fridge or pantry — we&apos;ll log every ingredient
+              automatically.
             </p>
           </div>
-          <span className="mt-5 inline-flex w-fit items-center gap-2 rounded-xl bg-foreground px-4 py-2 text-xs font-medium text-background transition-opacity group-hover:opacity-90">
+          <span className="pointer-events-none absolute right-4 top-4 flex h-14 w-14 items-center justify-center rounded-full border border-background/20">
+            <Camera className="h-5 w-5" />
+          </span>
+          <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-background px-4 py-2 text-xs font-semibold text-foreground">
             <Camera className="h-3.5 w-3.5" />
             Scan now
           </span>
@@ -280,22 +285,20 @@ function Index() {
           type="button"
           onClick={handleSurprise}
           disabled={busy !== null}
-          className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-5 text-left text-foreground transition-colors hover:border-[var(--periwinkle)]"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-gradient-to-br from-ink via-ink to-primary/40 p-5 text-left text-background"
         >
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-              Personalized Chef
-            </p>
-            <h2 className="mt-2 text-lg font-medium tracking-tight text-foreground">Surprise Me</h2>
-            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-              Let Mia create an instant dish matched to your tastes and pantry items.
+            <Sparkles className="h-4 w-4 text-primary" />
+            <h2 className="mt-2 font-display text-2xl leading-tight text-primary">Surprise Me</h2>
+            <p className="mt-2 text-xs leading-relaxed text-background/70">
+              Get a random recipe made just for you!
             </p>
           </div>
-          <span className="mt-5 inline-flex w-fit items-center gap-2 rounded-xl border border-border bg-secondary px-4 py-2 text-xs font-medium text-foreground transition-colors group-hover:border-[var(--periwinkle)]">
+          <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-background px-4 py-2 text-xs font-semibold text-foreground">
             {busy === "surprise" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <ChefHat className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
+              <Sparkles className="h-3.5 w-3.5" />
             )}
             Surprise me
           </span>
@@ -303,43 +306,41 @@ function Index() {
       </section>
 
       {/* Quick actions */}
-      <section className="grid grid-cols-4 gap-1.5 px-3.5 pt-6 sm:gap-2 sm:px-4">
+      <section className="grid grid-cols-4 gap-2 px-4 pt-6">
         {[
           {
             to: "/coach",
             icon: HeartPulse,
-            label: "Nutrition",
+            label: "Nutrition Coach",
             sub: "Personalized food advice",
           },
           {
             to: "/chat",
             icon: MessageCircleQuestion,
-            label: "Ask Mia",
+            label: "AI Chat",
             sub: "Ask anything about food",
           },
           {
-            to: "/list",
-            icon: ShoppingCart,
-            label: "Groceries",
-            sub: "Your shopping checklist",
+            to: "/scan",
+            icon: Camera,
+            label: "Scan Ingredients",
+            sub: "Use your camera to scan items",
           },
           {
             to: "/planner",
             icon: Calendar,
-            label: "Planner",
-            sub: "Plan meals for the week",
+            label: "Meal Planner",
+            sub: "Plan your meals for the week",
           },
         ].map((a) => (
           <Link
             key={a.to}
             to={a.to}
-            className="flex min-w-0 flex-col items-center gap-1.5 rounded-2xl border border-border bg-card px-1.5 py-3.5 text-center transition-colors hover:border-[var(--periwinkle)] hover:bg-secondary sm:gap-2 sm:px-2 sm:py-4"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-2 py-4 text-center transition-colors hover:bg-muted"
           >
-            <a.icon className="h-5 w-5 shrink-0 text-foreground" />
-            <span className="max-w-full truncate text-[11px] font-medium leading-tight text-foreground sm:text-xs">
-              {a.label}
-            </span>
-            <span className="hidden text-[11px] leading-tight text-muted-foreground sm:block">
+            <a.icon className="h-5 w-5" />
+            <span className="text-xs font-semibold leading-tight">{a.label}</span>
+            <span className="hidden text-[10px] leading-tight text-muted-foreground sm:block">
               {a.sub}
             </span>
           </Link>
@@ -359,10 +360,10 @@ function Index() {
       {/* Trending recipes */}
       <section className="pt-8">
         <div className="mb-3 flex items-end justify-between px-4">
-          <h2 className="text-xl font-medium tracking-tight text-foreground">Trending Recipes</h2>
+          <h2 className="font-display text-2xl">Trending Recipes</h2>
           <Link
             to="/recipes"
-            className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
           >
             View all <ChevronRight className="h-3.5 w-3.5" />
           </Link>
@@ -405,13 +406,11 @@ function Index() {
       {/* South African favourites */}
       <section className="pt-8">
         <div className="mb-3 flex items-end justify-between px-4">
-          <h2 className="text-xl font-medium tracking-tight text-foreground">
-            South African Favourites
-          </h2>
+          <h2 className="font-display text-2xl">South African Favourites</h2>
           <Link
             to="/recipes"
             search={{ c: "South African Favorites" }}
-            className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+            className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
           >
             View all <ChevronRight className="h-3.5 w-3.5" />
           </Link>
@@ -462,10 +461,10 @@ function Index() {
       {continueCooking && (
         <section className="px-4 pt-8">
           <div className="mb-3 flex items-end justify-between">
-            <h2 className="text-xl font-medium tracking-tight text-foreground">Continue Cooking</h2>
+            <h2 className="font-display text-2xl">Continue Cooking</h2>
             <Link
               to="/recipes"
-              className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+              className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
             >
               View all <ChevronRight className="h-3.5 w-3.5" />
             </Link>

@@ -16,6 +16,7 @@
   max-width: 680px;
   display: flex;
   flex-direction: column;
+  animation: onboardingPageEnter 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .onboarding-header {
@@ -152,8 +153,56 @@
   }
 }
 
+@keyframes onboardingPageEnter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes onboardingLangFadeA {
+  from {
+    opacity: 0.2;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes onboardingLangFadeB {
+  from {
+    opacity: 0.2;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .onboarding-step-enter {
   animation: onboardingStepEnter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.onboarding-lang-fade[data-lang-fade="a"] {
+  animation: onboardingLangFadeA 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.onboarding-lang-fade[data-lang-fade="b"] {
+  animation: onboardingLangFadeB 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-frame,
+  .onboarding-step-enter,
+  .onboarding-lang-fade[data-lang-fade="a"],
+  .onboarding-lang-fade[data-lang-fade="b"] {
+    animation: none;
+  }
 }
 
 .onboarding-text-header {
@@ -225,7 +274,8 @@
 
 .onboarding-actions {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 12px;
   margin-top: 20px;
 }

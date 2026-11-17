@@ -1,5 +1,19 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import {
+  APP_LANGUAGES,
+  ONBOARDING_EN,
+  ONBOARDING_TRANSLATIONS,
+  type AppLanguageCode,
+} from "@/lib/onboarding-i18n";
+
+export { APP_LANGUAGES, type AppLanguageCode };
+
+export function normalizeAppLanguage(code?: string | null): AppLanguageCode {
+  if (!code) return "en";
+  const base = code.split("-")[0]?.toLowerCase() ?? "en";
+  return APP_LANGUAGES.some((item) => item.code === base) ? (base as AppLanguageCode) : "en";
+}
 
 // English is the master dictionary. Every other locale falls back to English
 // automatically for any missing key.
@@ -191,28 +205,27 @@ export const en = {
     invalidEmail: "Enter a valid email",
     passwordShort: "Password must be at least 6 characters",
   },
+  onboarding: ONBOARDING_EN,
 } as const;
-
-// Placeholder locale bundles — they intentionally fall back to English
-// for every key. Translation packs can be filled in later.
-const emptyPack = {};
 
 void i18n.use(initReactI18next).init({
   resources: {
     en: { translation: en },
-    af: { translation: emptyPack },
-    zu: { translation: emptyPack },
-    xh: { translation: emptyPack },
-    st: { translation: emptyPack },
-    tn: { translation: emptyPack },
-    nso: { translation: emptyPack },
-    ve: { translation: emptyPack },
-    ts: { translation: emptyPack },
-    ss: { translation: emptyPack },
-    nr: { translation: emptyPack },
+    af: { translation: { onboarding: ONBOARDING_TRANSLATIONS.af } },
+    zu: { translation: { onboarding: ONBOARDING_TRANSLATIONS.zu } },
+    xh: { translation: { onboarding: ONBOARDING_TRANSLATIONS.xh } },
+    st: { translation: { onboarding: ONBOARDING_TRANSLATIONS.st } },
+    tn: { translation: { onboarding: ONBOARDING_TRANSLATIONS.tn } },
+    nso: { translation: { onboarding: ONBOARDING_TRANSLATIONS.nso } },
+    ve: { translation: { onboarding: ONBOARDING_TRANSLATIONS.ve } },
+    ts: { translation: { onboarding: ONBOARDING_TRANSLATIONS.ts } },
+    ss: { translation: { onboarding: ONBOARDING_TRANSLATIONS.ss } },
+    nr: { translation: { onboarding: ONBOARDING_TRANSLATIONS.nr } },
   },
   lng:
-    typeof window !== "undefined" ? (window.localStorage.getItem("mealmate-lang") ?? "en") : "en",
+    typeof window !== "undefined"
+      ? normalizeAppLanguage(window.localStorage.getItem("mealmate-lang"))
+      : "en",
   fallbackLng: "en",
   interpolation: { escapeValue: false },
   returnNull: false,

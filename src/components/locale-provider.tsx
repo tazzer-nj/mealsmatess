@@ -12,6 +12,13 @@ import i18nInstance from "@/lib/i18n";
  *  3. A cross-tab / cross-component event so a language change propagates
  *     instantly without an app restart.
  */
+function applyLangTransition(nextLang: string) {
+  if (typeof document === "undefined") return;
+  document.documentElement.lang = nextLang;
+  document.documentElement.dataset.langFade =
+    document.documentElement.dataset.langFade === "a" ? "b" : "a";
+}
+
 export function LocaleProvider({ children }: { children: ReactNode }) {
   // Keep a value import so production tree-shaking cannot drop i18n setup.
   const { i18n = i18nInstance } = useTranslation();
@@ -34,19 +41,31 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = window.localStorage.getItem("mealmate-lang");
-    if (stored && stored !== i18n.language) void i18n.changeLanguage(stored);
+    if (stored) {
+      document.documentElement.lang = stored;
+      if (stored !== i18n.language) {
+        void i18n.changeLanguage(stored);
+        applyLangTransition(stored);
+      }
+    }
   }, [i18n]);
 
   // Profile-driven sync.
   useEffect(() => {
-    if (data && data !== i18n.language) void i18n.changeLanguage(data);
+    if (data && data !== i18n.language) {
+      void i18n.changeLanguage(data);
+      applyLangTransition(data);
+    }
   }, [data, i18n]);
 
   // Cross-component instant updates.
   useEffect(() => {
     function onChange(e: Event) {
       const lang = (e as CustomEvent<string>).detail;
-      if (lang && lang !== i18n.language) void i18n.changeLanguage(lang);
+      if (lang) {
+        if (lang !== i18n.language) void i18n.changeLanguage(lang);
+        applyLangTransition(lang);
+      }
     }
     window.addEventListener("mealmate-lang-changed", onChange);
     return () => window.removeEventListener("mealmate-lang-changed", onChange);

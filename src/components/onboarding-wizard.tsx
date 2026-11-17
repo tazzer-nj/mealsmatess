@@ -2,11 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { updateProfile } from "firebase/auth";
 import { OnboardingLayout } from "@/components/onboarding-layout";
 import { OnboardingStepContent } from "@/components/onboarding-preferences";
 import { auth } from "@/lib/firebase";
+import { firebaseData } from "@/lib/firebase-data";
+import { type AppLanguageCode } from "@/lib/i18n";
 import {
   clearOnboardingDraft,
   readOnboardingDraft,
@@ -36,6 +39,7 @@ export function OnboardingWizard({
   totalSteps = DEFAULT_ONBOARDING_STEPS,
   onCompleted,
 }: OnboardingWizardProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -272,7 +276,7 @@ export function OnboardingWizard({
 
     const trimmedName = preferredName.trim();
     if (step === 0 && !trimmedName) {
-      const msg = "Please enter your preferred name.";
+      const msg = t("onboarding.nameRequired");
       setStepError(msg);
       toast.error(msg);
       return null;
@@ -331,8 +335,8 @@ export function OnboardingWizard({
         error instanceof Error
           ? error.message
           : completed
-            ? "Could not finish setup. Please try again."
-            : "Could not save your preferences. Please try again.";
+            ? t("onboarding.finishError")
+            : t("onboarding.saveError");
       setStepError(message);
       toast.error(message);
       return null;
@@ -384,12 +388,27 @@ export function OnboardingWizard({
     });
     if (!saved) return;
 
-    toast.success("Preferences saved!");
+    toast.success(t("onboarding.preferencesSaved"));
     if (onCompleted) {
       await onCompleted();
     } else {
       await navigate({ to: "/premium", replace: true });
     }
+  }
+
+  function handleLanguageChange(nextLang: AppLanguageCode) {
+    if (auth?.currentUser?.uid !== userId) return;
+    void firebaseData
+      .from("profiles")
+      .update({ locale: nextLang } as never)
+      .eq("id", userId)
+      .then(() => {
+        void queryClient.invalidateQueries({ queryKey: ["locale", userId] });
+        void queryClient.invalidateQueries({ queryKey: ["profile-prefs", userId] });
+      })
+      .catch(() => {
+        // Non-blocking: localStorage and active i18n session remain updated.
+      });
   }
 
   if (loading) {
@@ -407,6 +426,7 @@ export function OnboardingWizard({
       step={step}
       total={totalSteps}
       onBack={step > 0 && !busy ? handleBack : undefined}
+      onLanguageChange={handleLanguageChange}
       busy={busy}
       footer={
         <div className="flex w-full flex-col gap-2">
@@ -428,12 +448,16 @@ export function OnboardingWizard({
               <>
                 <Loader2 className="animate-spin" size={18} />
                 <span>
-                  {savingStep ? (isLast ? "Finishing setup..." : "Saving...") : "Please wait..."}
+                  {savingStep
+                    ? isLast
+                      ? t("onboarding.finishingSetup")
+                      : t("onboarding.saving")
+                    : t("onboarding.pleaseWait")}
                 </span>
               </>
             ) : (
               <>
-                <span>{isLast ? "Complete Setup" : "Continue"}</span>
+                <span>{isLast ? t("onboarding.completeSetup") : t("onboarding.continue")}</span>
                 <ArrowRight size={16} />
               </>
             )}

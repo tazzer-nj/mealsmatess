@@ -1,46 +1,24 @@
-import { useEffect, useRef, type ReactNode } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { ArrowLeft, ChevronDown, Globe } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { APP_LANGUAGES, normalizeAppLanguage, type AppLanguageCode } from "@/lib/i18n";
 import { MealMateLogo } from "@/components/mealmate-logo";
 import { RecipeImage } from "@/components/recipe-image";
 
-const STEP_DATA = [
-  {
-    stepName: "Welcome",
-    title: "Personalize your kitchen",
-    desc: "Let's make mealtime better. Tailor MealMate to your household, tastes, and rhythm.",
-    dish: "Creamy chicken alfredo",
-  },
-  {
-    stepName: "Goals",
-    title: "Set your cooking goals",
-    desc: "Tell us what matters most so every recipe and weekly plan fits your life.",
-    dish: "Rainbow buddha bowl",
-  },
-  {
-    stepName: "Dietary preferences",
-    title: "Dietary preferences",
-    desc: "From plant-based to halal or keto, keep your daily recipe feed aligned with how you eat.",
-    dish: "Greek chicken salad",
-  },
-  {
-    stepName: "Allergies",
-    title: "Allergies & intolerances",
-    desc: "Keep your kitchen safe. MealMate filters out unsafe ingredients automatically.",
-    dish: "West African jollof rice",
-  },
-  {
-    stepName: "Flavours",
-    title: "Favourite flavours",
-    desc: "Choose the cuisines you crave most—from South African staples to world classics.",
-    dish: "Cape malay bobotie",
-  },
-  {
-    stepName: "Cooking style",
-    title: "Skill level & pace",
-    desc: "We'll recommend meals matched to your comfort in the kitchen and available time.",
-    dish: "Classic american apple pie",
-  },
-];
+const STEP_DISHES = [
+  "Creamy chicken alfredo",
+  "Rainbow buddha bowl",
+  "Greek chicken salad",
+  "West African jollof rice",
+  "Cape malay bobotie",
+  "Classic american apple pie",
+] as const;
+
+type TranslatedStepMeta = {
+  stepName: string;
+  title: string;
+  desc: string;
+};
 
 export function OnboardingLayout({
   step,
@@ -48,6 +26,7 @@ export function OnboardingLayout({
   children,
   footer,
   onBack,
+  onLanguageChange,
   busy = false,
 }: {
   step: number;
@@ -55,17 +34,55 @@ export function OnboardingLayout({
   children?: ReactNode;
   footer: ReactNode;
   onBack?: () => void;
+  onLanguageChange?: (lang: AppLanguageCode) => void;
   busy?: boolean;
 }) {
+  const { t, i18n } = useTranslation();
   const content = useRef<HTMLDivElement>(null);
-  const current = STEP_DATA[step] || STEP_DATA[0];
+  const langSelectId = useId();
+
+  const stepIndex = Math.min(Math.max(0, step), STEP_DISHES.length - 1);
+  const translatedSteps = t("onboarding.steps", {
+    returnObjects: true,
+  }) as TranslatedStepMeta[];
+  const currentMeta = (Array.isArray(translatedSteps) ? translatedSteps[stepIndex] : undefined) ??
+    translatedSteps?.[0] ?? {
+      stepName: "Welcome",
+      title: "Personalize your kitchen",
+      desc: "Let's make mealtime better. Tailor MealMate to your household, tastes, and rhythm.",
+    };
+  const currentDish = STEP_DISHES[stepIndex] ?? STEP_DISHES[0];
+  const activeLang = normalizeAppLanguage(i18n.resolvedLanguage ?? i18n.language);
+  const prevLangRef = useRef<AppLanguageCode>(activeLang);
+  const [langFadeCycle, setLangFadeCycle] = useState<"a" | "b" | null>(null);
+
+  useEffect(() => {
+    if (prevLangRef.current !== activeLang) {
+      prevLangRef.current = activeLang;
+      setLangFadeCycle((prev) => (prev === "a" ? "b" : "a"));
+    }
+  }, [activeLang]);
 
   useEffect(() => {
     content.current?.scrollTo?.(0, 0);
   }, [step]);
 
+  function handleLanguageChange(nextCode: string) {
+    const next = normalizeAppLanguage(nextCode);
+    void i18n.changeLanguage(next);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem("mealmate-lang", next);
+        window.dispatchEvent(new CustomEvent("mealmate-lang-changed", { detail: next }));
+      } catch {
+        // Ignore storage failures in restricted contexts.
+      }
+    }
+    onLanguageChange?.(next);
+  }
+
   return (
-    <main className="onboarding-shell" aria-busy={busy}>
+    <main className="onboarding-shell" lang={activeLang} aria-busy={busy}>
       <div className="onboarding-frame">
         <header className="onboarding-header">
           <div className="onboarding-brand-row">
@@ -76,7 +93,7 @@ export function OnboardingLayout({
                   className="onboarding-back"
                   onClick={onBack}
                   disabled={busy}
-                  aria-label="Previous step"
+                  aria-label={t("onboarding.previousStep")}
                 >
                   <ArrowLeft size={16} />
                 </button>
@@ -88,15 +105,18 @@ export function OnboardingLayout({
                 />
               )}
             </div>
-            <span className="onboarding-step">
-              Step {step + 1} of {total}
+            <span
+              className="onboarding-step onboarding-lang-fade"
+              data-lang-fade={langFadeCycle ?? undefined}
+            >
+              {t("onboarding.stepCounter", { current: step + 1, total })}
             </span>
           </div>
 
           <div
             className="onboarding-progress"
             role="progressbar"
-            aria-label="Onboarding progress"
+            aria-label={t("onboarding.progressAria")}
             aria-valuemin={1}
             aria-valuemax={total}
             aria-valuenow={step + 1}
@@ -109,24 +129,67 @@ export function OnboardingLayout({
 
         <div className="onboarding-surface">
           <div className="onboarding-visual-banner" aria-hidden="true">
-            <RecipeImage recipe={{ name: current.dish }} size="hero" priority />
+            <RecipeImage recipe={{ name: currentDish }} size="hero" priority />
             <div className="onboarding-visual-overlay">
-              <span className="onboarding-pill">
-                <span>{current.stepName}</span>
+              <span
+                className="onboarding-pill onboarding-lang-fade"
+                data-lang-fade={langFadeCycle ?? undefined}
+              >
+                <span>{currentMeta.stepName}</span>
               </span>
             </div>
           </div>
 
           <div key={step} className="onboarding-content onboarding-step-enter" ref={content}>
-            <div className="onboarding-text-header">
-              <h1 className="onboarding-title">{current.title}</h1>
-              <p className="onboarding-description">{current.desc}</p>
+            <div className="onboarding-lang-fade" data-lang-fade={langFadeCycle ?? undefined}>
+              <div className="onboarding-text-header">
+                <h1 className="onboarding-title">{currentMeta.title}</h1>
+                <p className="onboarding-description">{currentMeta.desc}</p>
+              </div>
+              {children}
             </div>
-            {children}
           </div>
         </div>
 
-        <footer className="onboarding-actions">{footer}</footer>
+        <footer className="onboarding-actions">
+          <div className="onboarding-lang-fade w-full" data-lang-fade={langFadeCycle ?? undefined}>
+            {footer}
+          </div>
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <label
+              htmlFor={langSelectId}
+              className="inline-flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground"
+            >
+              <Globe size={14} aria-hidden="true" className="shrink-0" />
+              <span className="truncate">{t("onboarding.languageLabel")}</span>
+            </label>
+            <div className="relative inline-flex shrink-0 items-center">
+              <select
+                id={langSelectId}
+                aria-label={t("onboarding.languageLabel")}
+                value={activeLang}
+                onChange={(e) => handleLanguageChange(e.target.value)}
+                disabled={busy}
+                className="h-11 min-w-[138px] cursor-pointer appearance-none rounded-xl border border-border bg-card pl-3.5 pr-9 text-xs font-medium text-foreground transition-colors hover:border-[var(--periwinkle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--periwinkle)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {APP_LANGUAGES.map((lang) => (
+                  <option
+                    key={lang.code}
+                    value={lang.code}
+                    className="bg-popover text-popover-foreground"
+                  >
+                    {lang.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={14}
+                aria-hidden="true"
+                className="pointer-events-none absolute right-3 text-muted-foreground"
+              />
+            </div>
+          </div>
+        </footer>
       </div>
     </main>
   );

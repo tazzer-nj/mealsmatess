@@ -1,30 +1,96 @@
-import { Link } from "@tanstack/react-router";
-import { ChevronRight, Palette } from "lucide-react";
-import { ThemeGallery } from "@/components/theme-gallery";
+import { Check, Lock, Loader2 } from "lucide-react";
+import { useMascotTheme } from "@/hooks/use-mascot-theme";
+import { usePremium } from "@/hooks/use-premium";
+import { useUpgradeModal } from "@/components/upgrade-modal";
+import { MASCOT_THEMES } from "@/lib/mascot-theme";
+import { cn } from "@/lib/utils";
 
-/** App theme section embedded on Profile & Settings. */
+/** Native-style mascot theme setting matching https://mealsmates.lovable.app. Colourful themes are Premium, matching the artwork. */
 export function ThemePicker() {
+  const { theme, setTheme, saving } = useMascotTheme();
+  const { isPremium } = usePremium();
+  const { open } = useUpgradeModal();
+
   return (
     <section className="mt-6" aria-labelledby="theme-heading">
-      <div className="mb-2.5 flex items-center justify-between gap-2 px-1">
-        <div className="flex items-center gap-2">
-          <Palette className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
-          <h2
-            id="theme-heading"
-            className="text-xs font-medium uppercase tracking-widest text-muted-foreground"
-          >
-            Themes
-          </h2>
-        </div>
-        <Link
-          to="/settings"
-          className="inline-flex items-center gap-0.5 text-xs font-medium text-[var(--periwinkle)] hover:underline"
+      <div className="mb-2 flex items-center justify-between px-1">
+        <h2
+          id="theme-heading"
+          className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
         >
-          All settings
-          <ChevronRight className="h-3.5 w-3.5" />
-        </Link>
+          App theme
+        </h2>
+        {saving && (
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-label="Saving" />
+        )}
       </div>
-      <ThemeGallery compact />
+      <div className="rounded-3xl border border-border bg-card p-3">
+        <div
+          role="radiogroup"
+          aria-label="Mascot theme"
+          className="grid grid-cols-3 gap-3 sm:grid-cols-6"
+        >
+          {MASCOT_THEMES.map((t) => {
+            const selected =
+              t.id === theme.id ||
+              (t.id === "classic" && theme.id === "classic-light") ||
+              (t.id === "sunset" && theme.id === "sunset") ||
+              (t.id === "midnight" &&
+                (theme.id === "midnight-black" || theme.id === "midnight-pro")) ||
+              (t.id === "ocean" && theme.id === "ocean-blue") ||
+              (t.id === "cherry" && theme.id === "obsidian") ||
+              (t.id === "matcha" && theme.id === "aurora");
+            const locked = t.premium && !isPremium;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                aria-label={`${t.name}${locked ? " (Premium)" : ""}`}
+                onClick={() =>
+                  locked
+                    ? open(`Unlock the ${t.name} theme with MealMate Premium.`)
+                    : void setTheme(t.id as any)
+                }
+                className="group flex flex-col items-center gap-2 rounded-2xl p-1.5 text-center transition-transform active:scale-95 cursor-pointer"
+              >
+                <span
+                  className={cn(
+                    "relative block aspect-square w-full overflow-hidden rounded-2xl border-2 transition-colors",
+                    selected ? "border-foreground ring-2 ring-primary/20" : "border-transparent",
+                  )}
+                >
+                  <img
+                    src={t.image}
+                    alt={`${t.name} logo`}
+                    loading="lazy"
+                    className="h-full w-full object-cover"
+                  />
+                  {locked && (
+                    <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-background/90 shadow-sm">
+                      <Lock className="h-3 w-3" />
+                    </span>
+                  )}
+                  {selected && (
+                    <span className="absolute bottom-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-background motion-safe:animate-in motion-safe:zoom-in-50">
+                      <Check className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                </span>
+                <span className="flex items-center gap-1.5 text-xs font-medium">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ background: t.accent }}
+                    aria-hidden="true"
+                  />
+                  {t.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </section>
   );
 }

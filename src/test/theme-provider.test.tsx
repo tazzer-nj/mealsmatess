@@ -246,9 +246,24 @@ describe("Theme registry & global ThemeProvider", () => {
 
     const classic = MEALMATE_THEMES.find((t) => t.id === "classic-light")!;
     const midnight = MEALMATE_THEMES.find((t) => t.id === "midnight-black")!;
+    const obsidian = MEALMATE_THEMES.find((t) => t.id === "obsidian")!;
+    const logoSet = new Set(MEALMATE_THEMES.map((t) => t.mascotImage));
+    expect(logoSet).toEqual(
+      new Set([
+        "/mascots/mascot-classic.png",
+        "/mascots/mascot-midnight.webp",
+        "/mascots/mascot-ocean.webp",
+        "/mascots/mascot-matcha.webp",
+        "/mascots/mascot-sunset.webp",
+        "/mascots/mascot-cherry.webp",
+      ]),
+    );
     expect(classic.tokens.primary).toBe("#13341b");
     expect(classic.tokens.periwinkle).toBe("#3d7c1b");
-    expect(midnight.tokens.periwinkle).toBe("#59b533");
+    expect(midnight.mascotImage).toBe("/mascots/mascot-midnight.webp");
+    expect(midnight.tokens.periwinkle).toBe("#738cff");
+    expect(obsidian.mascotImage).toBe("/mascots/mascot-cherry.webp");
+    expect(obsidian.tokens.periwinkle).toBe("#f43f5e");
   });
 
   it("restores saved account theme automatically across devices and avoids flash via THEME_BOOT_SCRIPT", async () => {

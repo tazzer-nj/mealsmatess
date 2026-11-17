@@ -1,6 +1,7 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentType } from "react";
+import i18n from "@/lib/i18n";
 import { EMPTY_PREFERENCES } from "@/lib/preferences";
 import { readOnboardingDraft, saveOnboardingDraft } from "@/lib/onboarding-progress";
 import { Route } from "@/routes/onboarding";
@@ -41,9 +42,10 @@ function renderWithQuery(ui: React.ReactElement) {
   );
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
   localStorage.clear();
+  await i18n.changeLanguage("en");
   mocks.get.mockResolvedValue(null);
   mocks.save.mockResolvedValue({ ok: true });
   mocks.navigate.mockResolvedValue(undefined);
@@ -279,5 +281,75 @@ describe("onboarding account flow", () => {
     expect(
       screen.getByRole("button", { name: "5+ people (large feast)" }).getAttribute("aria-pressed"),
     ).toBe("true");
+  });
+
+  it("renders a language selection dropdown in the onboarding footer and translates onboarding text while preserving canonical values", async () => {
+    const { container } = renderWithQuery(<Page />);
+
+    await screen.findByRole("heading", { name: "Personalize your kitchen" });
+
+    const footer = container.querySelector("footer.onboarding-actions");
+    expect(footer).not.toBeNull();
+
+    const languageSelect = within(footer as HTMLElement).getByRole("combobox", {
+      name: /Language/i,
+    }) as HTMLSelectElement;
+    expect(languageSelect.value).toBe("en");
+    expect(languageSelect.options.length).toBe(11);
+
+    // Initially no language-change re-fade before user interaction
+    const fadeNodesInitial = container.querySelectorAll(".onboarding-lang-fade");
+    expect(fadeNodesInitial.length).toBeGreaterThan(0);
+    expect(fadeNodesInitial[0]?.getAttribute("data-lang-fade")).toBeNull();
+
+    // Switch to isiZulu
+    fireEvent.change(languageSelect, { target: { value: "zu" } });
+
+    await screen.findByRole("heading", { name: "Hlela ikhishi lakho" });
+    expect(localStorage.getItem("mealmate-lang")).toBe("zu");
+    expect(screen.getByRole("button", { name: /Qhubeka/i })).toBeTruthy();
+    expect(screen.getByLabelText(/I-MealMate kufanele ikubize ngokuthini\?/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Abantu abayi-3–4 (umndeni)" })).toBeTruthy();
+    expect(container.querySelector(".onboarding-lang-fade")?.getAttribute("data-lang-fade")).toBe(
+      "a",
+    );
+
+    // Selecting translated chip stores canonical value in Firestore
+    fireEvent.click(screen.getByRole("button", { name: "Abantu abayi-3–4 (umndeni)" }));
+    fireEvent.click(screen.getByRole("button", { name: /Qhubeka/i }));
+
+    await waitFor(() =>
+      expect(mocks.save).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          household_size: "3–4 people (family)",
+          meals_per_day: "3–4 people (family)",
+          onboarding_step: 1,
+        }),
+      }),
+    );
+
+    // Step 1 heading & goals should also be displayed in isiZulu
+    await screen.findByRole("heading", { name: "Beka izinhloso zakho zokupheka" });
+
+    // Switch to Afrikaans
+    const zuSelect = within(footer as HTMLElement).getByRole("combobox", { name: /Ulimi/i });
+    fireEvent.change(zuSelect, { target: { value: "af" } });
+
+    await screen.findByRole("heading", { name: "Stel jou kookdoelwitte" });
+    expect(localStorage.getItem("mealmate-lang")).toBe("af");
+    expect(screen.getByRole("button", { name: /Gaan voort/i })).toBeTruthy();
+    expect(container.querySelector(".onboarding-lang-fade")?.getAttribute("data-lang-fade")).toBe(
+      "b",
+    );
+
+    // Switch back to English
+    const afSelect = within(footer as HTMLElement).getByRole("combobox", { name: /Taal/i });
+    fireEvent.change(afSelect, { target: { value: "en" } });
+
+    await screen.findByRole("heading", { name: "Set your cooking goals" });
+    expect(localStorage.getItem("mealmate-lang")).toBe("en");
+    expect(container.querySelector(".onboarding-lang-fade")?.getAttribute("data-lang-fade")).toBe(
+      "a",
+    );
   });
 });
