@@ -22,7 +22,11 @@ export const Route = createFileRoute("/restaurant/$slug")({
   loader: async ({ context, params }) => {
     const user = await waitForFirebaseAuth();
     if (!user) return null;
-    return context.queryClient.ensureQueryData(restaurantBySlugQuery(params.slug));
+    try {
+      return await context.queryClient.ensureQueryData(restaurantBySlugQuery(params.slug));
+    } catch {
+      return null;
+    }
   },
   head: ({ params }) => ({
     meta: [

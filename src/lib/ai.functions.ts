@@ -136,7 +136,7 @@ export const surpriseMe = createServerFn({ method: "POST" })
     const t0 = Date.now();
     try {
       const recipe = await callModel(
-        `Surprise the user with ${theme}. Pick something delightful and specific — not generic. Include one fun fact. Saved preferences: ${profile ? preferenceSummary(profile.preferences) : "none specified"}. Dietary preferences: ${(profile?.dietary_preferences ?? []).join(", ") || "none specified"}. Allergies that must be excluded: ${(profile?.allergies ?? []).join(", ") || "none specified"}.`,
+        `Surprise the user with ${theme}. Pick something delightful and specific, not generic. Include one fun fact. Saved preferences: ${profile ? preferenceSummary(profile.preferences) : "none specified"}. Dietary preferences: ${(profile?.dietary_preferences ?? []).join(", ") || "none specified"}. Allergies that must be excluded: ${(profile?.allergies ?? []).join(", ") || "none specified"}.`,
       );
       const row = toDbRecipe(recipe, context.userId);
       const { data, error } = await firebaseAdmin
@@ -468,21 +468,6 @@ export const regenerateRecipeImage = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireAiCredit(context.userId);
     const { firebaseAdmin } = await loadFirebaseAdmin();
-
-    // Premium gate — check for an active subscription
-    const { data: sub } = await firebaseAdmin
-      .from("subscriptions")
-      .select("status,period_end,tier")
-      .eq("user_id", context.userId)
-      .in("status", ["trialing", "active", "in_grace"])
-      .order("period_end", { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle();
-    const now = Date.now();
-    const isPremium =
-      !!sub &&
-      (sub.tier === "lifetime" || !sub.period_end || new Date(sub.period_end).getTime() > now);
-    if (!isPremium) throw new Error("Premium required to regenerate images");
 
     await enforceRateLimit("ai_image", context.userId, 5);
 

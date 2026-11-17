@@ -32,7 +32,7 @@ type Profile = {
 
 function profileSummary(p: Profile | null): string {
   if (!p)
-    return "No profile on file yet — ask the user for their goal, allergies, and any dietary preferences before giving specific numbers.";
+    return "No profile on file yet. Ask the user for their goal, allergies, and any dietary preferences before giving specific numbers.";
   const bits: string[] = [];
   if (p.display_name) bits.push(`Name: ${p.display_name}`);
   if (p.age) bits.push(`Age: ${p.age}`);
@@ -49,7 +49,7 @@ function profileSummary(p: Profile | null): string {
 
 const SYSTEM = (
   summary: string,
-) => `You are MealMate's AI Nutrition Coach — a warm, evidence-based coach (think dietitian, not a doctor). You give personalized, practical advice tailored to the user's profile below.
+) => `You are MealMate's AI Nutrition Coach, a warm, evidence-based coach (think dietitian, not a doctor). You give personalized, practical advice tailored to the user's profile below.
 
 USER PROFILE:
 ${summary}
@@ -60,7 +60,7 @@ RULES:
 - If they ask for calorie/macro targets and their weight/height/age/activity are known, estimate TDEE using Mifflin-St Jeor and adjust for their goal (-500 kcal for fat loss, +250-500 for muscle gain, maintenance otherwise). Show your math briefly.
 - If profile data is missing for a specific calculation, ask ONE targeted question first.
 - Be concrete: give foods, portion sizes, timing, budget-friendly swaps. Prefer whole foods.
-- Keep answers scannable — short paragraphs and bullet lists. No medical claims. No "consult a doctor" disclaimers unless the topic is truly medical (medication, disease, pregnancy).
+- Keep answers scannable with short paragraphs and bullet lists. No medical claims. No "consult a doctor" disclaimers unless the topic is truly medical (medication, disease, pregnancy).
 - Plain markdown only. No headings above H3.`;
 
 async function callChat(

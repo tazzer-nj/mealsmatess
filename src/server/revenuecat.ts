@@ -165,8 +165,10 @@ export function parseRevenueCatAccess(
   };
 }
 
+const inFlightRcLookups = new Map<string, Promise<PremiumAccess>>();
+
 export async function verifyRevenueCatCustomer(customerId: string): Promise<PremiumAccess> {
-  const key = process.env["REVENUECAT_SECRET_API_KEY"];
+  const key = (process.env["REVENUECAT_SECRET_API_KEY"] ?? "").trim();
   if (!key)
     throw new Error("Subscription verification is temporarily unavailable. Please try again.");
   const production =
@@ -175,21 +177,29 @@ export async function verifyRevenueCatCustomer(customerId: string): Promise<Prem
       !["preview", "development"].includes(process.env["VERCEL_ENV"] ?? ""));
   const base =
     (!production && process.env["REVENUECAT_API_BASE_URL"]) || "https://api.revenuecat.com/v1";
-  const response = await fetch(`${base}/subscribers/${encodeURIComponent(customerId)}`, {
-    headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
-    cache: "no-store",
-    signal: AbortSignal.timeout(10_000),
+  const allowSandbox = !production && process.env["REVENUECAT_ALLOW_SANDBOX"] === "true";
+  const cacheKey = `${base}:${allowSandbox ? "1" : "0"}:${customerId}`;
+  const existing = inFlightRcLookups.get(cacheKey);
+  if (existing) return existing;
+
+  const task = (async () => {
+    const response = await fetch(`${base}/subscribers/${encodeURIComponent(customerId)}`, {
+      headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (response.status === 404) return denied();
+    if (!response.ok)
+      throw new Error("Subscription verification is temporarily unavailable. Please try again.");
+    const data = (await response.json()) as { subscriber?: Subscriber };
+    if (!data.subscriber) throw new Error("The subscription service returned an invalid response.");
+    return parseRevenueCatAccess(data.subscriber, Date.now(), allowSandbox);
+  })().finally(() => {
+    if (inFlightRcLookups.get(cacheKey) === task) inFlightRcLookups.delete(cacheKey);
   });
-  if (response.status === 404) return denied();
-  if (!response.ok)
-    throw new Error("Subscription verification is temporarily unavailable. Please try again.");
-  const data = (await response.json()) as { subscriber?: Subscriber };
-  if (!data.subscriber) throw new Error("The subscription service returned an invalid response.");
-  return parseRevenueCatAccess(
-    data.subscriber,
-    Date.now(),
-    !production && process.env["REVENUECAT_ALLOW_SANDBOX"] === "true",
-  );
+
+  inFlightRcLookups.set(cacheKey, task);
+  return task;
 }
 
 export function assertBillingOrigin(request: Request) {
@@ -274,6 +284,8 @@ async function safeIsAdminAccount(
   return false;
 }
 
+const inFlightAccountAccess = new Map<string, Promise<PremiumAccess>>();
+
 export async function verifyAccountAccess(
   userId: string,
   token?: string,
@@ -282,44 +294,63 @@ export async function verifyAccountAccess(
   if (await safeIsAdminAccount(userId, claims)) {
     return adminPremiumAccess();
   }
-  const db = getFirebaseAdminFirestore();
-  const linkRef = db.collection("billing_links").doc(userId);
-  const link = await linkRef.get();
-  let access = await verifyRevenueCatCustomer(String(link.data()?.customerId ?? userId));
-  if (!access.isPremium && !link.exists && token) {
-    const session = await readPurchaseSession(token);
-    if (session && (!session.owner || session.owner === userId)) {
-      const purchased = await verifyRevenueCatCustomer(session.customerId);
-      if (purchased.isPremium) {
-        await db.runTransaction(async (tx) => {
-          const [claim, existing] = await Promise.all([tx.get(sessionRef(token)), tx.get(linkRef)]);
-          const data = claim.data();
-          if (
-            !data ||
-            Number(data.expiresAt) <= Date.now() ||
-            data.customerId !== session.customerId ||
-            (data.owner && data.owner !== userId) ||
-            (existing.exists && existing.data()?.customerId !== session.customerId)
-          )
-            throw new Error(
-              "This purchase is already linked to an account. Sign in with that account to restore it.",
-            );
-          tx.set(sessionRef(token), { owner: userId }, { merge: true });
-          tx.set(linkRef, { customerId: session.customerId });
-        });
-        access = purchased;
+  if (!token) {
+    const inFlight = inFlightAccountAccess.get(userId);
+    if (inFlight) return inFlight;
+  }
+
+  const run = (async (): Promise<PremiumAccess> => {
+    const db = getFirebaseAdminFirestore();
+    const linkRef = db.collection("billing_links").doc(userId);
+    const link = await linkRef.get();
+    let access = await verifyRevenueCatCustomer(String(link.data()?.customerId ?? userId));
+    if (!access.isPremium && !link.exists && token) {
+      const session = await readPurchaseSession(token);
+      if (session && (!session.owner || session.owner === userId)) {
+        const purchased = await verifyRevenueCatCustomer(session.customerId);
+        if (purchased.isPremium) {
+          await db.runTransaction(async (tx) => {
+            const [claim, existing] = await Promise.all([
+              tx.get(sessionRef(token)),
+              tx.get(linkRef),
+            ]);
+            const data = claim.data();
+            if (
+              !data ||
+              Number(data.expiresAt) <= Date.now() ||
+              data.customerId !== session.customerId ||
+              (data.owner && data.owner !== userId) ||
+              (existing.exists && existing.data()?.customerId !== session.customerId)
+            )
+              throw new Error(
+                "This purchase is already linked to an account. Sign in with that account to restore it.",
+              );
+            tx.set(sessionRef(token), { owner: userId }, { merge: true });
+            tx.set(linkRef, { customerId: session.customerId });
+          });
+          access = purchased;
+        }
       }
     }
-  }
-  await db
-    .collection("premium_access")
-    .doc(userId)
-    .set({
-      valid_until: Timestamp.fromMillis(access.verifiedUntil),
-      source: "revenuecat",
-      entitlement: ENTITLEMENT,
+    await db
+      .collection("premium_access")
+      .doc(userId)
+      .set({
+        valid_until: Timestamp.fromMillis(access.verifiedUntil),
+        source: "revenuecat",
+        entitlement: ENTITLEMENT,
+      });
+    return access;
+  })();
+
+  if (!token) {
+    const tracked = run.finally(() => {
+      if (inFlightAccountAccess.get(userId) === tracked) inFlightAccountAccess.delete(userId);
     });
-  return access;
+    inFlightAccountAccess.set(userId, tracked);
+    return tracked;
+  }
+  return run;
 }
 export async function requireActivePremium(
   userId: string,

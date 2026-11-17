@@ -236,7 +236,13 @@ function RootComponent() {
       }
     };
 
+    let initialized = false;
+    let prevUid: string | null = null;
     return onAuthStateChanged(auth, (firebaseUser) => {
+      const nextUid = firebaseUser?.uid ?? null;
+      if (initialized && prevUid === nextUid) return;
+      initialized = true;
+      prevUid = nextUid;
       router.invalidate();
       if (firebaseUser) {
         void queryClient.invalidateQueries();

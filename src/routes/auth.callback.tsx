@@ -6,9 +6,9 @@ import { auth, onAuthStateChanged } from "@/lib/firebase";
 export const Route = createFileRoute("/auth/callback")({
   head: () => ({
     meta: [
-      { title: "Completing Sign In — MealMate" },
+      { title: "Completing Sign In | MealMate" },
       { name: "description", content: "Complete your secure MealMate account sign-in." },
-      { property: "og:title", content: "Completing Sign In — MealMate" },
+      { property: "og:title", content: "Completing Sign In | MealMate" },
       { property: "og:description", content: "Complete your secure MealMate account sign-in." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

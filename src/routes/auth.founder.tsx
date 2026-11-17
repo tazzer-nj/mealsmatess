@@ -6,13 +6,13 @@ import { useHubSurface } from "@/components/hub/hub-context";
 export const Route = createFileRoute("/auth/founder")({
   head: () => ({
     meta: [
-      { title: "Founder & Company — MealMate by Taz Technologies" },
+      { title: "Founder & Company | MealMate by Taz Technologies" },
       {
         name: "description",
         content:
           "Meet Samuel (Taz), founder and developer of Taz Technologies and creator of MealMate.",
       },
-      { property: "og:title", content: "Founder & Company — MealMate by Taz Technologies" },
+      { property: "og:title", content: "Founder & Company | MealMate by Taz Technologies" },
       {
         property: "og:description",
         content:

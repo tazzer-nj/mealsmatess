@@ -53,20 +53,31 @@ function asStepNumber(v: unknown): number | null {
   return typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null;
 }
 
+function normalizeHousehold(value: string | null): string | null {
+  return value === "3–4 people (family)" ? "3 to 4 people (family)" : value;
+}
+
+function normalizeCookingTime(value: string | null): string | null {
+  if (value === "20–35 mins") return "20 to 35 mins";
+  if (value === "35–50 mins") return "35 to 50 mins";
+  return value;
+}
+
 export function normalizePreferences(raw: unknown): FoodPreferences {
   const o = (raw ?? {}) as Record<string, unknown>;
-  const householdSize = asString(o["household_size"]) ?? asString(o["meals_per_day"]);
+  const rawMeals = normalizeHousehold(asString(o["meals_per_day"]));
+  const householdSize = normalizeHousehold(asString(o["household_size"])) ?? rawMeals;
   return {
     goal: asString(o["goal"]),
     favorite_foods: asStringArray(o["favorite_foods"]),
     allergies: asStringArray(o["allergies"]),
     dietary_restrictions: asStringArray(o["dietary_restrictions"]),
     disliked_foods: asStringArray(o["disliked_foods"]),
-    meals_per_day: asString(o["meals_per_day"]) ?? householdSize,
+    meals_per_day: rawMeals ?? householdSize,
     household_size: householdSize,
     preferred_name: asString(o["preferred_name"]),
     cooking_level: asString(o["cooking_level"]),
-    cooking_time: asString(o["cooking_time"]),
+    cooking_time: normalizeCookingTime(asString(o["cooking_time"])),
     food_budget: asString(o["food_budget"]),
     preferred_features: asStringArray(o["preferred_features"]),
     onboarding_step: asStepNumber(o["onboarding_step"]),

@@ -43,8 +43,8 @@ function PrivacyPage() {
         <div>
           <h2 className="font-display text-xl">How we use it</h2>
           <p>
-            Your data is used to power the features you interact with — showing your saved recipes,
-            your feed, and content from cooks you follow. We do not sell your data.
+            Your data is used to power the features you interact with, including showing your saved
+            recipes, your feed, and content from cooks you follow. We do not sell your data.
           </p>
         </div>
         <div>

@@ -234,4 +234,61 @@ describe("shared MealMate AI engine", () => {
     expect(first).toBe(second);
     expect(run).toHaveBeenCalledTimes(1);
   });
+
+  it("trims whitespace in LOVABLE_API_KEY and retries structured chat without response_format on 400", async () => {
+    vi.stubEnv("LOVABLE_API_KEY", "  trimmed-key\n");
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({ error: "unsupported response_format" }, { status: 400 }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ choices: [{ message: { content: '{"answer":"ok"}' } }] }),
+      );
+    vi.stubGlobal("fetch", request);
+
+    const parsed = await generateAiObject({
+      feature: "test.json.fallback",
+      prompt: "Return answer ok",
+      schema: z.object({ answer: z.string() }),
+    });
+    expect(parsed).toEqual({ answer: "ok" });
+    expect(request).toHaveBeenCalledTimes(2);
+    const [, firstInit] = request.mock.calls[0] as [string, RequestInit];
+    const [, secondInit] = request.mock.calls[1] as [string, RequestInit];
+    expect(new Headers(firstInit.headers).get("Authorization")).toBe("Bearer trimmed-key");
+    expect(JSON.parse(String(firstInit.body))).toHaveProperty("response_format");
+    expect(JSON.parse(String(secondInit.body))).not.toHaveProperty("response_format");
+  });
+
+  it("falls back to Lovable Gemini chat image generation when /images/generations returns 404", async () => {
+    vi.stubEnv("LOVABLE_API_KEY", "test-key");
+    const pngBytes = Buffer.from("gemini image");
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ error: "not found" }, { status: 404 }))
+      .mockResolvedValueOnce(
+        Response.json({
+          choices: [
+            {
+              message: {
+                images: [
+                  { image_url: { url: `data:image/png;base64,${pngBytes.toString("base64")}` } },
+                ],
+              },
+            },
+          ],
+        }),
+      );
+    vi.stubGlobal("fetch", request);
+
+    const image = await generateAiImage("A roasted pepper pasta bowl", {
+      feature: "test.image.fallback",
+    });
+    expect(Buffer.from(image.bytes).toString()).toBe("gemini image");
+    expect(image.model).toBe("google/gemini-2.5-flash-image");
+    expect(String(request.mock.calls[1]?.[0])).toBe(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+    );
+  });
 });

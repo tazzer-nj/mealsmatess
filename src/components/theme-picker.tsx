@@ -81,7 +81,8 @@ export function ThemePicker() {
           {MASCOT_THEMES.map((t) => {
             const selected =
               t.id === theme.id ||
-              (t.id === "classic" && theme.id === "classic-light") ||
+              (t.id === "classic" &&
+                (theme.id === "classic-light" || theme.id === "classic-green")) ||
               (t.id === "sunset" && theme.id === "sunset") ||
               (t.id === "midnight" &&
                 (theme.id === "midnight-black" || theme.id === "midnight-pro")) ||

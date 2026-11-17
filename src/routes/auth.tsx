@@ -80,7 +80,7 @@ async function ensureUserProfile(user: {
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Authentication — MealMate" },
+      { title: "Authentication | MealMate" },
       {
         name: "description",
         content: "Sign in or create your MealMate account to discover meals and plan effortlessly.",
@@ -321,7 +321,7 @@ function AuthPage() {
             }
             try {
               await sendEmailVerification(cred.user);
-              toast.message("Verification link sent — check your inbox to activate your account.");
+              toast.message("Verification link sent. Check your inbox to activate your account.");
             } catch {
               toast.success("Welcome to MealMate!");
             }

@@ -83,14 +83,14 @@ const LineTrend = lazy(() =>
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { property: "og:title", content: "Admin \u2014 MealMate" },
+      { property: "og:title", content: "Admin | MealMate" },
       {
         property: "og:description",
         content: "Manage MealMate: analytics, subscribers, revenue, promo codes.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { title: "Admin — MealMate" },
+      { title: "Admin | MealMate" },
       {
         name: "description",
         content: "Manage MealMate: analytics, subscribers, revenue, promo codes.",
@@ -678,8 +678,8 @@ function UsersTab({ analytics, loading }: { analytics?: Analytics; loading: bool
                     created_at: string;
                   }) => (
                     <tr key={u.id} className="border-t border-border/60">
-                      <td className="px-3 py-2">{u.display_name ?? "—"}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{u.username ?? "—"}</td>
+                      <td className="px-3 py-2">{u.display_name ?? "Guest"}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{u.username ?? "Not set"}</td>
                       <td className="px-3 py-2 text-muted-foreground">{u.locale}</td>
                       <td className="px-3 py-2 text-muted-foreground">
                         {format(new Date(u.created_at), "MMM d, yyyy")}
@@ -923,11 +923,17 @@ function SubscribersTab() {
             {rows.map((r) => (
               <tr key={r.id} className="border-t border-border/60">
                 <td className="px-3 py-2">{r.display_name}</td>
-                <td className="px-3 py-2 capitalize">{r.tier}</td>
-                <td className="px-3 py-2 capitalize">{r.status}</td>
-                <td className="px-3 py-2">{r.store ?? "—"}</td>
+                <td className="px-3 py-2 capitalize">
+                  {String(r.tier ?? "").replace(/[_-]+/g, " ")}
+                </td>
+                <td className="px-3 py-2 capitalize">
+                  {String(r.status ?? "").replace(/[_-]+/g, " ")}
+                </td>
+                <td className="px-3 py-2 capitalize">
+                  {r.store ? String(r.store).replace(/[_-]+/g, " ") : "None"}
+                </td>
                 <td className="px-3 py-2">
-                  {r.period_end ? new Date(r.period_end).toLocaleDateString() : "—"}
+                  {r.period_end ? new Date(r.period_end).toLocaleDateString() : "None"}
                 </td>
               </tr>
             ))}
@@ -1226,15 +1232,17 @@ function AuditTab() {
                     <td className="px-3 py-2 text-muted-foreground">
                       {format(new Date(r.created_at), "MMM d, HH:mm")}
                     </td>
-                    <td className="px-3 py-2">{r.action}</td>
-                    <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
-                      {r.target_table ?? "—"}
+                    <td className="px-3 py-2 capitalize">
+                      {String(r.action ?? "").replace(/[_.-]+/g, " ")}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {r.target_table ? String(r.target_table).replace(/[_-]+/g, " ") : "None"}
                       {r.target_id ? ` · ${r.target_id.slice(0, 8)}…` : ""}
                     </td>
                     <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
-                      {r.actor_id ? r.actor_id.slice(0, 8) + "…" : "—"}
+                      {r.actor_id ? r.actor_id.slice(0, 8) + "…" : "System"}
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">{r.ip_address ?? "—"}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{r.ip_address ?? "None"}</td>
                   </tr>
                 ),
               )}

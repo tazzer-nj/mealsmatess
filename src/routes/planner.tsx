@@ -249,7 +249,7 @@ function PlannerPage() {
 
       {favorites && favorites.length === 0 && (
         <div className="mt-6 rounded-2xl border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground">
-          Save some recipes first — your favorites show up here to plan with.{" "}
+          Save some recipes first so your favorites show up here to plan with.{" "}
           <Link to="/recipes" className="font-medium text-foreground hover:underline">
             Browse recipes
           </Link>

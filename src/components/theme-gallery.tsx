@@ -375,7 +375,7 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
                 type="button"
                 onClick={() =>
                   openUpgrade(
-                    `Unlock ${displayTheme.name} and all 8 Premium themes with MealMate Premium.`,
+                    `Unlock ${displayTheme.name} and all ${PREMIUM_THEMES.length} logo themes with MealMate Premium.`,
                   )
                 }
                 className="h-10 min-h-[44px] flex-1 rounded-xl bg-primary px-4 text-xs font-semibold text-primary-foreground hover:opacity-90 sm:flex-none"
@@ -407,20 +407,20 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
         </div>
       )}
 
-      {/* Free Themes Collection */}
+      {/* Default Black & White Themes */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between px-0.5">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Free Themes
+            Default (Black &amp; White)
           </h3>
           <span className="text-[11px] text-muted-foreground">{FREE_THEMES.length} included</span>
         </div>
         <div
           role="radiogroup"
-          aria-label="Free themes"
+          aria-label="Default themes"
           className={cn(
             "grid grid-cols-2 gap-2.5",
-            compact ? "sm:grid-cols-4" : "sm:grid-cols-3 sm:gap-3",
+            compact ? "sm:grid-cols-2" : "sm:grid-cols-2 sm:gap-3",
           )}
         >
           {FREE_THEMES.map((theme) => (
@@ -436,13 +436,13 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
         </div>
       </div>
 
-      {/* Premium Themes Collection */}
+      {/* 6 Logo Themes */}
       <div className="space-y-2.5 pt-1">
         <div className="flex items-center justify-between gap-2 px-0.5">
           <div className="flex items-center gap-1.5">
             <Crown className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Premium Themes
+              Logo Themes
             </h3>
           </div>
           {isPremium ? (
@@ -460,10 +460,10 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
         </div>
         <div
           role="radiogroup"
-          aria-label="Premium themes"
+          aria-label="Logo themes"
           className={cn(
             "grid grid-cols-2 gap-2.5",
-            compact ? "sm:grid-cols-4" : "sm:grid-cols-3 sm:gap-3",
+            compact ? "sm:grid-cols-3" : "sm:grid-cols-3 sm:gap-3",
           )}
         >
           {PREMIUM_THEMES.map((theme) => (

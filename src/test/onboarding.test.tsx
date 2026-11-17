@@ -149,15 +149,15 @@ describe("onboarding account flow", () => {
 
     // Step 0: Household size + preferred name saved before moving to Step 1
     await screen.findByRole("heading", { name: "Personalize your kitchen" });
-    fireEvent.click(screen.getByRole("button", { name: "3–4 people (family)" }));
+    fireEvent.click(screen.getByRole("button", { name: "3 to 4 people (family)" }));
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
 
     await waitFor(() =>
       expect(mocks.save).toHaveBeenNthCalledWith(1, {
         data: expect.objectContaining({
           preferred_name: "Chef Thabo",
-          household_size: "3–4 people (family)",
-          meals_per_day: "3–4 people (family)",
+          household_size: "3 to 4 people (family)",
+          meals_per_day: "3 to 4 people (family)",
           onboarding_step: 1,
           onboarding_completed: false,
         }),
@@ -173,7 +173,7 @@ describe("onboarding account flow", () => {
       expect(mocks.save).toHaveBeenNthCalledWith(2, {
         data: expect.objectContaining({
           goal: "Save time",
-          household_size: "3–4 people (family)",
+          household_size: "3 to 4 people (family)",
           onboarding_step: 2,
           onboarding_completed: false,
         }),
@@ -189,7 +189,7 @@ describe("onboarding account flow", () => {
       expect(mocks.save).toHaveBeenNthCalledWith(3, {
         data: expect.objectContaining({
           goal: "Save time",
-          household_size: "3–4 people (family)",
+          household_size: "3 to 4 people (family)",
           dietary_restrictions: [],
           onboarding_step: 3,
           onboarding_completed: false,
@@ -206,8 +206,8 @@ describe("onboarding account flow", () => {
     mocks.get.mockResolvedValueOnce({
       ...EMPTY_PREFERENCES,
       goal: "Save time",
-      household_size: "3–4 people (family)",
-      meals_per_day: "3–4 people (family)",
+      household_size: "3 to 4 people (family)",
+      meals_per_day: "3 to 4 people (family)",
       onboarding_step: 3,
       onboarding_completed: false,
     });
@@ -309,20 +309,20 @@ describe("onboarding account flow", () => {
     expect(localStorage.getItem("mealmate-lang")).toBe("zu");
     expect(screen.getByRole("button", { name: /Qhubeka/i })).toBeTruthy();
     expect(screen.getByLabelText(/I-MealMate kufanele ikubize ngokuthini\?/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Abantu abayi-3–4 (umndeni)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Abantu abayi-3 to 4 (umndeni)" })).toBeTruthy();
     expect(container.querySelector(".onboarding-lang-fade")?.getAttribute("data-lang-fade")).toBe(
       "a",
     );
 
     // Selecting translated chip stores canonical value in Firestore
-    fireEvent.click(screen.getByRole("button", { name: "Abantu abayi-3–4 (umndeni)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Abantu abayi-3 to 4 (umndeni)" }));
     fireEvent.click(screen.getByRole("button", { name: /Qhubeka/i }));
 
     await waitFor(() =>
       expect(mocks.save).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          household_size: "3–4 people (family)",
-          meals_per_day: "3–4 people (family)",
+          household_size: "3 to 4 people (family)",
+          meals_per_day: "3 to 4 people (family)",
           onboarding_step: 1,
         }),
       }),

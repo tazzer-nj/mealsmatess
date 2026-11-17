@@ -43,13 +43,13 @@ export const Route = createFileRoute("/scan")({
   }),
   head: () => ({
     meta: [
-      { title: "Food & Ingredient Scanner – MealMate" },
+      { title: "Food & Ingredient Scanner | MealMate" },
       {
         name: "description",
         content:
           "Scan ingredients or dishes with your camera. AI detects items, counts nutrition, and plans meals.",
       },
-      { property: "og:title", content: "Food & Ingredient Scanner – MealMate" },
+      { property: "og:title", content: "Food & Ingredient Scanner | MealMate" },
       {
         property: "og:description",
         content: "Point your camera to detect ingredients, get nutrition facts, or cook with Mia.",
@@ -242,7 +242,7 @@ function ScanPage() {
       if (logErr) throw logErr;
       queryClient.invalidateQueries({ queryKey: ["planner"] });
       toast.success(`${dish.name} added to ${mealType}`, {
-        description: `${dish.calories ?? "–"} kcal logged`,
+        description: `${dish.calories ?? 0} kcal logged`,
         action: { label: "Open planner", onClick: () => navigate({ to: "/planner" }) },
       });
       reset();
@@ -517,7 +517,7 @@ function ScanPage() {
             </div>
             <div>
               <div className="text-2xl font-semibold leading-none text-foreground">
-                {dish.calories ?? "–"}{" "}
+                {dish.calories ?? 0}{" "}
                 <span className="text-xs font-normal text-muted-foreground">kcal</span>
               </div>
               <div className="mt-1 text-xs text-muted-foreground">Estimated per portion</div>
@@ -535,9 +535,9 @@ function ScanPage() {
                   {m.label}
                 </dt>
                 <dd className="mt-1 text-base font-semibold text-foreground">
-                  {m.value ?? "–"}
+                  {m.value ?? 0}
                   <span className="text-xs font-normal text-muted-foreground">
-                    {m.value != null ? m.unit : ""}
+                    {m.value != null ? m.unit : "g"}
                   </span>
                 </dd>
               </div>

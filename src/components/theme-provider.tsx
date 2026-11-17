@@ -34,7 +34,7 @@ export type ResolvedTheme = "light" | "dark" | "dark-premium";
 export type ThemeSaveStatus = "idle" | "saving" | "saved" | "error" | "unauthenticated";
 
 type ThemeContextValue = {
-  // Unified 12-theme API
+  // Unified 8-theme API (2 default black & white + 6 logo themes)
   activeThemeId: MealMateThemeId;
   activeTheme: MealMateTheme;
   previewThemeId: MealMateThemeId | null;

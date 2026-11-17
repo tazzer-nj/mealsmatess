@@ -98,15 +98,16 @@ const USER_SUBCOLLECTIONS: Record<string, string> = {
   nutrition_logs: "nutritionLogs",
 };
 
-function collectionFor(db: Firestore, table: string) {
+function collectionFor(db: Firestore, table: string, userId?: string) {
   const path = USER_SUBCOLLECTIONS[table];
-  return path ? db.collectionGroup(path) : db.collection(table === "profiles" ? "users" : table);
-}
-
-function userCollectionFor(db: Firestore, table: string, userId: string) {
-  const path = USER_SUBCOLLECTIONS[table];
-  if (!path) return db.collection(collectionForName(table));
-  return db.collection("users").doc(userId).collection(path);
+  if (!path) return db.collection(table === "profiles" ? "users" : table);
+  if (userId) {
+    const userDoc = db.collection("users").doc(userId) as unknown as {
+      collection?: (sub: string) => ReturnType<Firestore["collection"]>;
+    };
+    if (typeof userDoc?.collection === "function") return userDoc.collection(path);
+  }
+  return db.collectionGroup(path);
 }
 
 function collectionForName(table: string) {
@@ -228,6 +229,7 @@ class FirestoreTableQuery implements PromiseLike<DbResult<any>> {
   constructor(
     private readonly table: string,
     private readonly userId?: string,
+    private readonly verifiedPremium = false,
   ) {}
 
   private get scopedFilters(): Filter[] {
@@ -369,27 +371,108 @@ class FirestoreTableQuery implements PromiseLike<DbResult<any>> {
     return this.execute().then(onfulfilled, onrejected);
   }
 
+  private primaryDocKeyFilter(): string | null {
+    const field =
+      this.table === "app_settings" || this.table === "feature_flags"
+        ? "key"
+        : this.table === "admin_allowlist"
+          ? "email"
+          : this.table === "dish_searches"
+            ? "name"
+            : "id";
+    const match = this.filters.find(
+      (f) => f.operator === "eq" && f.field === field && typeof f.value === "string" && f.value,
+    );
+    if (!match) return null;
+    const raw = String(match.value);
+    return field === "email" || field === "name" ? raw.toLowerCase() : raw;
+  }
+
+  private pushdownEqFilter(): Filter | null {
+    const preferred = [
+      "slug",
+      "user_id",
+      "restaurant_id",
+      "recipe_id",
+      "order_id",
+      "author_id",
+      "follower_id",
+      "customer_id",
+      "approval_status",
+      "id",
+    ];
+    const isPrimitive = (v: unknown) =>
+      typeof v === "string" || typeof v === "number" || typeof v === "boolean";
+    for (const field of preferred) {
+      const match = this.filters.find(
+        (f) => f.operator === "eq" && f.field === field && isPrimitive(f.value),
+      );
+      if (match) return match;
+    }
+    return this.filters.find((f) => f.operator === "eq" && isPrimitive(f.value)) ?? null;
+  }
+
   private async execute(): Promise<DbResult<any>> {
     try {
       const { db } = getServices();
       if (
         this.userId &&
+        !this.verifiedPremium &&
         (USER_SUBCOLLECTIONS[this.table] ||
           ["recipes", "recipe_ratings", "recently_viewed"].includes(this.table))
       ) {
         const { requireActivePremium } = await import("@/server/revenuecat");
         await requireActivePremium(this.userId);
       }
-      const collectionRef = collectionFor(db, this.table);
+      const collectionRef = collectionFor(db, this.table, this.userId);
       if (this.action === "insert") return await this.insertRows(db);
       if (this.action === "upsert") return await this.upsertRows(collectionRef);
 
       this.assertUserAccess([]);
-      const snapshot = await collectionRef.get();
-      let entries = snapshot.docs.map((item) => ({
-        ref: item.ref,
-        row: { id: item.id, ...item.data() } as Row,
-      }));
+      let entries: { ref: any; row: Row }[] = [];
+      let loadedByDoc = false;
+      const docKey =
+        this.action === "select" && !this.countMode ? this.primaryDocKeyFilter() : null;
+      if (docKey && "doc" in collectionRef && typeof collectionRef.doc === "function") {
+        const docRef = collectionRef.doc(docKey) as unknown as {
+          get?: () => Promise<{ exists: boolean; id?: string; ref?: unknown; data: () => any }>;
+        };
+        if (typeof docRef?.get === "function") {
+          const snap = await docRef.get();
+          loadedByDoc = true;
+          if (snap.exists) {
+            entries = [
+              {
+                ref: snap.ref ?? docRef,
+                row: { id: snap.id ?? docKey, ...(snap.data() ?? {}) } as Row,
+              },
+            ];
+          }
+        }
+      }
+
+      if (!loadedByDoc) {
+        let queryRef: Query<DocumentData> = collectionRef;
+        const pushdown = this.pushdownEqFilter();
+        if (pushdown) {
+          try {
+            queryRef = collectionRef.where(pushdown.field, "==", pushdown.value);
+          } catch {
+            queryRef = collectionRef;
+          }
+        }
+        let snapshot;
+        try {
+          snapshot = await queryRef.get();
+        } catch {
+          snapshot = await collectionRef.get();
+        }
+        entries = snapshot.docs.map((item) => ({
+          ref: item.ref,
+          row: { id: item.id, ...item.data() } as Row,
+        }));
+      }
+
       entries = entries.filter(({ row }) =>
         this.scopedFilters.every((filter) => matches(row, filter)),
       );
@@ -673,12 +756,20 @@ export function getFirebaseAdminMessaging() {
   return getMessaging(getServices().app);
 }
 
-export function firebaseUserDb(userId: string) {
+export function firebaseUserDb(userId: string, options?: { verifiedPremium?: boolean }) {
+  const verifiedPremium = options?.verifiedPremium === true;
   return {
     from(table: string) {
-      return new FirestoreTableQuery(table, userId);
+      return new FirestoreTableQuery(table, userId, verifiedPremium);
     },
     async rpc(name: string, args: Record<string, unknown> = {}) {
+      if (
+        verifiedPremium &&
+        (name === "consume_ai_credit" || name === "consume_image_credit") &&
+        String(args["_user_id"] ?? userId) === userId
+      ) {
+        return { data: { allowed: true, premium: true }, error: null };
+      }
       return runRpc(name, { ...args, _user_id: args["_user_id"] ?? userId });
     },
   };

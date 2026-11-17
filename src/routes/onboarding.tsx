@@ -7,7 +7,7 @@ import { useSession } from "@/hooks/use-session";
 import { isHardcodedAdminEmail } from "@/lib/admin-emails";
 
 export const Route = createFileRoute("/onboarding")({
-  head: () => ({ meta: [{ title: "Personalize MealMate — Onboarding" }] }),
+  head: () => ({ meta: [{ title: "Personalize MealMate | Onboarding" }] }),
   component: OnboardingPage,
 });
 

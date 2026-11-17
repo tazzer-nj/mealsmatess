@@ -48,8 +48,12 @@ class AiProviderError extends Error {
   }
 }
 
+function readLovableKey(): string {
+  return (process.env["LOVABLE_API_KEY"] || process.env["LOVABLE_AI_API_KEY"] || "").trim();
+}
+
 function usesLovableGateway() {
-  return Boolean(process.env["LOVABLE_API_KEY"]);
+  return Boolean(readLovableKey());
 }
 
 export function getAiProviderConfiguration() {
@@ -130,7 +134,7 @@ function logFailure(feature: string, model: string, error: unknown, durationMs: 
 }
 
 function apiKey(): string {
-  const key = process.env["LOVABLE_API_KEY"];
+  const key = readLovableKey();
   if (!key) throw new AiProviderError("configuration_missing");
   return key;
 }
@@ -152,7 +156,10 @@ async function lovableRequest(
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),
   });
-  if (!response.ok) throw new AiProviderError(categoryForStatus(response.status), response.status);
+  if (!response.ok) {
+    console.warn("[MealMate AI] gateway upstream status", { path, status: response.status });
+    throw new AiProviderError(categoryForStatus(response.status), response.status);
+  }
   return response;
 }
 
@@ -209,16 +216,32 @@ function messagesFor(options: AiRequestOptions): LovableMessage[] {
 }
 
 async function lovableChat(options: AiRequestOptions, jsonMode = false): Promise<string> {
-  const response = await lovableRequest(
-    "/chat/completions",
-    {
-      model: options.model ?? DEFAULT_AI_TEXT_MODEL,
-      messages: messagesFor(options),
-      max_tokens: 8192,
-      ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
-    },
-    options.timeoutMs ?? DEFAULT_TEXT_TIMEOUT_MS,
-  );
+  const send = (withJsonFormat: boolean) =>
+    lovableRequest(
+      "/chat/completions",
+      {
+        model: options.model ?? DEFAULT_AI_TEXT_MODEL,
+        messages: messagesFor(options),
+        max_tokens: 8192,
+        ...(withJsonFormat ? { response_format: { type: "json_object" } } : {}),
+      },
+      options.timeoutMs ?? DEFAULT_TEXT_TIMEOUT_MS,
+    );
+
+  let response: Response;
+  try {
+    response = await send(jsonMode);
+  } catch (err) {
+    if (
+      jsonMode &&
+      err instanceof AiProviderError &&
+      (err.statusCode === 400 || err.statusCode === 422)
+    ) {
+      response = await send(false);
+    } else {
+      throw err;
+    }
+  }
   let result: unknown;
   try {
     result = await response.json();
@@ -359,6 +382,117 @@ export function imageInputFromDataUrl(value: string) {
   return { bytes: new Uint8Array(bytes), mediaType: match[1].toLowerCase() };
 }
 
+async function decodeImageSource(
+  source: { b64_json?: string; url?: string; mime_type?: string; media_type?: string },
+  timeoutMs: number,
+): Promise<{ bytes: Uint8Array; mediaType: string }> {
+  if (source.b64_json && /^[A-Za-z0-9+/=\r\n]+$/.test(source.b64_json)) {
+    const clean = source.b64_json.replace(/\s+/g, "");
+    return {
+      bytes: new Uint8Array(Buffer.from(clean, "base64")),
+      mediaType: source.mime_type ?? source.media_type ?? "image/png",
+    };
+  }
+  if (source.url) {
+    const dataMatch = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=\r\n]+)$/i.exec(
+      source.url,
+    );
+    if (dataMatch?.[1] && dataMatch[2]) {
+      return {
+        bytes: new Uint8Array(Buffer.from(dataMatch[2].replace(/\s+/g, ""), "base64")),
+        mediaType: dataMatch[1].toLowerCase(),
+      };
+    }
+    if (/^https?:\/\//i.test(source.url)) {
+      const fetched = await fetch(source.url, { signal: AbortSignal.timeout(timeoutMs) });
+      if (!fetched.ok) throw new AiProviderError("provider_unavailable", fetched.status);
+      const headerType = fetched.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+      return {
+        bytes: new Uint8Array(await fetched.arrayBuffer()),
+        mediaType:
+          headerType && /^image\/(png|jpeg|webp)$/i.test(headerType) ? headerType : "image/png",
+      };
+    }
+  }
+  throw new AiProviderError("invalid_response");
+}
+
+async function generateLovableGatewayImage(
+  prompt: string,
+  model: string,
+  size: "1024x1024" | "1536x1024" | "1024x1536",
+  timeoutMs: number,
+): Promise<{ bytes: Uint8Array; mediaType: string; model: string }> {
+  try {
+    const response = await lovableRequest(
+      "/images/generations",
+      {
+        model,
+        prompt,
+        size,
+        quality: "medium",
+      },
+      timeoutMs,
+    );
+    let result: {
+      data?: { b64_json?: string; url?: string; mime_type?: string; media_type?: string }[];
+    };
+    try {
+      result = (await response.json()) as typeof result;
+    } catch {
+      throw new AiProviderError("invalid_response");
+    }
+    const image = result.data?.[0];
+    if (!image) throw new AiProviderError("invalid_response");
+    const decoded = await decodeImageSource(image, timeoutMs);
+    return { ...decoded, model };
+  } catch (err) {
+    const status = err instanceof AiProviderError ? err.statusCode : undefined;
+    const canFallback =
+      status === 400 || status === 404 || status === 405 || status === 422 || status === 501;
+    if (!canFallback) throw err;
+
+    const fallbackModel = "google/gemini-2.5-flash-image";
+    const chatResponse = await lovableRequest(
+      "/chat/completions",
+      {
+        model: fallbackModel,
+        messages: [{ role: "user", content: prompt }],
+        modalities: ["image", "text"],
+      },
+      timeoutMs,
+    );
+    let chatResult: {
+      choices?: {
+        message?: {
+          images?: {
+            b64_json?: string;
+            image_url?: { url?: string };
+            url?: string;
+            mime_type?: string;
+          }[];
+        };
+      }[];
+    };
+    try {
+      chatResult = (await chatResponse.json()) as typeof chatResult;
+    } catch {
+      throw new AiProviderError("invalid_response");
+    }
+    const img = chatResult.choices?.[0]?.message?.images?.[0];
+    if (!img) throw new AiProviderError("invalid_response");
+    const decoded = await decodeImageSource(
+      {
+        b64_json: img.b64_json,
+        url: img.image_url?.url ?? img.url,
+        mime_type: img.mime_type,
+      },
+      timeoutMs,
+    );
+    return { ...decoded, model: fallbackModel };
+  }
+}
+
 export async function generateAiImage(
   prompt: string,
   options: {
@@ -367,41 +501,29 @@ export async function generateAiImage(
     timeoutMs?: number;
   },
 ) {
-  const model = DEFAULT_AI_IMAGE_MODEL;
+  let model = DEFAULT_AI_IMAGE_MODEL;
   const startedAt = Date.now();
+  const timeoutMs = options.timeoutMs ?? DEFAULT_IMAGE_TIMEOUT_MS;
   try {
     let bytes: Uint8Array;
     let mediaType: string;
     if (usesLovableGateway()) {
-      const response = await lovableRequest(
-        "/images/generations",
-        {
-          model,
-          prompt,
-          size: options.size ?? "1536x1024",
-          quality: "medium",
-        },
-        options.timeoutMs ?? DEFAULT_IMAGE_TIMEOUT_MS,
+      const generated = await generateLovableGatewayImage(
+        prompt,
+        model,
+        options.size ?? "1536x1024",
+        timeoutMs,
       );
-      let result: { data?: { b64_json?: string; mime_type?: string; media_type?: string }[] };
-      try {
-        result = (await response.json()) as typeof result;
-      } catch {
-        throw new AiProviderError("invalid_response");
-      }
-      const image = result.data?.[0];
-      const base64 = image?.b64_json;
-      if (!base64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64))
-        throw new AiProviderError("invalid_response");
-      bytes = new Uint8Array(Buffer.from(base64, "base64"));
-      mediaType = image?.mime_type ?? image?.media_type ?? "image/png";
+      bytes = generated.bytes;
+      mediaType = generated.mediaType;
+      model = generated.model;
     } else {
       const result = await generateImage({
         model: vercelGateway().imageModel(model),
         prompt,
         size: options.size ?? "1536x1024",
         maxRetries: 0,
-        abortSignal: AbortSignal.timeout(options.timeoutMs ?? DEFAULT_IMAGE_TIMEOUT_MS),
+        abortSignal: AbortSignal.timeout(timeoutMs),
       });
       bytes = result.image.uint8Array;
       mediaType = result.image.mediaType;

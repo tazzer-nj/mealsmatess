@@ -53,7 +53,7 @@ export function FlagsTab() {
         <h3 className="font-medium">New flag</h3>
         <div className="mt-3 grid gap-2 md:grid-cols-[220px_1fr_auto]">
           <Input
-            placeholder="flag_key"
+            placeholder="feature flag key"
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
           />
@@ -101,7 +101,7 @@ export function FlagsTab() {
             className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4"
           >
             <div className="min-w-0">
-              <div className="font-mono text-sm">{f.key}</div>
+              <div className="text-sm font-medium capitalize">{f.key.replace(/[_-]+/g, " ")}</div>
               {f.description && (
                 <div className="text-xs text-muted-foreground">{f.description}</div>
               )}

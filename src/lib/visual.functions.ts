@@ -3,7 +3,6 @@ import { requireAiCredit } from "@/lib/ai-credits.server";
 import { generateAiImage, generateAiObject, generateAiSpeech } from "@/lib/ai-engine.server";
 import { z } from "zod";
 import { requireFirebaseAuth } from "@/lib/firebase-auth-middleware";
-import { loadFirebaseAdmin } from "@/lib/firebase-admin-access";
 import { enforceRateLimit, trackEvent } from "@/lib/security.server";
 
 const VisualInput = z.object({
@@ -72,7 +71,7 @@ async function b64Speech(text: string): Promise<string | null> {
 }
 
 /**
- * Premium AI Visual Mode — turns any prompt into an animated, narrated
+ * Premium AI Visual Mode: turns any prompt into an animated, narrated
  * visual explanation (scene script + AI illustrations + voice narration).
  */
 export const generateVisualExplanation = createServerFn({ method: "POST" })
@@ -80,22 +79,6 @@ export const generateVisualExplanation = createServerFn({ method: "POST" })
   .validator((v: unknown) => VisualInput.parse(v))
   .handler(async ({ data, context }): Promise<VisualExplanation> => {
     await requireAiCredit(context.userId);
-    const { firebaseAdmin } = await loadFirebaseAdmin();
-    const { data: sub } = await firebaseAdmin
-      .from("subscriptions")
-      .select("tier,status,period_end")
-      .eq("user_id", context.userId)
-      .in("status", ["trialing", "active", "in_grace"])
-      .order("period_end", { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle();
-    const isPremium =
-      !!sub &&
-      (sub.tier === "lifetime" ||
-        !sub.period_end ||
-        new Date(sub.period_end).getTime() > Date.now());
-    if (!isPremium) throw new Error("Visual Mode is a Premium feature");
-
     await enforceRateLimit("ai_visual", context.userId, 15);
 
     const t0 = Date.now();
@@ -114,22 +97,27 @@ export const generateVisualExplanation = createServerFn({ method: "POST" })
             ? "cinematic concept art, dramatic lighting, rich colour grading, film still"
             : "friendly educational diagram illustration, clear labelled shapes, bright cohesive palette, flat vector";
 
-      const scenes = await Promise.all(
-        script.scenes.slice(0, data.scenes).map(async (s) => {
-          const [imageUrl, audioUrl] = await Promise.all([
-            b64Image(`${s.image_prompt}. ${styleSuffix}. No words or lettering in the image.`),
-            data.narration ? b64Speech(s.narration) : Promise.resolve(null),
-          ]);
-          return {
-            heading: s.heading,
-            narration: s.narration,
-            subtitle: s.subtitle || s.narration,
-            imageUrl,
-            audioUrl,
-            durationMs: Math.max(4000, Math.min(9000, s.narration.split(/\s+/).length * 380)),
-          } satisfies VisualScene;
-        }),
-      );
+      const sceneInputs = script.scenes.slice(0, data.scenes);
+      const scenes: VisualScene[] = [];
+      for (let i = 0; i < sceneInputs.length; i += 2) {
+        const batch = await Promise.all(
+          sceneInputs.slice(i, i + 2).map(async (s) => {
+            const [imageUrl, audioUrl] = await Promise.all([
+              b64Image(`${s.image_prompt}. ${styleSuffix}. No words or lettering in the image.`),
+              data.narration ? b64Speech(s.narration) : Promise.resolve(null),
+            ]);
+            return {
+              heading: s.heading,
+              narration: s.narration,
+              subtitle: s.subtitle || s.narration,
+              imageUrl,
+              audioUrl,
+              durationMs: Math.max(4000, Math.min(9000, s.narration.split(/\s+/).length * 380)),
+            } satisfies VisualScene;
+          }),
+        );
+        scenes.push(...batch);
+      }
 
       void trackEvent({
         user_id: context.userId,

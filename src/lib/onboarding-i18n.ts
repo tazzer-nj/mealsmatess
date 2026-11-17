@@ -99,7 +99,7 @@ export const ONBOARDING_EN: OnboardingLocaleBundle = {
     {
       stepName: "Flavours",
       title: "Favourite flavours",
-      desc: "Choose the cuisines you crave most—from South African staples to world classics.",
+      desc: "Choose the cuisines you crave most, from South African staples to world classics.",
     },
     {
       stepName: "Cooking style",
@@ -126,7 +126,7 @@ export const ONBOARDING_EN: OnboardingLocaleBundle = {
     household: {
       "1 person (solo)": "1 person (solo)",
       "2 people (couple)": "2 people (couple)",
-      "3–4 people (family)": "3–4 people (family)",
+      "3 to 4 people (family)": "3 to 4 people (family)",
       "5+ people (large feast)": "5+ people (large feast)",
     },
     goals: {
@@ -191,8 +191,8 @@ export const ONBOARDING_EN: OnboardingLocaleBundle = {
     },
     cookingTimes: {
       "Under 20 mins": "Under 20 mins",
-      "20–35 mins": "20–35 mins",
-      "35–50 mins": "35–50 mins",
+      "20 to 35 mins": "20 to 35 mins",
+      "35 to 50 mins": "35 to 50 mins",
       "Weekend slow cooking": "Weekend slow cooking",
     },
   },
@@ -239,7 +239,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       {
         stepName: "Geure",
         title: "Gunstelinggeure",
-        desc: "Kies die kookkuns waarna jy die meeste verlang—van Suid-Afrikaanse gunstelinge tot wêreldklassieke.",
+        desc: "Kies die kookkuns waarna jy die meeste verlang, van Suid-Afrikaanse gunstelinge tot wêreldklassieke.",
       },
       {
         stepName: "Kookstyl",
@@ -266,7 +266,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       household: {
         "1 person (solo)": "1 persoon (solo)",
         "2 people (couple)": "2 mense (paartjie)",
-        "3–4 people (family)": "3–4 mense (gesin)",
+        "3 to 4 people (family)": "3 to 4 mense (gesin)",
         "5+ people (large feast)": "5+ mense (groot fees)",
       },
       goals: {
@@ -331,8 +331,8 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       },
       cookingTimes: {
         "Under 20 mins": "Onder 20 min",
-        "20–35 mins": "20–35 min",
-        "35–50 mins": "35–50 min",
+        "20 to 35 mins": "20 to 35 min",
+        "35 to 50 mins": "35 to 50 min",
         "Weekend slow cooking": "Naweek stadige kook",
       },
     },
@@ -376,7 +376,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       {
         stepName: "Ukunambitheka",
         title: "Ukunambitheka okuthandayo",
-        desc: "Khetha ukudla okufisa kakhulu—kusuka kokudla kwaseNingizimu Afrika kuya kokudla komhlaba.",
+        desc: "Khetha ukudla okufisa kakhulu, kusuka kokudla kwaseNingizimu Afrika kuya kokudla komhlaba.",
       },
       {
         stepName: "Indlela yokupheka",
@@ -404,7 +404,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       household: {
         "1 person (solo)": "Umuntu oyedwa (wedwa)",
         "2 people (couple)": "Abantu ababili",
-        "3–4 people (family)": "Abantu abayi-3–4 (umndeni)",
+        "3 to 4 people (family)": "Abantu abayi-3 to 4 (umndeni)",
         "5+ people (large feast)": "Abantu abayi-5+ (idili elikhulu)",
       },
       goals: {
@@ -469,8 +469,8 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       },
       cookingTimes: {
         "Under 20 mins": "Ngaphansi kwemizuzu engu-20",
-        "20–35 mins": "Imizuzu engu-20–35",
-        "35–50 mins": "Imizuzu engu-35–50",
+        "20 to 35 mins": "Imizuzu engu-20 to 35",
+        "35 to 50 mins": "Imizuzu engu-35 to 50",
         "Weekend slow cooking": "Ukupheka kancane ngempelasonto",
       },
     },
@@ -514,7 +514,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       {
         stepName: "Iincasa",
         title: "Iincasa ozithandayo",
-        desc: "Khetha ukutya okunqwenelayo kakhulu—ukusuka kokutya kwaseMzantsi Afrika ukuya kokutya kwehlabathi.",
+        desc: "Khetha ukutya okunqwenelayo kakhulu, ukusuka kokutya kwaseMzantsi Afrika ukuya kokutya kwehlabathi.",
       },
       {
         stepName: "Indlela yokupheka",
@@ -541,7 +541,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       household: {
         "1 person (solo)": "Umntu omnye (wedwa)",
         "2 people (couple)": "Abantu ababini",
-        "3–4 people (family)": "Abantu aba-3–4 (usapho)",
+        "3 to 4 people (family)": "Abantu aba-3 to 4 (usapho)",
         "5+ people (large feast)": "Abantu aba-5+ (itheko elikhulu)",
       },
       goals: {
@@ -606,8 +606,8 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       },
       cookingTimes: {
         "Under 20 mins": "Ngaphantsi kwemizuzu engama-20",
-        "20–35 mins": "Imizuzu engama-20–35",
-        "35–50 mins": "Imizuzu engama-35–50",
+        "20 to 35 mins": "Imizuzu engama-20 to 35",
+        "35 to 50 mins": "Imizuzu engama-35 to 50",
         "Weekend slow cooking": "Ukupheka kancinci ngempelasonto",
       },
     },
@@ -651,7 +651,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       {
         stepName: "Ditatso",
         title: "Ditatso tseo o di ratang",
-        desc: "Kgetha dijo tseo o di labalabelang haholo—ho tloha dijong tsa Afrika Borwa ho isa ho tsa lefatshe.",
+        desc: "Kgetha dijo tseo o di labalabelang haholo, ho tloha dijong tsa Afrika Borwa ho isa ho tsa lefatshe.",
       },
       {
         stepName: "Mokgwa wa ho pheha",
@@ -678,7 +678,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       household: {
         "1 person (solo)": "Motho a le mong",
         "2 people (couple)": "Batho ba babedi",
-        "3–4 people (family)": "Batho ba 3–4 (lelapa)",
+        "3 to 4 people (family)": "Batho ba 3 to 4 (lelapa)",
         "5+ people (large feast)": "Batho ba 5+ (mokete o moholo)",
       },
       goals: {
@@ -743,8 +743,8 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       },
       cookingTimes: {
         "Under 20 mins": "Ka tlase ho metsotso e 20",
-        "20–35 mins": "Metsotso e 20–35",
-        "35–50 mins": "Metsotso e 35–50",
+        "20 to 35 mins": "Metsotso e 20 to 35",
+        "35 to 50 mins": "Metsotso e 35 to 50",
         "Weekend slow cooking": "Ho pheha butle mafelong a beke",
       },
     },
@@ -788,7 +788,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       {
         stepName: "Ditatso",
         title: "Ditatso tse o di ratang",
-        desc: "Tlhopha dijo tse o di eletsang thata—go tloga ka tsa Aforika Borwa go ya go tsa lefatshe.",
+        desc: "Tlhopha dijo tse o di eletsang thata, go tloga ka tsa Aforika Borwa go ya go tsa lefatshe.",
       },
       {
         stepName: "Mokgwa wa go apaya",
@@ -816,7 +816,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       household: {
         "1 person (solo)": "Motho a le mongwe",
         "2 people (couple)": "Batho ba babedi",
-        "3–4 people (family)": "Batho ba 3–4 (lelapa)",
+        "3 to 4 people (family)": "Batho ba 3 to 4 (lelapa)",
         "5+ people (large feast)": "Batho ba 5+ (moletlo o mogolo)",
       },
       goals: {
@@ -881,8 +881,8 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       },
       cookingTimes: {
         "Under 20 mins": "Kwa tlase ga metsotso e le 20",
-        "20–35 mins": "Metsotso e le 20–35",
-        "35–50 mins": "Metsotso e le 35–50",
+        "20 to 35 mins": "Metsotso e le 20 to 35",
+        "35 to 50 mins": "Metsotso e le 35 to 50",
         "Weekend slow cooking": "Go apaya ka bonya mafelobeke",
       },
     },
@@ -926,7 +926,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       {
         stepName: "Ditatso",
         title: "Ditatso tše o di ratago",
-        desc: "Kgetha dijo tše o di ratago kudu—go tloga go tša Afrika Borwa go ya go tša lefase.",
+        desc: "Kgetha dijo tše o di ratago kudu, go tloga go tša Afrika Borwa go ya go tša lefase.",
       },
       {
         stepName: "Mokgwa wa go apea",
@@ -954,7 +954,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       household: {
         "1 person (solo)": "Motho o tee",
         "2 people (couple)": "Batho ba babedi",
-        "3–4 people (family)": "Batho ba 3–4 (lapa)",
+        "3 to 4 people (family)": "Batho ba 3 to 4 (lapa)",
         "5+ people (large feast)": "Batho ba 5+ (monyanya o mogolo)",
       },
       goals: {
@@ -1019,8 +1019,8 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       },
       cookingTimes: {
         "Under 20 mins": "Ka fase ga metsotso ye 20",
-        "20–35 mins": "Metsotso ye 20–35",
-        "35–50 mins": "Metsotso ye 35–50",
+        "20 to 35 mins": "Metsotso ye 20 to 35",
+        "35 to 50 mins": "Metsotso ye 35 to 50",
         "Weekend slow cooking": "Go apea ka boiketlo mafelobeke",
       },
     },
@@ -1064,7 +1064,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       {
         stepName: "Mithetshelo",
         title: "Mithetshelo ine na i takalela",
-        desc: "Nangani zwiliwa zwine na zwi tama—u bva kha zwiliwa zwa Afrika Tshipembe u ya kha zwa shango.",
+        desc: "Nangani zwiliwa zwine na zwi tama, u bva kha zwiliwa zwa Afrika Tshipembe u ya kha zwa shango.",
       },
       {
         stepName: "Kuvekwele",
@@ -1091,7 +1091,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       household: {
         "1 person (solo)": "Muthu muthihi",
         "2 people (couple)": "Vhathu vhavhili",
-        "3–4 people (family)": "Vhathu vha 3–4 (muta)",
+        "3 to 4 people (family)": "Vhathu vha 3 to 4 (muta)",
         "5+ people (large feast)": "Vhathu vha 5+ (vhuambo vhuhulu)",
       },
       goals: {
@@ -1156,8 +1156,8 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       },
       cookingTimes: {
         "Under 20 mins": "Fhasi ha mithethe ya 20",
-        "20–35 mins": "Mithethe ya 20–35",
-        "35–50 mins": "Mithethe ya 35–50",
+        "20 to 35 mins": "Mithethe ya 20 to 35",
+        "35 to 50 mins": "Mithethe ya 35 to 50",
         "Weekend slow cooking": "U bika nga vhunono mafheloni a vhege",
       },
     },
@@ -1201,7 +1201,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       {
         stepName: "Minantswo",
         title: "Minantswo leyi u yi rhandzaka",
-        desc: "Hlawula swakudya leswi u swi navelaka swinene—ku suka eka swa Afrika Dzonga ku ya eka swa misava.",
+        desc: "Hlawula swakudya leswi u swi navelaka swinene, ku suka eka swa Afrika Dzonga ku ya eka swa misava.",
       },
       {
         stepName: "Matirhelo yo sweka",
@@ -1228,7 +1228,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       household: {
         "1 person (solo)": "Munhu un'we",
         "2 people (couple)": "Vanhu vambirhi",
-        "3–4 people (family)": "Vanhu va 3–4 (ndyangu)",
+        "3 to 4 people (family)": "Vanhu va 3 to 4 (ndyangu)",
         "5+ people (large feast)": "Vanhu va 5+ (nkhuvo lowukulu)",
       },
       goals: {
@@ -1293,8 +1293,8 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       },
       cookingTimes: {
         "Under 20 mins": "Ehansi ka timinete ta 20",
-        "20–35 mins": "Timinete ta 20–35",
-        "35–50 mins": "Timinete ta 35–50",
+        "20 to 35 mins": "Timinete ta 20 to 35",
+        "35 to 50 mins": "Timinete ta 35 to 50",
         "Weekend slow cooking": "Ku sweka kahle hi mahelovhiki",
       },
     },
@@ -1338,7 +1338,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       {
         stepName: "Kunambitseka",
         title: "Kunambitseka lokutsandzako",
-        desc: "Khetsa kudla lokutsandzako kakhulu—kusuka ekudleni kwaseNingizimu Afrika kuya ekudleni kwemhlaba.",
+        desc: "Khetsa kudla lokutsandzako kakhulu, kusuka ekudleni kwaseNingizimu Afrika kuya ekudleni kwemhlaba.",
       },
       {
         stepName: "Indlela yekupheka",
@@ -1365,7 +1365,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       household: {
         "1 person (solo)": "Umuntfu munye",
         "2 people (couple)": "Bantfu lababili",
-        "3–4 people (family)": "Bantfu laba-3–4 (umndeni)",
+        "3 to 4 people (family)": "Bantfu laba-3 to 4 (umndeni)",
         "5+ people (large feast)": "Bantfu laba-5+ (lidili lelikhulu)",
       },
       goals: {
@@ -1430,8 +1430,8 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       },
       cookingTimes: {
         "Under 20 mins": "Ngaphansi kwemizuzu lengu-20",
-        "20–35 mins": "Imizuzu lengu-20–35",
-        "35–50 mins": "Imizuzu lengu-35–50",
+        "20 to 35 mins": "Imizuzu lengu-20 to 35",
+        "35 to 50 mins": "Imizuzu lengu-35 to 50",
         "Weekend slow cooking": "Kupheka kancane ngemphelasontfo",
       },
     },
@@ -1475,7 +1475,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       {
         stepName: "Ukunambitheka",
         title: "Ukunambitheka okuthandako",
-        desc: "Khetha ukudla okufisa khulu—ukusuka ekudleni kweSewula Afrika ukuya ekudleni kwephasi.",
+        desc: "Khetha ukudla okufisa khulu, ukusuka ekudleni kweSewula Afrika ukuya ekudleni kwephasi.",
       },
       {
         stepName: "Indlela yokupheka",
@@ -1502,7 +1502,7 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       household: {
         "1 person (solo)": "Umuntu munye",
         "2 people (couple)": "Abantu ababili",
-        "3–4 people (family)": "Abantu aba-3–4 (umndeni)",
+        "3 to 4 people (family)": "Abantu aba-3 to 4 (umndeni)",
         "5+ people (large feast)": "Abantu aba-5+ (umsitho omkhulu)",
       },
       goals: {
@@ -1567,8 +1567,8 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
       },
       cookingTimes: {
         "Under 20 mins": "Ngaphasi kwemizuzu ema-20",
-        "20–35 mins": "Imizuzu ema-20–35",
-        "35–50 mins": "Imizuzu ema-35–50",
+        "20 to 35 mins": "Imizuzu ema-20 to 35",
+        "35 to 50 mins": "Imizuzu ema-35 to 50",
         "Weekend slow cooking": "Ukupheka buthaka ngempelaveke",
       },
     },

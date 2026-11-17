@@ -19,7 +19,7 @@ import { markTourSeen } from "@/lib/preferences";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/welcome")({
-  head: () => ({ meta: [{ title: "Welcome to MealMate — App Tour" }] }),
+  head: () => ({ meta: [{ title: "Welcome to MealMate | App Tour" }] }),
   component: WelcomeTourPage,
 });
 
@@ -61,7 +61,7 @@ const TOUR_SECTIONS = [
     eyebrow: "Meet Mia",
     title: "Cook hands-free with Mia",
     description:
-      "Ask Mia for recipe ideas, ingredient substitutions, cooking timers, and voice guidance—all without touching your screen.",
+      "Ask Mia for recipe ideas, ingredient substitutions, cooking timers, and voice guidance, all without touching your screen.",
     icon: Bot,
     dish: "Chakalaka with pap",
     previewTitle: "Voice & Chat with Mia",

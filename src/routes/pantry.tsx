@@ -26,12 +26,12 @@ import { pantryRecipeQuery } from "@/lib/pantry-recipe";
 export const Route = createFileRoute("/pantry")({
   head: () => ({
     meta: [
-      { title: "Your Pantry — MealMate" },
+      { title: "Your Pantry | MealMate" },
       {
         name: "description",
         content: "Manage your ingredients and find a recipe using what you already have in stock.",
       },
-      { property: "og:title", content: "Your Pantry — MealMate" },
+      { property: "og:title", content: "Your Pantry | MealMate" },
       {
         property: "og:description",
         content: "Keep ingredients organised and cook from your pantry with Mia.",

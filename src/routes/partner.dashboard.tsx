@@ -161,7 +161,7 @@ function PartnerDashboard() {
   if (restaurant.approval_status !== "approved") {
     return (
       <Empty
-        title={`Application ${restaurant.approval_status.replace("_", " ")}`}
+        title={`Application ${restaurant.approval_status.replace(/[_-]+/g, " ")}`}
         body="Your dashboard opens when your restaurant is approved. Contact support if you need help with your application."
         cta={{ to: "/support", label: "Contact support" }}
       />
@@ -289,10 +289,10 @@ function StatsRow({ restaurantId, currency }: { restaurantId: string; currency: 
     queryFn: () => fetchStats({ data: { restaurantId } }),
   });
   const cards = [
-    { label: "Active orders", value: data ? String(data.active) : "—" },
-    { label: "Orders (30d)", value: data ? String(data.orders30d) : "—" },
-    { label: "Revenue (30d)", value: data ? money(data.revenue30d, currency) : "—" },
-    { label: "Avg order", value: data ? money(data.avgOrder, currency) : "—" },
+    { label: "Active orders", value: data ? String(data.active) : "0" },
+    { label: "Orders (30d)", value: data ? String(data.orders30d) : "0" },
+    { label: "Revenue (30d)", value: data ? money(data.revenue30d, currency) : money(0, currency) },
+    { label: "Avg order", value: data ? money(data.avgOrder, currency) : money(0, currency) },
   ];
   return (
     <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -403,7 +403,7 @@ function OrdersPanel({ restaurantId, currency }: { restaurantId: string; currenc
                 <li key={it.id} className="flex justify-between gap-3">
                   <span className="min-w-0 truncate">
                     {it.quantity}× {it.name}
-                    {it.notes ? <span className="text-muted-foreground"> — {it.notes}</span> : null}
+                    {it.notes ? <span className="text-muted-foreground">: {it.notes}</span> : null}
                   </span>
                   <span className="shrink-0 text-muted-foreground">
                     {money(Number(it.unit_price) * it.quantity, currency)}

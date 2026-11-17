@@ -46,7 +46,7 @@ export const Route = createFileRoute("/")({
       {
         title: matches[0]?.context.isHub
           ? "MealMate Hub | Your restaurant workspace"
-          : "MealMate — Cook the world, one recipe at a time",
+          : "MealMate | Cook the world, one recipe at a time",
       },
       {
         name: "description",
@@ -58,7 +58,7 @@ export const Route = createFileRoute("/")({
         property: "og:title",
         content: matches[0]?.context.isHub
           ? "MealMate Hub | Your restaurant workspace"
-          : "MealMate — Cook the world, one recipe at a time",
+          : "MealMate | Cook the world, one recipe at a time",
       },
       {
         property: "og:description",
@@ -269,7 +269,7 @@ function Index() {
               What&apos;s in your kitchen?
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-background/70">
-              Point your camera at the fridge or pantry — we&apos;ll log every ingredient
+              Point your camera at the fridge or pantry, and we&apos;ll log every ingredient
               automatically.
             </p>
           </div>
@@ -397,7 +397,7 @@ function Index() {
         ) : (
           <div className="mx-4 rounded-2xl border border-dashed border-border bg-card p-8 text-center">
             <p className="text-sm text-muted-foreground">
-              No recipes yet — tap <strong className="text-foreground">Surprise me</strong> above to
+              No recipes yet. Tap <strong className="text-foreground">Surprise me</strong> above to
               create the first one.
             </p>
           </div>

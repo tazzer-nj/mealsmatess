@@ -143,7 +143,7 @@ export const en = {
     },
     referral: {
       title: "Referrals",
-      subtitle: "Share your code — you both get 14 free days when they subscribe.",
+      subtitle: "Share your code. You both get 14 free days when they subscribe.",
       applyPlaceholder: "Have a friend's code?",
       apply: "Apply",
       stats: "{{count}} invited · {{rewarded}} rewarded",
@@ -198,7 +198,7 @@ export const en = {
   },
   errors: {
     generic: "Something went wrong. Please try again.",
-    network: "Network error — check your connection.",
+    network: "Network error. Check your connection.",
     unauthorized: "Please sign in to continue.",
     limitReached: "Check your Premium subscription access.",
     required: "This field is required",

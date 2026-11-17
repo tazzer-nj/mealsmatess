@@ -52,7 +52,7 @@ beforeEach(() => {
   mockGetMyTheme.mockResolvedValue({ themeId: "classic-light", updatedAt: null });
   mockSaveMyTheme.mockResolvedValue({
     ok: true,
-    themeId: "ocean-blue",
+    themeId: "midnight-black",
     updatedAt: "2026-01-01T00:00:00.000Z",
   });
   mockUseSession.mockReturnValue({
@@ -82,7 +82,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("ThemeGallery UI & live preview", () => {
-  it("renders all 4 free themes, 8 premium themes, and their 6 MealMate logos", async () => {
+  it("renders default black and white themes alongside the 6 logo themes and their 6 MealMate logos", async () => {
     render(
       <ThemeProvider>
         <ThemeGallery />
@@ -91,13 +91,16 @@ describe("ThemeGallery UI & live preview", () => {
 
     await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalled());
 
+    expect(FREE_THEMES).toHaveLength(2);
+    expect(PREMIUM_THEMES).toHaveLength(6);
+
     for (const theme of [...FREE_THEMES, ...PREMIUM_THEMES]) {
       expect(screen.getByText(theme.name)).toBeInTheDocument();
       const logoImg = screen.getByRole("img", { name: `${theme.name} logo` });
       expect(logoImg).toHaveAttribute("src", theme.mascotImage);
     }
-    expect(screen.getByText("Free Themes")).toBeInTheDocument();
-    expect(screen.getByText("Premium Themes")).toBeInTheDocument();
+    expect(screen.getByText("Default (Black & White)")).toBeInTheDocument();
+    expect(screen.getByText("Logo Themes")).toBeInTheDocument();
   });
 
   it("shows live preview immediately and commits when Apply Theme is clicked", async () => {
@@ -109,23 +112,25 @@ describe("ThemeGallery UI & live preview", () => {
 
     await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalled());
 
-    const oceanCard = screen.getByRole("radio", { name: /Ocean Blue theme/i });
-    fireEvent.click(oceanCard);
+    const blackCard = screen.getByRole("radio", { name: /Default Black theme/i });
+    fireEvent.click(blackCard);
 
-    expect(screen.getByText("Previewing Ocean Blue")).toBeInTheDocument();
-    expect(document.documentElement.dataset["appTheme"]).toBe("ocean-blue");
+    expect(screen.getByText("Previewing Default Black")).toBeInTheDocument();
+    expect(document.documentElement.dataset["appTheme"]).toBe("midnight-black");
     expect(mockSaveMyTheme).not.toHaveBeenCalled();
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /Apply Theme/i }));
     });
 
-    expect(mockSaveMyTheme).toHaveBeenCalledWith({ data: { themeId: "ocean-blue" } });
-    await waitFor(() => expect(screen.getByText("Active theme: Ocean Blue")).toBeInTheDocument());
-    expect(screen.queryByText("Previewing Ocean Blue")).not.toBeInTheDocument();
+    expect(mockSaveMyTheme).toHaveBeenCalledWith({ data: { themeId: "midnight-black" } });
+    await waitFor(() =>
+      expect(screen.getByText("Active theme: Default Black")).toBeInTheDocument(),
+    );
+    expect(screen.queryByText("Previewing Default Black")).not.toBeInTheDocument();
   });
 
-  it("distinguishes locked premium themes and allows unlocking when unsubscribed", async () => {
+  it("distinguishes locked logo themes and allows unlocking when unsubscribed", async () => {
     render(
       <ThemeProvider>
         <ThemeGallery />
@@ -134,22 +139,22 @@ describe("ThemeGallery UI & live preview", () => {
 
     await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalled());
 
-    const auroraCard = screen.getByRole("radio", { name: /Aurora theme \(Premium\)/i });
-    fireEvent.click(auroraCard);
+    const matchaCard = screen.getByRole("radio", { name: /Matcha theme \(Premium\)/i });
+    fireEvent.click(matchaCard);
 
-    expect(screen.getByText("Previewing Aurora")).toBeInTheDocument();
+    expect(screen.getByText("Previewing Matcha")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Apply Theme/i })).not.toBeInTheDocument();
 
     const unlockButton = screen.getByRole("button", { name: /Unlock Premium/i });
     fireEvent.click(unlockButton);
     expect(mockOpenUpgrade).toHaveBeenCalled();
 
-    // Cancel reverts preview back to Classic Light
+    // Cancel reverts preview back to Default White
     fireEvent.click(screen.getByRole("button", { name: /Cancel/i }));
     expect(document.documentElement.dataset["appTheme"]).toBe("classic-light");
   });
 
-  it("lets subscribed users apply premium themes cleanly", async () => {
+  it("lets subscribed users apply logo themes cleanly", async () => {
     mockUsePremium.mockReturnValue({
       isPremium: true,
       tier: "yearly",
@@ -171,14 +176,14 @@ describe("ThemeGallery UI & live preview", () => {
 
     await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalled());
 
-    const auroraCard = screen.getByRole("radio", { name: /Aurora theme/i });
-    fireEvent.click(auroraCard);
+    const matchaCard = screen.getByRole("radio", { name: /Matcha theme/i });
+    fireEvent.click(matchaCard);
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /Apply Theme/i }));
     });
 
     expect(mockSaveMyTheme).toHaveBeenCalledWith({ data: { themeId: "aurora" } });
-    await waitFor(() => expect(screen.getByText("Active theme: Aurora")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Active theme: Matcha")).toBeInTheDocument());
   });
 });

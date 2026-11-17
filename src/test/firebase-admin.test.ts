@@ -337,4 +337,22 @@ describe("Admin privileges configuration and verification", () => {
     expect(await isMarketplaceAdmin("ttmine60@gmail.com")).toBe(true);
     expect(await isMarketplaceAdmin("outsider@example.com")).toBe(false);
   });
+
+  it("pushes down single equality filters to Firestore and supports verifiedPremium db", async () => {
+    const { firebaseUserDb } = await import("@/server/firebase-admin");
+    fixture.table("recipes").set("r-fast", {
+      id: "r-fast",
+      slug: "fast-pasta",
+      name: "Fast Pasta",
+    });
+    const whereSpy = vi.spyOn(fixture.db, "collection");
+    const { data, error } = await firebaseUserDb("user-1", { verifiedPremium: true })
+      .from("recipes")
+      .select("id,slug")
+      .eq("slug", "fast-pasta")
+      .maybeSingle();
+    expect(error).toBeNull();
+    expect(data).toMatchObject({ id: "r-fast", slug: "fast-pasta" });
+    expect(whereSpy).toHaveBeenCalledWith("recipes");
+  });
 });

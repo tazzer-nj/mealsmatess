@@ -112,7 +112,7 @@ export function GamificationCard() {
           <div>
             <p className="text-sm font-medium text-foreground">Elite reward unlocked</p>
             <p className="text-xs text-muted-foreground">
-              50,000 XP earns you 30 days of Premium — once, ever.
+              50,000 XP earns you 30 days of Premium, once ever.
             </p>
           </div>
           <Button
@@ -195,7 +195,7 @@ export function GamificationCard() {
           {data.achievements.map((a) => (
             <div
               key={a.code}
-              title={a.title + (a.unlockedAt ? " — unlocked" : " — " + a.description)}
+              title={a.title + (a.unlockedAt ? " (unlocked)" : ": " + a.description)}
               className={cn(
                 "flex flex-col items-center gap-1 rounded-xl border p-2 text-center",
                 a.unlockedAt

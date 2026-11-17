@@ -38,7 +38,7 @@ function AboutPage() {
       </div>
 
       <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-        Discover. Plan. Eat. Enjoy. MealMate is your personal food companion—bringing together
+        Discover. Plan. Eat. Enjoy. MealMate is your personal food companion, bringing together
         tailored recipes, pantry management, dining discovery, smart meal planning, and hands-free
         cooking guidance with Mia.
       </p>

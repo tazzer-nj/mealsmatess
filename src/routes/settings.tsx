@@ -72,7 +72,7 @@ import type { FoodPreferences } from "@/lib/preferences";
 export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
-      { title: "Settings — MealMate" },
+      { title: "Settings | MealMate" },
       {
         name: "description",
         content:

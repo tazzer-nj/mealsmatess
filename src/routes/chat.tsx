@@ -19,13 +19,13 @@ export const Route = createFileRoute("/chat")({
     typeof search["q"] === "string" ? { q: search["q"].slice(0, 200) } : {},
   head: () => ({
     meta: [
-      { title: "Mia AI Chef & Voice Mode — MealMate" },
+      { title: "Mia AI Chef & Voice Mode | MealMate" },
       {
         name: "description",
         content:
           "Ask Mia anything about cooking, pantry ingredients, meal plans, and voice-guided recipes.",
       },
-      { property: "og:title", content: "Mia AI Chef & Voice Mode — MealMate" },
+      { property: "og:title", content: "Mia AI Chef & Voice Mode | MealMate" },
       {
         property: "og:description",
         content: "Chat with Mia or open hands-free Voice Mode while cooking.",
@@ -196,7 +196,7 @@ function ChatPage() {
             {t.visualLoading && (
               <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin text-[var(--periwinkle)]" />
-                Directing your animated explainer — illustrations &amp; narration…
+                Directing your animated explainer with illustrations &amp; narration…
               </div>
             )}
             {t.visualError && (
@@ -232,7 +232,7 @@ function ChatPage() {
         />
       </div>
       <p className="mt-2 flex items-center justify-center gap-1 text-center text-xs text-muted-foreground">
-        AI answers can be wrong — check allergies and food safety.
+        AI answers can be wrong. Always check allergies and food safety.
       </p>
 
       {/* Full-Screen Voice Mode */}

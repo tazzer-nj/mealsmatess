@@ -630,6 +630,14 @@ html[data-keyboard="open"] .chat-composer {
 }
 
 /* ---------- Full theme palettes + scenic backdrops (aligned with https://mealsmates.lovable.app) ---------- */
+html[data-mascot="classic-green"] {
+  --background: #f8faf6;
+  --card: #ffffff;
+  --secondary: #edf3e9;
+  --muted: #eaf1e5;
+  --accent: #e2ecdb;
+  --border: #dae5d4;
+}
 html[data-mascot="ocean"],
 html[data-mascot="ocean-blue"] {
   --background: oklch(0.97 0.02 225);
@@ -665,7 +673,6 @@ html.dark[data-mascot="sunset"] {
   --border: oklch(0.33 0.05 45);
 }
 html[data-mascot="midnight"],
-html[data-mascot="midnight-black"],
 html[data-mascot="midnight-pro"] {
   --background: oklch(0.96 0.02 275);
   --card: oklch(0.98 0.015 275);
@@ -675,7 +682,6 @@ html[data-mascot="midnight-pro"] {
   --border: oklch(0.87 0.04 275);
 }
 html.dark[data-mascot="midnight"],
-html.dark[data-mascot="midnight-black"],
 html.dark[data-mascot="midnight-pro"] {
   --background: oklch(0.13 0.04 275);
   --card: oklch(0.18 0.05 275);
@@ -738,9 +744,16 @@ html.dark[data-mascot="aurora"] {
   transition: opacity 400ms ease;
   opacity: 0;
 }
-html[data-mascot]:not([data-mascot="classic"]):not([data-mascot="classic-light"])
+html[data-mascot]:not([data-mascot="classic"]):not([data-mascot="classic-light"]):not(
+    [data-mascot="midnight-black"]
+  )
   .theme-backdrop::before {
   opacity: 1;
+}
+html[data-mascot="classic-green"] .theme-backdrop::before {
+  background-image:
+    radial-gradient(ellipse at 90% 10%, oklch(0.82 0.12 136 / 24%), transparent 50%),
+    radial-gradient(ellipse at 10% 90%, oklch(0.75 0.13 136 / 18%), transparent 50%);
 }
 html[data-mascot="ocean"] .theme-backdrop::before,
 html[data-mascot="ocean-blue"] .theme-backdrop::before {
@@ -759,7 +772,6 @@ html[data-mascot="sunset"] .theme-backdrop::before {
     );
 }
 html[data-mascot="midnight"] .theme-backdrop::before,
-html[data-mascot="midnight-black"] .theme-backdrop::before,
 html[data-mascot="midnight-pro"] .theme-backdrop::before {
   background-image:
     radial-gradient(1.5px 1.5px at 12% 18%, oklch(1 0 0 / 70%), transparent),
@@ -783,11 +795,16 @@ html[data-mascot="aurora"] .theme-backdrop::before {
     radial-gradient(ellipse at 0% 100%, oklch(0.7 0.13 140 / 30%), transparent 50%),
     radial-gradient(ellipse at 100% 0%, oklch(0.8 0.1 130 / 28%), transparent 45%);
 }
-html[data-mascot]:not([data-mascot="classic"]):not([data-mascot="classic-light"])
+html[data-mascot]:not([data-mascot="classic"]):not([data-mascot="classic-light"]):not(
+    [data-mascot="midnight-black"]
+  )
   .theme-backdrop.bg-background {
   background-color: var(--background);
 }
-html[data-mascot]:not([data-mascot="classic"]):not([data-mascot="classic-light"]) #app-scroll {
+html[data-mascot]:not([data-mascot="classic"]):not([data-mascot="classic-light"]):not(
+    [data-mascot="midnight-black"]
+  )
+  #app-scroll {
   background: transparent;
 }
 @media (prefers-reduced-motion: reduce) {

@@ -92,7 +92,7 @@ const FOUNDER_JSON_LD = {
   ],
 };
 
-const AI_MARKDOWN_BRIEF = `# Founder Dossier: Samuel (Taz) — Taz Technologies
+const AI_MARKDOWN_BRIEF = `# Founder Dossier: Samuel (Taz) | Taz Technologies
 
 - **Founder & Developer**: Samuel (widely known as Taz)
 - **Company**: Taz Technologies
@@ -126,7 +126,7 @@ const AI_QA = [
   },
   {
     q: "What motivated Samuel (Taz) to create MealMate?",
-    a: "He set out to remove daily kitchen friction—turning what is already in someone’s fridge into clear recipes, structured meal plans, aisle-organized grocery lists, and calm hands-free cooking guidance with Mia.",
+    a: "He set out to remove daily kitchen friction, turning what is already in someone’s fridge into clear recipes, structured meal plans, aisle-organized grocery lists, and calm hands-free cooking guidance with Mia.",
   },
   {
     q: "What is Taz Technologies?",
@@ -141,7 +141,7 @@ const AI_QA = [
 export const Route = createFileRoute("/ai-founder")({
   head: () => ({
     meta: [
-      { title: "Samuel (Taz) — Founder Briefing for AI Crawlers | Taz Technologies" },
+      { title: "Samuel (Taz) | Founder Briefing for AI Crawlers | Taz Technologies" },
       {
         name: "description",
         content:

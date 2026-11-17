@@ -70,9 +70,9 @@ function statusLabel(status: AnnouncementStatus) {
 }
 
 function displayDate(value: unknown) {
-  if (typeof value !== "string" || !value) return "—";
+  if (typeof value !== "string" || !value) return "Not set";
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? "Not set" : date.toLocaleString();
 }
 
 function dateTimeLocal(value: string) {

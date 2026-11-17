@@ -70,7 +70,7 @@ export function ThemeToggle() {
           {isPremium ? (
             <>
               <Contrast className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
-              <span className="flex-1">Midnight Pro</span>
+              <span className="flex-1">Midnight</span>
               {activeThemeId === "midnight-pro" && (
                 <Check className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
               )}
@@ -91,7 +91,7 @@ export function ThemeToggle() {
             ) : (
               <Lock className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
             )}
-            <span>Browse all 12 themes</span>
+            <span>Browse all themes</span>
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

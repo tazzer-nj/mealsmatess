@@ -13,13 +13,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 export const Route = createFileRoute("/coach")({
   head: () => ({
     meta: [
-      { title: "AI Nutrition Coach — MealMate" },
+      { title: "AI Nutrition Coach | MealMate" },
       {
         name: "description",
         content:
           "A personalized AI nutrition coach that reads your goals, allergies, and constraints to give practical daily food advice.",
       },
-      { property: "og:title", content: "AI Nutrition Coach — MealMate" },
+      { property: "og:title", content: "AI Nutrition Coach | MealMate" },
       {
         property: "og:description",
         content: "Personalized food and nutrition guidance tuned to your profile.",
@@ -36,7 +36,7 @@ type Turn = { role: "user" | "assistant"; content: string };
 const STARTERS = [
   "What should I eat today to hit my goal?",
   "Plan a high-protein breakfast under 400 calories.",
-  "I'm short on time tonight — quick dinner ideas?",
+  "I'm short on time tonight. Quick dinner ideas?",
   "How many calories should I actually eat?",
 ];
 
@@ -130,9 +130,11 @@ function CoachPage() {
       ) : ctx ? (
         <section className="mt-6 rounded-2xl border border-border bg-card p-4">
           <div className="flex flex-wrap gap-1.5">
-            {ctx.profile?.goal && <Chip label={`Goal · ${ctx.profile.goal}`} />}
+            {ctx.profile?.goal && (
+              <Chip label={`Goal · ${ctx.profile.goal.replace(/[_-]+/g, " ")}`} />
+            )}
             {ctx.profile?.activity_level && (
-              <Chip label={`Activity · ${ctx.profile.activity_level}`} />
+              <Chip label={`Activity · ${ctx.profile.activity_level.replace(/[_-]+/g, " ")}`} />
             )}
             {ctx.profile?.dietary_preferences?.slice(0, 3).map((d) => (
               <Chip key={d} label={d} />

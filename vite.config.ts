@@ -56,7 +56,7 @@ export default defineConfig(({ command }) => ({
       includeAssets: ["favicon.png", "apple-touch-icon.png", "icon.svg"],
       manifest: {
         id: "/",
-        name: "MealMate — Discover. Plan. Eat. Enjoy.",
+        name: "MealMate: Discover. Plan. Eat. Enjoy.",
         short_name: "MealMate",
         description:
           "Your personal food companion for recipes, meal planning, pantry management, and AI cooking.",
@@ -118,19 +118,8 @@ export default defineConfig(({ command }) => ({
             },
           },
           {
-            urlPattern: /\/api\/.*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "mealmate-api-cache",
-              networkTimeoutSeconds: 5,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24, // 24 hours
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
+            urlPattern: /\/(api|_serverFn|__\/auth)\/.*/i,
+            handler: "NetworkOnly",
           },
         ],
       },
@@ -149,6 +138,13 @@ export default defineConfig(({ command }) => ({
               "/__/auth/**": {
                 proxy: "https://mealmate-d2e53.firebaseapp.com/__/auth/**",
                 headers: { "cache-control": "no-store" },
+              },
+            },
+            vercel: {
+              functions: { maxDuration: 60 },
+              functionRules: {
+                "/api/**": { maxDuration: 60 },
+                "/_serverFn/**": { maxDuration: 60 },
               },
             },
             // Keep Firestore's CommonJS runtime and module-relative assets intact.

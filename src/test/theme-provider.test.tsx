@@ -72,14 +72,14 @@ function Harness() {
       <button type="button" onClick={() => cancelPreview()}>
         Cancel Preview
       </button>
-      <button type="button" onClick={() => void applyTheme("ocean-blue")}>
-        Apply Ocean
+      <button type="button" onClick={() => void applyTheme("midnight-black")}>
+        Apply Black
       </button>
       <button type="button" onClick={() => void applyTheme("aurora")}>
         Apply Aurora
       </button>
       <button type="button" onClick={() => void applyTheme("midnight-pro")}>
-        Apply Midnight Pro
+        Apply Midnight
       </button>
       <button type="button" onClick={() => void retrySave()}>
         Retry Save
@@ -102,7 +102,11 @@ beforeEach(() => {
   mockUseSession.mockReset();
   mockUseSession.mockReturnValue({ user: null, loading: false, firebaseUser: null });
   mockGetMyTheme.mockResolvedValue({ themeId: null, updatedAt: null });
-  mockSaveMyTheme.mockResolvedValue({ ok: true, themeId: "ocean-blue", updatedAt: "2026-01-01" });
+  mockSaveMyTheme.mockResolvedValue({
+    ok: true,
+    themeId: "midnight-black",
+    updatedAt: "2026-01-01",
+  });
 
   Object.defineProperty(window, "matchMedia", {
     writable: true,
@@ -118,24 +122,17 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Theme registry & global ThemeProvider", () => {
-  it("defines exactly 4 free themes and 8 premium themes with complete token sets", () => {
-    expect(FREE_THEMES.map((t) => t.id)).toEqual([
-      "classic-light",
-      "midnight-black",
-      "ocean-blue",
-      "soft-lavender",
-    ]);
+  it("defines default black and white themes plus 6 logo-matched themes with complete tokens", () => {
+    expect(FREE_THEMES.map((t) => t.id)).toEqual(["classic-light", "midnight-black"]);
     expect(PREMIUM_THEMES.map((t) => t.id)).toEqual([
-      "midnight-pro",
-      "arctic-blue",
-      "graphite",
-      "aurora",
-      "royal-navy",
-      "obsidian",
+      "classic-green",
       "sunset",
-      "minimal-white",
+      "midnight-pro",
+      "ocean-blue",
+      "aurora",
+      "obsidian",
     ]);
-    expect(MEALMATE_THEMES).toHaveLength(12);
+    expect(MEALMATE_THEMES).toHaveLength(8);
 
     for (const theme of MEALMATE_THEMES) {
       expect(theme.tokens.background).toBeTruthy();
@@ -148,7 +145,7 @@ describe("Theme registry & global ThemeProvider", () => {
     }
   });
 
-  it("switches immediately and preserves Light, Dark, and Dark Premium compatibility", () => {
+  it("switches immediately and preserves Default White, Default Black, and Dark Premium compatibility", () => {
     const view = render(
       <ThemeProvider>
         <Harness />
@@ -191,7 +188,7 @@ describe("Theme registry & global ThemeProvider", () => {
     expect(document.documentElement.dataset["appTheme"]).toBe("classic-light");
   });
 
-  it("applies every theme token and meta theme-color across all 12 themes cleanly", async () => {
+  it("applies every theme token and returns all 6 logo artworks across the 6 logo themes", async () => {
     mockUseSession.mockReturnValue({
       user: { id: "user-1", email: "chef@mealmate.app", displayName: "Chef" },
       loading: false,
@@ -244,10 +241,10 @@ describe("Theme registry & global ThemeProvider", () => {
       );
     }
 
-    const classic = MEALMATE_THEMES.find((t) => t.id === "classic-light")!;
-    const midnight = MEALMATE_THEMES.find((t) => t.id === "midnight-black")!;
+    const classicGreen = MEALMATE_THEMES.find((t) => t.id === "classic-green")!;
+    const midnight = MEALMATE_THEMES.find((t) => t.id === "midnight-pro")!;
     const obsidian = MEALMATE_THEMES.find((t) => t.id === "obsidian")!;
-    const logoSet = new Set(MEALMATE_THEMES.map((t) => t.mascotImage));
+    const logoSet = new Set(PREMIUM_THEMES.map((t) => t.mascotImage));
     expect(logoSet).toEqual(
       new Set([
         "/mascots/mascot-classic.png",
@@ -258,8 +255,8 @@ describe("Theme registry & global ThemeProvider", () => {
         "/mascots/mascot-cherry.webp",
       ]),
     );
-    expect(classic.tokens.primary).toBe("#13341b");
-    expect(classic.tokens.periwinkle).toBe("#3d7c1b");
+    expect(classicGreen.tokens.primary).toBe("#13341b");
+    expect(classicGreen.tokens.periwinkle).toBe("#3d7c1b");
     expect(midnight.mascotImage).toBe("/mascots/mascot-midnight.webp");
     expect(midnight.tokens.periwinkle).toBe("#738cff");
     expect(obsidian.mascotImage).toBe("/mascots/mascot-cherry.webp");
@@ -268,7 +265,6 @@ describe("Theme registry & global ThemeProvider", () => {
 
   it("restores saved account theme automatically across devices and avoids flash via THEME_BOOT_SCRIPT", async () => {
     localStorage.setItem(THEME_V2_STORAGE_KEY, "ocean-blue");
-    // Execute synchronous pre-hydration boot script before mounting
     window.eval(THEME_BOOT_SCRIPT);
     expect(document.documentElement.dataset["appTheme"]).toBe("ocean-blue");
     expect(document.documentElement.style.getPropertyValue("--background")).toBe("#f2f7fb");
@@ -282,7 +278,7 @@ describe("Theme registry & global ThemeProvider", () => {
       firebaseUser: null,
     });
     mockGetMyTheme.mockResolvedValue({
-      themeId: "royal-navy",
+      themeId: "midnight-pro",
       updatedAt: "2026-02-01T10:00:00.000Z",
     });
 
@@ -293,9 +289,9 @@ describe("Theme registry & global ThemeProvider", () => {
     );
 
     await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.getByTestId("active-id")).toHaveTextContent("royal-navy"));
-    expect(localStorage.getItem(THEME_V2_STORAGE_KEY)).toBe("royal-navy");
-    expect(document.documentElement.style.getPropertyValue("--background")).toBe("#091124");
+    await waitFor(() => expect(screen.getByTestId("active-id")).toHaveTextContent("midnight-pro"));
+    expect(localStorage.getItem(THEME_V2_STORAGE_KEY)).toBe("midnight-pro");
+    expect(document.documentElement.style.getPropertyValue("--background")).toBe("#060b16");
   });
 
   it("explains why unauthenticated users cannot save themes to an account", async () => {
@@ -308,19 +304,17 @@ describe("Theme registry & global ThemeProvider", () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Apply Ocean" }));
+      fireEvent.click(screen.getByRole("button", { name: "Apply Black" }));
     });
     expect(mockSaveMyTheme).not.toHaveBeenCalled();
     expect(screen.getByTestId("save-status")).toHaveTextContent("unauthenticated");
     expect(screen.getByTestId("save-error").textContent).toMatch(/Sign in to save/i);
-    // Free theme still applies locally
-    expect(screen.getByTestId("active-id")).toHaveTextContent("ocean-blue");
+    expect(screen.getByTestId("active-id")).toHaveTextContent("midnight-black");
 
-    // Premium theme is blocked when unauthenticated
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Apply Aurora" }));
     });
-    expect(screen.getByTestId("active-id")).toHaveTextContent("ocean-blue");
+    expect(screen.getByTestId("active-id")).toHaveTextContent("midnight-black");
     expect(screen.getByTestId("save-error").textContent).toMatch(/Premium account/i);
   });
 
@@ -330,7 +324,7 @@ describe("Theme registry & global ThemeProvider", () => {
       loading: false,
       firebaseUser: null,
     });
-    mockGetMyTheme.mockResolvedValue({ themeId: "ocean-blue", updatedAt: null });
+    mockGetMyTheme.mockResolvedValue({ themeId: "midnight-black", updatedAt: null });
     mockSaveMyTheme.mockRejectedValueOnce(new Error("Connection timeout"));
 
     render(
@@ -339,7 +333,9 @@ describe("Theme registry & global ThemeProvider", () => {
       </ThemeProvider>,
     );
 
-    await waitFor(() => expect(screen.getByTestId("active-id")).toHaveTextContent("ocean-blue"));
+    await waitFor(() =>
+      expect(screen.getByTestId("active-id")).toHaveTextContent("midnight-black"),
+    );
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Apply Aurora" }));
@@ -348,9 +344,8 @@ describe("Theme registry & global ThemeProvider", () => {
     expect(screen.getByTestId("save-status")).toHaveTextContent("error");
     expect(screen.getByTestId("save-error").textContent).toMatch(/Connection issue|timeout/i);
     expect(screen.getByTestId("pending-id")).toHaveTextContent("aurora");
-    // Display stays on user's selected theme instead of silently reverting to Classic Light
     expect(screen.getByTestId("display-id")).toHaveTextContent("aurora");
-    expect(screen.getByTestId("active-id")).toHaveTextContent("ocean-blue");
+    expect(screen.getByTestId("active-id")).toHaveTextContent("midnight-black");
 
     mockSaveMyTheme.mockResolvedValueOnce({
       ok: true,

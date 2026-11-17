@@ -51,22 +51,27 @@ export const Route = createFileRoute("/recipe/$slug")({
   loader: async ({ context, params }) => {
     const user = await waitForFirebaseAuth();
     if (!user) return null;
-    const recipe = await context.queryClient.ensureQueryData(recipeBySlugQuery(params.slug));
-    if (!recipe) throw notFound();
-    return recipe;
+    try {
+      const recipe = await context.queryClient.ensureQueryData(recipeBySlugQuery(params.slug));
+      if (!recipe) throw notFound();
+      return recipe;
+    } catch (err) {
+      if (err && typeof err === "object" && "isNotFound" in err) throw err;
+      return null;
+    }
   },
   head: ({ loaderData }) =>
     loaderData
       ? {
           meta: [
-            { title: `${loaderData.name} — MealMate` },
+            { title: `${loaderData.name} | MealMate` },
             {
               name: "description",
               content:
                 loaderData.description ||
                 `Cook ${loaderData.name} with ingredients and step-by-step instructions from MealMate.`,
             },
-            { property: "og:title", content: `${loaderData.name} — MealMate` },
+            { property: "og:title", content: `${loaderData.name} | MealMate` },
             {
               property: "og:description",
               content:
@@ -93,7 +98,10 @@ function RecipePage() {
   const { slug } = Route.useParams();
   const recipe = Route.useLoaderData();
   const { user } = useSession();
-  const { data } = useQuery({ ...recipeBySlugQuery(slug), enabled: !!user });
+  const { data, isLoading, isError, refetch } = useQuery({
+    ...recipeBySlugQuery(slug),
+    enabled: !!user,
+  });
   const r = data ?? recipe;
   const { isPremium } = usePremium();
   const navigate = useNavigate();
@@ -176,7 +184,35 @@ function RecipePage() {
     }
   }, [r, user]);
 
-  if (!r) return null;
+  if (!r) {
+    if (isLoading) {
+      return (
+        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
+          <div className="h-8 w-40 animate-pulse rounded-xl bg-muted" />
+          <div className="grid gap-8 md:grid-cols-2">
+            <div className="aspect-square w-full animate-pulse rounded-2xl bg-muted" />
+            <div className="space-y-4">
+              <div className="h-9 w-3/4 animate-pulse rounded-xl bg-muted" />
+              <div className="h-20 w-full animate-pulse rounded-xl bg-muted" />
+            </div>
+          </div>
+        </main>
+      );
+    }
+    if (isError) {
+      return (
+        <main className="mx-auto flex max-w-md flex-1 flex-col items-center justify-center px-4 py-20 text-center">
+          <p className="text-sm text-muted-foreground">
+            We couldn&apos;t load this recipe right now. Please try again.
+          </p>
+          <Button onClick={() => void refetch()} className="mt-4 rounded-xl">
+            Try again
+          </Button>
+        </main>
+      );
+    }
+    return null;
+  }
 
   const ingredients = (Array.isArray(r.ingredients) ? r.ingredients : []) as Ingredient[];
   const steps = (Array.isArray(r.steps) ? r.steps : []) as string[];
@@ -429,7 +465,7 @@ function RecipePage() {
             ].map((m) => (
               <div key={m.label} className="text-center">
                 <div className="text-2xl font-semibold tracking-tight text-foreground">
-                  {m.value ?? "–"}g
+                  {m.value ?? 0}g
                 </div>
                 <div className="mt-0.5 text-xs text-muted-foreground">{m.label}</div>
               </div>
@@ -523,7 +559,7 @@ function RecipePage() {
                   data: { action: "recipe_cooked", entityId: r.id },
                 });
                 if (res.awarded) {
-                  toast.success(`+${res.points} XP — well cooked!`);
+                  toast.success(`+${res.points} XP: well cooked!`);
                   queryClient.invalidateQueries({ queryKey: ["gamification"] });
                 }
               } catch {

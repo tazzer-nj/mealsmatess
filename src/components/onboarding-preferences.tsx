@@ -19,7 +19,7 @@ export type OnboardingWizardProps = {
 const HOUSEHOLD_OPTIONS = [
   "1 person (solo)",
   "2 people (couple)",
-  "3–4 people (family)",
+  "3 to 4 people (family)",
   "5+ people (large feast)",
 ];
 
@@ -79,7 +79,7 @@ const SKILL_LEVELS = [
   { level: "Experienced", desc: "Confident in the kitchen and ready for creative dishes." },
 ];
 
-const COOKING_TIMES = ["Under 20 mins", "20–35 mins", "35–50 mins", "Weekend slow cooking"];
+const COOKING_TIMES = ["Under 20 mins", "20 to 35 mins", "35 to 50 mins", "Weekend slow cooking"];
 
 export function OnboardingStepContent({
   step,

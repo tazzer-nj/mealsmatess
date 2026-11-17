@@ -31,7 +31,7 @@ import { MealMateLogo } from "@/components/mealmate-logo";
 import { ChefMascot } from "@/components/chef-mascot";
 
 const MIA_TIPS = [
-  "Snap your fridge — I’ll build a complete recipe in 10 seconds.",
+  "Snap your fridge and I’ll build a complete recipe in 10 seconds.",
   "Hands messy? Talk to me hands-free for step-by-step guidance.",
   "Use expiring items first and save ~R1,800/mo on wasted food.",
   "Try everything free for 7 days. Day 5 reminder before billing.",
