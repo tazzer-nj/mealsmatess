@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { auth, onAuthStateChanged, signOutUser, type User as FirebaseUser } from "@/lib/firebase";
 
 const INACTIVITY_LIMIT_MS = 40 * 24 * 60 * 60 * 1000;
@@ -37,85 +37,111 @@ function writeActivity(userId: string) {
   }
 }
 
-export function useSession() {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(auth.currentUser);
-  const [fbLoading, setFbLoading] = useState(true);
+type SessionSnapshot = {
+  session: FirebaseUser | null;
+  firebaseUser: FirebaseUser | null;
+  loading: boolean;
+  user: SessionUser | null;
+};
 
-  useEffect(() => {
-    let active = true;
-    let currentUserId: string | null = null;
-    let lastWritten = 0;
+function toSessionUser(fbUser: FirebaseUser | null): SessionUser | null {
+  if (!fbUser) return null;
+  const verifiedAt = fbUser.emailVerified ? new Date().toISOString() : null;
+  return {
+    id: fbUser.uid,
+    email: fbUser.email,
+    displayName: fbUser.displayName,
+    photoURL: fbUser.photoURL,
+    emailVerified: fbUser.emailVerified,
+    email_confirmed_at: verifiedAt,
+    confirmed_at: verifiedAt,
+    provider: "firebase",
+  };
+}
 
-    const recordActivity = () => {
-      if (!currentUserId || Date.now() - lastWritten < 60_000) return;
-      lastWritten = Date.now();
-      writeActivity(currentUserId);
-    };
+let initialized = false;
+let currentUserId: string | null = null;
+let lastWritten = 0;
+const listeners = new Set<() => void>();
 
-    const unsubscribeFb = onAuthStateChanged(auth, (fbUser) => {
-      if (!active) return;
-      setFirebaseUser(fbUser);
-      setFbLoading(false);
-      if (fbUser) {
-        currentUserId = fbUser.uid;
-        writeActivity(fbUser.uid);
-        lastWritten = Date.now();
-      }
-    });
+let snapshot: SessionSnapshot = {
+  session: auth.currentUser,
+  firebaseUser: auth.currentUser,
+  loading: !auth.currentUser,
+  user: toSessionUser(auth.currentUser),
+};
 
-    const checkInactivity = async (fbUser: FirebaseUser) => {
+const SERVER_SNAPSHOT: SessionSnapshot = {
+  session: null,
+  firebaseUser: null,
+  loading: true,
+  user: null,
+};
+
+function emit() {
+  for (const listener of listeners) listener();
+}
+
+function recordActivity() {
+  if (!currentUserId || Date.now() - lastWritten < 60_000) return;
+  lastWritten = Date.now();
+  writeActivity(currentUserId);
+}
+
+function ensureAuthStoreInitialized() {
+  if (initialized || typeof window === "undefined") return;
+  initialized = true;
+
+  onAuthStateChanged(auth, (fbUser) => {
+    if (fbUser) {
       const lastActivity = readLastActivity(fbUser.uid);
       if (lastActivity && Date.now() - lastActivity > INACTIVITY_LIMIT_MS) {
-        await signOutUser();
-        return false;
+        void signOutUser();
+        currentUserId = null;
+        snapshot = { session: null, firebaseUser: null, loading: false, user: null };
+        emit();
+        return;
       }
       currentUserId = fbUser.uid;
       writeActivity(fbUser.uid);
       lastWritten = Date.now();
-      return true;
+    } else {
+      currentUserId = null;
+    }
+
+    snapshot = {
+      session: fbUser,
+      firebaseUser: fbUser,
+      loading: false,
+      user: toSessionUser(fbUser),
     };
+    emit();
+  });
 
-    const unsubscribeActivity = onAuthStateChanged(auth, (fbUser) => {
-      if (!fbUser) return;
-      void checkInactivity(fbUser);
-    });
+  window.addEventListener("pointerdown", recordActivity, { passive: true });
+  window.addEventListener("keydown", recordActivity, { passive: true });
+  window.addEventListener("visibilitychange", recordActivity);
+}
 
-    window.addEventListener("pointerdown", recordActivity, { passive: true });
-    window.addEventListener("keydown", recordActivity, { passive: true });
-    window.addEventListener("visibilitychange", recordActivity);
-
-    return () => {
-      active = false;
-      unsubscribeFb();
-      unsubscribeActivity();
-      window.removeEventListener("pointerdown", recordActivity);
-      window.removeEventListener("keydown", recordActivity);
-      window.removeEventListener("visibilitychange", recordActivity);
-    };
-  }, []);
-
-  const loading = fbLoading;
-
-  let user: SessionUser | null = null;
-  if (firebaseUser) {
-    user = {
-      id: firebaseUser.uid,
-      email: firebaseUser.email,
-      displayName: firebaseUser.displayName,
-      photoURL: firebaseUser.photoURL,
-      emailVerified: firebaseUser.emailVerified,
-      email_confirmed_at: firebaseUser.emailVerified ? new Date().toISOString() : null,
-      confirmed_at: firebaseUser.emailVerified ? new Date().toISOString() : null,
-      provider: "firebase",
-    };
-  }
-
-  return {
-    session: firebaseUser,
-    firebaseUser,
-    loading,
-    user,
+function subscribe(listener: () => void) {
+  ensureAuthStoreInitialized();
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
   };
+}
+
+function getSnapshot() {
+  ensureAuthStoreInitialized();
+  return snapshot;
+}
+
+function getServerSnapshot() {
+  return SERVER_SNAPSHOT;
+}
+
+export function useSession() {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
 export async function signOutUnified() {

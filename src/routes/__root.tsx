@@ -31,6 +31,12 @@ import { LocaleProvider } from "@/components/locale-provider";
 import { UpgradeModalProvider } from "@/components/upgrade-modal";
 import { ConsumerAccessGate } from "@/components/consumer-access-gate";
 import { useShellMetrics } from "@/hooks/use-shell-metrics";
+import {
+  myFavoritesQuery,
+  myPantryQuery,
+  southAfricanFavoritesQuery,
+  trendingRecipesQuery,
+} from "@/lib/queries";
 
 function NotFoundComponent() {
   return (
@@ -196,10 +202,48 @@ function RootComponent() {
   useShellMetrics(showAppHeader ? "with-header" : "no-header");
 
   useEffect(() => {
+    const warmRoutesAndData = (firebaseUser: unknown) => {
+      const preloadTargets = [
+        "/",
+        "/restaurants",
+        "/chat",
+        "/planner",
+        "/profile",
+        "/recipes",
+        "/pantry",
+        "/settings",
+      ] as const;
+      const run = () => {
+        for (const to of preloadTargets) {
+          void router.preloadRoute({ to }).catch(() => undefined);
+        }
+        if (firebaseUser) {
+          void queryClient.prefetchQuery(trendingRecipesQuery()).catch(() => undefined);
+          void queryClient.prefetchQuery(southAfricanFavoritesQuery()).catch(() => undefined);
+          void queryClient.prefetchQuery(myFavoritesQuery()).catch(() => undefined);
+          void queryClient.prefetchQuery(myPantryQuery()).catch(() => undefined);
+        }
+      };
+      const idle = (
+        globalThis as {
+          requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+        }
+      ).requestIdleCallback;
+      if (idle) {
+        idle(run, { timeout: 300 });
+      } else {
+        globalThis.setTimeout(run, 60);
+      }
+    };
+
     return onAuthStateChanged(auth, (firebaseUser) => {
       router.invalidate();
-      if (firebaseUser) void queryClient.invalidateQueries();
-      else queryClient.clear();
+      if (firebaseUser) {
+        void queryClient.invalidateQueries();
+        warmRoutesAndData(firebaseUser);
+      } else {
+        queryClient.clear();
+      }
     });
   }, [router, queryClient]);
 

@@ -24,7 +24,7 @@ export function useFlowController() {
     queryKey: ["admin-flow-access", userId],
     queryFn: () => adminIsAdmin().catch(() => ({ isAdmin: false })),
     enabled: !!userId && !emailAdmin,
-    staleTime: 60_000,
+    staleTime: 5 * 60 * 1000,
     retry: false,
   });
 
@@ -44,7 +44,7 @@ export function useFlowController() {
       };
     },
     enabled: !!userId && !isAdmin,
-    staleTime: 10_000,
+    staleTime: 5 * 60 * 1000,
   });
 
   if (sessionLoading) {

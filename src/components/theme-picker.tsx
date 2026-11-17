@@ -112,7 +112,8 @@ export function ThemePicker() {
                   <img
                     src={t.image}
                     alt={`${t.name} logo`}
-                    loading="lazy"
+                    loading="eager"
+                    decoding="async"
                     className="h-full w-full object-cover"
                   />
                   {locked && (
