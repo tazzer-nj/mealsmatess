@@ -162,24 +162,16 @@ function WelcomeFlow() {
             Ready to make every bite count?
           </h1>
           <p className="mt-3 text-base text-muted-foreground">
-            Create your MealMate account and personalize your experience.
+            Account access is currently unavailable. Existing accounts and saved data remain protected.
           </p>
         </div>
         <div className="mx-auto flex w-full max-w-md flex-col gap-3">
           <Button
             size="lg"
             className="h-14 rounded-full text-base active:scale-[0.98]"
-            onClick={() => navigate({ to: "/auth", search: { mode: "signup" } })}
+            onClick={() => navigate({ to: "/" })}
           >
-            Create Account
-          </Button>
-          <Button
-            size="lg"
-            variant="ghost"
-            className="h-14 rounded-full text-base"
-            onClick={() => navigate({ to: "/auth", search: { mode: "signin" } })}
-          >
-            Sign In
+            Continue
           </Button>
         </div>
       </div>

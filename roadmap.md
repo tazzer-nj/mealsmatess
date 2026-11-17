@@ -18,4 +18,4 @@
 - [ ] Android AAB — blocked: no Android project in repo; needs local Android Studio build + signing key.
 - [ ] Recipe image audit — blocked: no recipes in database until data is imported.
 
-- [ ] Remove the sign-in page — not changed because doing so would leave accounts and admin features unprotected.
+- [x] Remove the standalone sign-in page and route visitors to the welcome screen; retain account and admin protections.

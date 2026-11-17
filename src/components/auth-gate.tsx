@@ -80,14 +80,11 @@ function SignInPrompt() {
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-16">
       <div className="w-full max-w-md rounded-3xl border border-border bg-card p-8 text-center shadow-sm">
-        <h1 className="font-display text-2xl">Sign in to continue</h1>
+        <h1 className="font-display text-2xl">Account access is unavailable</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Create your free MealMate account to unlock your personalised recipes, meal plans and
-          restaurant picks.
+          Sign-in is currently unavailable. Existing accounts, personal data, and admin tools remain
+          protected.
         </p>
-        <Button className="mt-6 w-full" onClick={() => navigate({ to: "/auth" })}>
-          Create account or sign in
-        </Button>
       </div>
     </main>
   );
