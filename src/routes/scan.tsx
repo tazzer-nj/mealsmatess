@@ -14,6 +14,7 @@ import {
   Trash2,
   ChefHat,
   Check,
+  Expand,
 } from "lucide-react";
 import { scanKitchen, scanDish, type ScannedDish, generateRecipe } from "@/lib/ai.functions";
 import { useSession } from "@/hooks/use-session";
@@ -27,6 +28,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { pantryRecipeQuery } from "@/lib/pantry-recipe";
 
 export const Route = createFileRoute("/scan")({
@@ -106,6 +114,7 @@ function ScanPage() {
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generatingRecipe, setGeneratingRecipe] = useState(false);
+  const [previewExpanded, setPreviewExpanded] = useState(false);
 
   const [newItemName, setNewItemName] = useState("");
   const [newItemQty, setNewItemQty] = useState("");
@@ -404,11 +413,18 @@ function ScanPage() {
       ) : (
         <div className="mt-6 overflow-hidden rounded-3xl border border-border bg-card">
           <div className="relative">
-            <img
-              src={preview}
-              alt="Scanned item preview"
-              className="max-h-72 w-full object-cover"
-            />
+            <button
+              type="button"
+              onClick={() => !busy && setPreviewExpanded(true)}
+              aria-label="Open full-size image preview"
+              className="block w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <img
+                src={preview}
+                alt="Scanned item preview"
+                className="max-h-72 w-full object-cover"
+              />
+            </button>
 
             {/* Laser scanning sweep animation when busy */}
             {busy && (
@@ -427,20 +443,53 @@ function ScanPage() {
               </div>
             )}
 
-            {/* Retake badge overlay */}
+            {/* Preview & Retake badge overlays */}
             {!busy && (
-              <button
-                type="button"
-                onClick={reset}
-                className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/75 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md transition-colors hover:bg-black"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Retake
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setPreviewExpanded(true)}
+                  aria-label="Expand image preview"
+                  className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/75 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md transition-colors hover:bg-black"
+                >
+                  <Expand className="h-3.5 w-3.5" />
+                  Preview
+                </button>
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/75 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md transition-colors hover:bg-black"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Retake
+                </button>
+              </>
             )}
           </div>
         </div>
       )}
+
+      <Dialog open={previewExpanded && !!preview} onOpenChange={setPreviewExpanded}>
+        <DialogContent className="max-w-lg border-border bg-card text-foreground">
+          <DialogHeader>
+            <DialogTitle>Image preview</DialogTitle>
+            <DialogDescription>
+              {mode === "dish"
+                ? "Captured dish photo used for nutrition analysis."
+                : "Captured kitchen photo used for ingredient detection."}
+            </DialogDescription>
+          </DialogHeader>
+          {preview && (
+            <div className="overflow-hidden rounded-2xl border border-border bg-secondary">
+              <img
+                src={preview}
+                alt="Expanded scanned preview"
+                className="max-h-[70vh] w-full object-contain"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Dish Results Display */}
       {dish && (

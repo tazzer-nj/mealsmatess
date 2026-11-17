@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useOptionalTheme, useTheme } from "@/components/theme-provider";
 import { getTheme, type MascotTheme, type MascotThemeId } from "@/lib/mascot-theme";
+import { normalizeThemeId } from "@/lib/themes";
 
 /**
  * Compatibility bridge for components consuming mascot theme metadata.
@@ -15,7 +16,7 @@ export function useMascotTheme() {
   const theme: MascotTheme = useMemo(() => getTheme(ctx.displayThemeId), [ctx.displayThemeId]);
   const setTheme = useCallback(
     async (id: MascotThemeId) => {
-      await ctx.applyTheme(id);
+      await ctx.applyTheme(normalizeThemeId(id));
     },
     [ctx],
   );
@@ -32,7 +33,7 @@ export function useOptionalMascotTheme() {
   const ctx = useOptionalTheme();
   const setTheme = useCallback(
     async (id: MascotThemeId) => {
-      if (ctx) await ctx.applyTheme(id);
+      if (ctx) await ctx.applyTheme(normalizeThemeId(id));
     },
     [ctx],
   );

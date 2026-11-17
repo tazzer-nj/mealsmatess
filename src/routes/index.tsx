@@ -17,6 +17,7 @@ import {
   Play,
   HeartPulse,
   ChefHat,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import {

@@ -398,17 +398,18 @@ export function OnboardingWizard({
 
   function handleLanguageChange(nextLang: AppLanguageCode) {
     if (auth?.currentUser?.uid !== userId) return;
-    void firebaseData
-      .from("profiles")
-      .update({ locale: nextLang } as never)
-      .eq("id", userId)
-      .then(() => {
-        void queryClient.invalidateQueries({ queryKey: ["locale", userId] });
-        void queryClient.invalidateQueries({ queryKey: ["profile-prefs", userId] });
-      })
-      .catch(() => {
-        // Non-blocking: localStorage and active i18n session remain updated.
-      });
+    void Promise.resolve(
+      firebaseData
+        .from("profiles")
+        .update({ locale: nextLang } as never)
+        .eq("id", userId)
+        .then(() => {
+          void queryClient.invalidateQueries({ queryKey: ["locale", userId] });
+          void queryClient.invalidateQueries({ queryKey: ["profile-prefs", userId] });
+        }),
+    ).catch(() => {
+      // Non-blocking: localStorage and active i18n session remain updated.
+    });
   }
 
   if (loading) {

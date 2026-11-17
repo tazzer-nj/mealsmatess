@@ -15,6 +15,7 @@ import {
   Check,
   Share2,
   MessageCircleQuestion,
+  Expand,
 } from "lucide-react";
 import { toast } from "sonner";
 import { recipeBySlugQuery, myFavoritesQuery } from "@/lib/queries";
@@ -35,6 +36,13 @@ import { ChangeImageButton, ImageCredit } from "@/components/recipe-image-tools"
 import { awardXp } from "@/lib/xp.functions";
 import { useFeatureFlag } from "@/hooks/use-feature-flag";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SubstitutionsButton } from "@/components/substitutions-popover";
 import { RecipeRatings } from "@/components/recipe-ratings";
 
@@ -97,6 +105,7 @@ function RecipePage() {
   const [cookingOpen, setCookingOpen] = useState(false);
   const cookingModeEnabled = useFeatureFlag("cooking_mode", true);
   const [makingImage, setMakingImage] = useState(false);
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(() => new Set());
 
   const requestRecipeImage = useCallback(async () => {
@@ -280,7 +289,7 @@ function RecipePage() {
 
         <div className="mt-5 grid gap-8 md:grid-cols-2">
           <div>
-            <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="group relative overflow-hidden rounded-2xl border border-border bg-card">
               <RecipeImage
                 recipe={r}
                 size="hero"
@@ -288,6 +297,17 @@ function RecipePage() {
                 generating={makingImage}
                 className="aspect-square w-full object-cover"
               />
+              {r.image_url && (
+                <button
+                  type="button"
+                  onClick={() => setImagePreviewOpen(true)}
+                  aria-label={`Preview photo of ${r.name}`}
+                  className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/75 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md transition-colors hover:bg-black"
+                >
+                  <Expand className="h-3.5 w-3.5" />
+                  Preview
+                </button>
+              )}
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
               <ImageCredit source={r.image_source} attribution={r.image_attribution} />
@@ -513,6 +533,23 @@ function RecipePage() {
           />
         </Suspense>
       )}
+      <Dialog open={imagePreviewOpen && !!r.image_url} onOpenChange={setImagePreviewOpen}>
+        <DialogContent className="max-w-xl border-border bg-card text-foreground">
+          <DialogHeader>
+            <DialogTitle>{r.name}</DialogTitle>
+            <DialogDescription>Full-size recipe photo preview</DialogDescription>
+          </DialogHeader>
+          <div className="overflow-hidden rounded-2xl border border-border bg-secondary">
+            <RecipeImage
+              recipe={r}
+              size="hero"
+              priority
+              className="max-h-[70vh] w-full object-cover"
+            />
+          </div>
+          <ImageCredit source={r.image_source} attribution={r.image_attribution} />
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

@@ -37,15 +37,7 @@ function ThemeMiniPreview({
         }}
       >
         <div className="flex items-center gap-1.5">
-          <img
-            src={theme.mascotImage}
-            alt=""
-            width={16}
-            height={16}
-            loading="lazy"
-            decoding="async"
-            className="h-4 w-4 shrink-0 rounded object-cover"
-          />
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: t.periwinkle }} />
           <span
             className="h-1 w-7 rounded-full opacity-85"
             style={{ backgroundColor: t.foreground }}
@@ -57,8 +49,8 @@ function ThemeMiniPreview({
         />
       </div>
 
-      {/* Mini MealMate content body */}
-      <div className="space-y-1.5 p-2 pb-5">
+      {/* Mini MealMate content body with prominent mascot image preview */}
+      <div className="p-2 pb-5">
         <div
           className="flex items-center gap-2 rounded-lg border p-1.5"
           style={{
@@ -66,16 +58,20 @@ function ThemeMiniPreview({
             borderColor: t.border,
           }}
         >
-          <img
-            src={theme.mascotImage}
-            alt=""
-            width={28}
-            height={28}
-            loading="lazy"
-            decoding="async"
-            className="h-7 w-7 shrink-0 rounded-md border object-cover"
-            style={{ borderColor: t.border }}
-          />
+          <div
+            className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border"
+            style={{ borderColor: t.border, backgroundColor: t.secondary }}
+          >
+            <img
+              src={theme.mascotImage}
+              alt=""
+              width={44}
+              height={44}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+            />
+          </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-1">
               <span
@@ -88,10 +84,10 @@ function ThemeMiniPreview({
               className="mt-1 h-1 w-12 rounded-full"
               style={{ backgroundColor: t.mutedForeground, opacity: 0.55 }}
             />
-            <div className="mt-1.5 flex items-center gap-1">
-              <span className="h-2 w-7 rounded" style={{ backgroundColor: t.primary }} />
+            <div className="mt-2 flex items-center gap-1">
+              <span className="h-2.5 w-7 rounded" style={{ backgroundColor: t.primary }} />
               <span
-                className="h-2 w-5 rounded border"
+                className="h-2.5 w-5 rounded border"
                 style={{ backgroundColor: t.secondary, borderColor: t.border }}
               />
             </div>
