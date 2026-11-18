@@ -162,7 +162,7 @@ describe("Theme registry & global ThemeProvider", () => {
     expect(document.documentElement.dataset["appTheme"]).toBe("midnight-pro");
     expect(localStorage.getItem("mealmate-theme")).toBe("dark-premium");
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(
-      "#060b16",
+      "#0d1126",
     );
 
     view.unmount();
@@ -255,21 +255,23 @@ describe("Theme registry & global ThemeProvider", () => {
         "/mascots/mascot-cherry.webp",
       ]),
     );
-    expect(classicGreen.tokens.primary).toBe("#13341b");
-    expect(classicGreen.tokens.periwinkle).toBe("#3d7c1b");
+    expect(classicGreen.tokens.primary).toBe("oklch(0.61 0.16 139)");
+    expect(classicGreen.tokens.periwinkle).toBe("oklch(0.61 0.16 139)");
     expect(midnight.mascotImage).toBe("/mascots/mascot-midnight.webp");
-    expect(midnight.tokens.periwinkle).toBe("#738cff");
+    expect(midnight.tokens.periwinkle).toBe("oklch(0.7 0.15 275)");
     expect(obsidian.mascotImage).toBe("/mascots/mascot-cherry.webp");
-    expect(obsidian.tokens.periwinkle).toBe("#f43f5e");
+    expect(obsidian.tokens.periwinkle).toBe("oklch(0.7 0.17 12)");
   });
 
   it("restores saved account theme automatically across devices and avoids flash via THEME_BOOT_SCRIPT", async () => {
     localStorage.setItem(THEME_V2_STORAGE_KEY, "ocean-blue");
     window.eval(THEME_BOOT_SCRIPT);
     expect(document.documentElement.dataset["appTheme"]).toBe("ocean-blue");
-    expect(document.documentElement.style.getPropertyValue("--background")).toBe("#f2f7fb");
+    expect(document.documentElement.style.getPropertyValue("--background")).toBe(
+      "oklch(0.97 0.02 225)",
+    );
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(
-      "#f2f7fb",
+      "#eff6fc",
     );
 
     mockUseSession.mockReturnValue({
@@ -291,7 +293,9 @@ describe("Theme registry & global ThemeProvider", () => {
     await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByTestId("active-id")).toHaveTextContent("midnight-pro"));
     expect(localStorage.getItem(THEME_V2_STORAGE_KEY)).toBe("midnight-pro");
-    expect(document.documentElement.style.getPropertyValue("--background")).toBe("#060b16");
+    expect(document.documentElement.style.getPropertyValue("--background")).toBe(
+      "oklch(0.13 0.04 275)",
+    );
   });
 
   it("explains why unauthenticated users cannot save themes to an account", async () => {

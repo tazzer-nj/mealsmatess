@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MiaLoadingCard } from "@/components/mia-loading-card";
 import {
   Sheet,
   SheetContent,
@@ -117,7 +118,7 @@ function sectionTitle(title: string, subtitle?: string) {
   return (
     <div className="mb-3 flex items-end justify-between gap-4 px-4">
       <div className="min-w-0">
-        <h2 className="text-xl font-medium tracking-tight text-foreground">{title}</h2>
+        <h2 className="font-sans text-xl font-extrabold tracking-tight">{title}</h2>
         {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
       </div>
       <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -270,42 +271,38 @@ function RestaurantsPage() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background pb-36 text-foreground">
-      <header className="sticky top-0 z-30 border-b border-border bg-[var(--header-background)] px-3.5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl sm:px-4">
+    <div className="marketplace-dark min-h-screen overflow-x-hidden bg-background pb-36 text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl">
         <div className="mx-auto max-w-3xl">
           <Sheet>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
-                className="h-auto max-w-full justify-start rounded-xl px-2 py-1.5 text-left hover:bg-secondary"
+                className="h-auto max-w-full justify-start rounded-2xl px-2 py-1.5 text-left"
               >
-                <MapPin className="h-5 w-5 shrink-0 text-[var(--periwinkle)]" />
+                <MapPin className="h-5 w-5 shrink-0 text-primary" />
                 <span className="min-w-0">
-                  <span className="block text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  <span className="block text-[10px] font-semibold uppercase text-muted-foreground">
                     Deliver to
                   </span>
-                  <span className="block truncate text-sm font-medium text-foreground">
-                    {locationLabel}
-                  </span>
+                  <span className="block truncate text-sm font-bold">{locationLabel}</span>
                 </span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
               </Button>
             </SheetTrigger>
             <SheetContent
               side="bottom"
-              className="rounded-t-3xl border-border bg-card text-foreground pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+              className="marketplace-dark rounded-t-3xl border-border bg-card pb-[max(1.5rem,env(safe-area-inset-bottom))]"
             >
               <SheetHeader className="text-left">
-                <SheetTitle className="text-xl font-medium tracking-tight text-foreground">
-                  Delivery location
-                </SheetTitle>
-                <SheetDescription className="text-muted-foreground">
+                <SheetTitle className="font-sans text-xl font-bold">Delivery location</SheetTitle>
+                <SheetDescription>
                   Use your position or enter an area to personalise nearby restaurants.
                 </SheetDescription>
               </SheetHeader>
               <div className="mt-5 space-y-3">
                 <Button
-                  className="h-12 w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="h-12 w-full rounded-xl"
                   onClick={requestLocation}
                   disabled={geoState === "prompting"}
                 >
@@ -318,12 +315,12 @@ function RestaurantsPage() {
                     value={manualLocation}
                     onChange={(event) => setManualLocation(event.target.value)}
                     placeholder="Suburb, address or landmark"
-                    className="h-12 rounded-xl border-border bg-secondary pl-10 text-foreground"
+                    className="h-12 rounded-xl bg-muted pl-10"
                   />
                 </div>
                 <Button
                   variant="outline"
-                  className="h-11 w-full rounded-xl border-border bg-secondary text-foreground"
+                  className="h-11 w-full rounded-xl"
                   disabled={!manualLocation.trim()}
                   onClick={() => {
                     setLocationLabel(manualLocation.trim());
@@ -342,22 +339,22 @@ function RestaurantsPage() {
             </SheetContent>
           </Sheet>
           <div className="relative mt-2">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search restaurants, dishes"
               aria-label="Search restaurants and dishes"
-              className="h-12 rounded-xl border-border bg-card pl-11 pr-12 text-sm text-foreground placeholder:text-muted-foreground"
+              className="h-13 rounded-2xl border-border bg-card pl-12 pr-12 text-base shadow-none focus-visible:ring-2"
             />
             <Button
               size="icon"
               variant="ghost"
-              className="absolute right-1.5 top-1/2 h-9 w-9 -translate-y-1/2 rounded-lg text-muted-foreground hover:text-foreground"
+              className="absolute right-1.5 top-1/2 h-10 w-10 -translate-y-1/2 rounded-xl"
               aria-label="Voice search"
               onClick={() => toast.info("Voice search is not available on this device")}
             >
-              <Mic className="h-4 w-4" />
+              <Mic className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -365,7 +362,7 @@ function RestaurantsPage() {
 
       <main className="mx-auto max-w-3xl space-y-8 pt-5">
         <section aria-label="Food categories">
-          <div className="no-scrollbar flex snap-x gap-3 overflow-x-auto px-4 pb-1">
+          <div className="no-scrollbar flex snap-x gap-4 overflow-x-auto px-4 pb-1">
             {DISCOVERY_CATEGORIES.slice(0, 8).map((item, index) => {
               const image =
                 dishes[index % Math.max(dishes.length, 1)]?.image_url ||
@@ -374,15 +371,15 @@ function RestaurantsPage() {
                 <Button
                   key={item.key}
                   variant="ghost"
-                  className="h-auto w-20 shrink-0 snap-start flex-col gap-2 rounded-2xl p-0 hover:bg-transparent"
+                  className="h-auto w-20 shrink-0 snap-start flex-col gap-2 rounded-2xl p-0"
                   onClick={() => setCategory(category === item.key ? null : item.key)}
                   aria-pressed={category === item.key}
                 >
                   <span
                     className={cn(
-                      "grid h-16 w-16 place-items-center overflow-hidden rounded-2xl border bg-card text-base font-semibold text-foreground transition-all active:scale-95",
+                      "grid h-16 w-16 place-items-center overflow-hidden rounded-full border bg-card text-lg font-black text-primary transition-transform active:scale-95",
                       category === item.key
-                        ? "border-primary ring-1 ring-primary"
+                        ? "border-primary bg-primary/15 ring-2 ring-primary/30"
                         : "border-border",
                     )}
                   >
@@ -395,9 +392,7 @@ function RestaurantsPage() {
                   <span
                     className={cn(
                       "w-full whitespace-normal text-center text-xs",
-                      category === item.key
-                        ? "font-semibold text-foreground"
-                        : "text-muted-foreground",
+                      category === item.key ? "font-bold text-primary" : "text-foreground",
                     )}
                   >
                     {item.label}
@@ -417,11 +412,7 @@ function RestaurantsPage() {
               key={item.key}
               size="sm"
               variant={filter === item.key ? "default" : "outline"}
-              className={`h-9 shrink-0 rounded-xl px-3.5 text-xs font-medium shadow-none ${
-                filter === item.key
-                  ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground"
-              }`}
+              className="h-9 shrink-0 rounded-full px-4 shadow-none"
               onClick={() => setFilter(item.key)}
             >
               <SlidersHorizontal className={cn("h-3.5 w-3.5", item.key !== "all" && "hidden")} />
@@ -433,19 +424,13 @@ function RestaurantsPage() {
         {isLoading ? (
           <MarketplaceSkeleton />
         ) : isError ? (
-          <div className="mx-4 rounded-2xl border border-destructive/30 bg-card p-6 text-center">
+          <div className="mx-4 rounded-2xl border border-destructive/40 bg-card p-6 text-center">
             <Store className="mx-auto h-8 w-8 text-muted-foreground" />
-            <h2 className="mt-3 text-lg font-medium text-foreground">
-              Restaurants didn&apos;t load
-            </h2>
+            <h2 className="mt-3 font-sans text-lg font-bold">Restaurants didn&apos;t load</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Check your connection and try again.
             </p>
-            <Button
-              className="mt-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => refetch()}
-              disabled={isFetching}
-            >
+            <Button className="mt-4 rounded-full" onClick={() => refetch()} disabled={isFetching}>
               <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
               Try again
             </Button>
@@ -479,7 +464,7 @@ function RestaurantsPage() {
                     params={{ slug: restaurant.slug }}
                     className="w-21 shrink-0 snap-start text-center"
                   >
-                    <span className="mx-auto grid h-18 w-18 place-items-center overflow-hidden rounded-2xl border border-border bg-card">
+                    <span className="mx-auto grid h-18 w-18 place-items-center overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                       {restaurant.logo_url ? (
                         <img
                           src={restaurant.logo_url}
@@ -487,12 +472,12 @@ function RestaurantsPage() {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <span className="text-lg font-semibold text-foreground">
+                        <span className="text-xl font-black text-primary">
                           {restaurant.name.slice(0, 2).toUpperCase()}
                         </span>
                       )}
                     </span>
-                    <span className="mt-2 block truncate text-xs font-medium text-foreground">
+                    <span className="mt-2 block truncate text-xs font-semibold">
                       {restaurant.name}
                     </span>
                     {index === 0 && (
@@ -570,14 +555,14 @@ function RestaurantsPage() {
 
       {count > 0 && (
         <Button
-          className="fixed inset-x-4 bottom-[calc(var(--app-nav-h,4.25rem)+14px)] z-30 mx-auto h-12 max-w-md justify-between rounded-xl bg-primary px-5 text-primary-foreground shadow-xl hover:bg-primary/90"
+          className="fixed inset-x-4 bottom-[calc(var(--app-nav-h,4rem)+12px)] z-30 mx-auto h-14 max-w-md justify-between rounded-2xl px-5 shadow-2xl"
           onClick={() => navigate({ to: "/checkout" })}
         >
-          <span className="flex items-center gap-2 font-medium">
-            <ShoppingBag className="h-4 w-4" />
+          <span className="flex items-center gap-2 font-bold">
+            <ShoppingBag className="h-5 w-5" />
             {count} item{count === 1 ? "" : "s"}
           </span>
-          <span className="font-medium">{money(subtotal, cart?.currency)} · View cart</span>
+          <span className="font-black">{money(subtotal, cart?.currency)} · View cart</span>
         </Button>
       )}
     </div>
@@ -611,7 +596,7 @@ function PromoCarousel({
           const restaurant = restaurants.get(promo.restaurant_id);
           return (
             <article key={promo.id} className="w-full shrink-0 snap-center px-4">
-              <div className="relative h-52 overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="relative h-52 overflow-hidden rounded-3xl border border-border bg-card">
                 <img
                   src={restaurant?.cover_image_url || FALLBACKS[(index + 3) % FALLBACKS.length]}
                   alt="Promotional food"
@@ -619,19 +604,15 @@ function PromoCarousel({
                 />
                 <div className="marketplace-promo-overlay absolute inset-0" />
                 <div className="absolute inset-y-0 left-0 flex w-3/4 flex-col justify-center p-6">
-                  <span className="mb-2 text-[11px] font-medium uppercase tracking-wider text-white/75">
+                  <span className="mb-2 text-xs font-bold uppercase text-primary">
                     {promoHeadline(promo, restaurant?.currency)}
                   </span>
-                  <h2 className="text-2xl font-medium tracking-tight text-white">{promo.title}</h2>
-                  <p className="mt-1 line-clamp-2 text-sm text-white/80">
+                  <h2 className="font-sans text-2xl font-black text-market-hero">{promo.title}</h2>
+                  <p className="mt-1 line-clamp-2 text-sm text-market-hero/75">
                     {promo.description || restaurant?.name || "Fresh flavour, delivered."}
                   </p>
                   {restaurant && (
-                    <Button
-                      asChild
-                      size="sm"
-                      className="mt-4 w-fit rounded-xl bg-white text-[#080808] hover:bg-white/90"
-                    >
+                    <Button asChild size="sm" className="mt-4 w-fit rounded-full">
                       <Link to="/restaurant/$slug" params={{ slug: restaurant.slug }}>
                         Order now <ChevronRight className="ml-1 h-3.5 w-3.5" />
                       </Link>
@@ -649,7 +630,7 @@ function PromoCarousel({
             key={banner.id}
             variant="ghost"
             size="icon"
-            className="h-5 w-5 rounded-lg p-0"
+            className="h-5 w-5 rounded-full p-0"
             aria-label={`Show offer ${index + 1}`}
             onClick={() => {
               setSlide(index);
@@ -662,7 +643,7 @@ function PromoCarousel({
             <span
               className={cn(
                 "h-1.5 rounded-full transition-all",
-                slide === index ? "w-5 bg-foreground" : "w-1.5 bg-border",
+                slide === index ? "w-5 bg-primary" : "w-1.5 bg-muted-foreground/40",
               )}
             />
           </Button>
@@ -704,54 +685,52 @@ function DishSection({
               className="w-44 shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card"
             >
               <Link to="/restaurant/$slug" params={{ slug: restaurant.slug }} className="block">
-                <div className="relative h-32 overflow-hidden bg-secondary">
+                <div className="relative h-32 overflow-hidden bg-muted">
                   <img
                     src={dish.image_url || FALLBACKS[index % FALLBACKS.length]}
                     alt={dish.name}
                     loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
                   />
-                  <span className="absolute left-2 top-2 rounded-lg bg-black/75 px-2 py-1 text-[10px] font-medium text-white backdrop-blur">
-                    <Clock3 className="mr-1 inline h-3 w-3 text-white/80" />
+                  <span className="absolute left-2 top-2 rounded-full bg-background/90 px-2 py-1 text-[10px] font-bold">
+                    <Clock3 className="mr-1 inline h-3 w-3" />
                     {restaurant.delivery_estimate_minutes} min
                   </span>
                 </div>
                 <div className="px-3 pt-3">
-                  <p className="truncate text-sm font-medium text-foreground">{dish.name}</p>
+                  <p className="truncate text-sm font-bold">{dish.name}</p>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">{restaurant.name}</p>
-                  <p className="mt-2 text-sm font-semibold text-foreground">
+                  <p className="mt-2 text-sm font-black">
                     {money(dish.price, restaurant.currency)}
                   </p>
                 </div>
               </Link>
-              <div className="flex h-12 items-center justify-end px-2.5 pb-2">
+              <div className="flex h-12 items-center justify-end px-2 pb-2">
                 {quantity > 0 ? (
                   <div className="flex items-center gap-1">
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8 rounded-lg text-foreground hover:bg-secondary"
+                      className="h-8 w-8 rounded-full"
                       onClick={() => setQuantity(dish.id, quantity - 1)}
                       aria-label={`Remove one ${dish.name}`}
                     >
-                      <Minus className="h-3.5 w-3.5" />
+                      <Minus />
                     </Button>
-                    <span className="w-5 text-center text-sm font-medium text-foreground">
-                      {quantity}
-                    </span>
+                    <span className="w-5 text-center text-sm font-bold">{quantity}</span>
                     <Button
                       size="icon"
-                      className="h-8 w-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+                      className="h-8 w-8 rounded-full"
                       onClick={() => setQuantity(dish.id, quantity + 1)}
                       aria-label={`Add one ${dish.name}`}
                     >
-                      <Plus className="h-3.5 w-3.5" />
+                      <Plus />
                     </Button>
                   </div>
                 ) : (
                   <Button
                     size="sm"
-                    className="h-8 rounded-lg bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                    className="h-8 rounded-full"
                     onClick={() => addDish(dish)}
                     disabled={!restaurant.is_accepting_orders}
                   >
@@ -793,7 +772,7 @@ function RestaurantSection({
               key={restaurant.id}
               className="w-[82%] max-w-80 shrink-0 snap-start overflow-hidden rounded-2xl border border-border bg-card"
             >
-              <div className="relative h-40 overflow-hidden bg-secondary">
+              <div className="relative h-40 overflow-hidden bg-muted">
                 <Link to="/restaurant/$slug" params={{ slug: restaurant.slug }}>
                   <img
                     src={restaurant.cover_image_url || FALLBACKS[(index + 5) % FALLBACKS.length]}
@@ -805,7 +784,7 @@ function RestaurantSection({
                 <Button
                   size="icon"
                   variant="secondary"
-                  className="absolute right-2 top-2 h-9 w-9 rounded-xl bg-black/75 text-white hover:bg-black/90"
+                  className="absolute right-2 top-2 h-9 w-9 rounded-full bg-background/90"
                   onClick={() => toggle(restaurant.id)}
                   aria-label={
                     isFavourite(restaurant.id)
@@ -814,11 +793,14 @@ function RestaurantSection({
                   }
                 >
                   <Heart
-                    className={cn("h-4 w-4", isFavourite(restaurant.id) && "fill-white text-white")}
+                    className={cn(
+                      "h-4 w-4",
+                      isFavourite(restaurant.id) && "fill-primary text-primary",
+                    )}
                   />
                 </Button>
                 {hasDeal && (
-                  <span className="absolute bottom-2 left-2 rounded-lg bg-black/80 px-2.5 py-1 text-[10px] font-semibold text-white">
+                  <span className="absolute bottom-2 left-2 rounded-full bg-primary px-2.5 py-1 text-[10px] font-black text-primary-foreground">
                     {promotion ? promoHeadline(promotion, restaurant.currency) : "DEAL"}
                   </span>
                 )}
@@ -826,15 +808,13 @@ function RestaurantSection({
               <Link to="/restaurant/$slug" params={{ slug: restaurant.slug }} className="block p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate text-base font-medium text-foreground">
-                      {restaurant.name}
-                    </h3>
+                    <h3 className="truncate font-sans text-base font-bold">{restaurant.name}</h3>
                     <p className="mt-0.5 truncate text-xs text-muted-foreground">
                       {restaurant.cuisine || "Local favourites"}
                     </p>
                   </div>
-                  <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-foreground">
-                    <Star className="h-3.5 w-3.5 fill-current text-foreground" />
+                  <span className="flex shrink-0 items-center gap-1 text-sm font-bold">
+                    <Star className="h-3.5 w-3.5 fill-primary text-primary" />
                     {Number(restaurant.avg_rating || 0).toFixed(1)}
                   </span>
                 </div>
@@ -861,7 +841,7 @@ function RestaurantSection({
                     className={
                       open === false || !restaurant.is_accepting_orders
                         ? "text-destructive"
-                        : "text-[var(--positive)]"
+                        : "text-primary"
                     }
                   >
                     {open === false
@@ -886,29 +866,31 @@ function RestaurantSection({
 function MarketplaceSkeleton() {
   return (
     <div className="space-y-8 px-4" aria-label="Loading restaurants">
-      <Skeleton className="h-52 rounded-2xl bg-secondary" />
+      <MiaLoadingCard
+        delayMs={600}
+        label="Mia is scouting nearby kitchens and 20% off dining specials..."
+      />
+      <Skeleton className="h-52 rounded-3xl" />
       <div className="flex gap-3">
-        <Skeleton className="h-24 w-20 rounded-2xl bg-secondary" />
-        <Skeleton className="h-24 w-20 rounded-2xl bg-secondary" />
-        <Skeleton className="h-24 w-20 rounded-2xl bg-secondary" />
+        <Skeleton className="h-24 w-20 rounded-2xl" />
+        <Skeleton className="h-24 w-20 rounded-2xl" />
+        <Skeleton className="h-24 w-20 rounded-2xl" />
       </div>
       <div className="flex gap-4">
-        <Skeleton className="h-64 w-72 shrink-0 rounded-2xl bg-secondary" />
-        <Skeleton className="h-64 w-72 shrink-0 rounded-2xl bg-secondary" />
+        <Skeleton className="h-64 w-72 shrink-0 rounded-2xl" />
+        <Skeleton className="h-64 w-72 shrink-0 rounded-2xl" />
       </div>
     </div>
   );
 }
+
 function EmptyResults({ clear }: { clear: () => void }) {
   return (
     <div className="mx-4 rounded-2xl border border-dashed border-border bg-card p-8 text-center">
       <Search className="mx-auto h-9 w-9 text-muted-foreground" />
-      <h2 className="mt-3 text-lg font-medium text-foreground">Nothing matches yet</h2>
+      <h2 className="mt-3 font-sans text-lg font-bold">Nothing matches yet</h2>
       <p className="mt-1 text-sm text-muted-foreground">Try another dish, cuisine or filter.</p>
-      <Button
-        className="mt-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-        onClick={clear}
-      >
+      <Button className="mt-4 rounded-full" onClick={clear}>
         Clear filters
       </Button>
     </div>

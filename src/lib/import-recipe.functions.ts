@@ -184,6 +184,8 @@ export const importRecipeFromUrl = createServerFn({ method: "POST" })
       .select("id,slug")
       .single();
     if (error) throw new Error(error.message);
+    const { invalidateRecipeCatalogCache } = await import("@/lib/recipe-catalog.functions");
+    invalidateRecipeCatalogCache();
 
     // Auto-favorite so the recipe lands in the Cookbook immediately.
     await firebaseAdmin
@@ -223,6 +225,8 @@ export const updateRecipeBasics = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .eq("created_by", context.userId);
     if (error) throw new Error(error.message);
+    const { invalidateRecipeCatalogCache } = await import("@/lib/recipe-catalog.functions");
+    invalidateRecipeCatalogCache();
     return { ok: true };
   });
 
@@ -237,5 +241,7 @@ export const deleteImportedRecipe = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .eq("recipe_id", data.id);
     await firebaseAdmin.from("recipes").delete().eq("id", data.id).eq("created_by", context.userId);
+    const { invalidateRecipeCatalogCache } = await import("@/lib/recipe-catalog.functions");
+    invalidateRecipeCatalogCache();
     return { ok: true };
   });

@@ -65,15 +65,10 @@ export function AppHeader() {
   return (
     <header
       id="app-header"
-      className="fixed inset-x-0 top-0 z-40 border-b border-border bg-[var(--header-background)] pt-[env(safe-area-inset-top)] backdrop-blur-md"
+      className="fixed inset-x-0 top-0 z-40 bg-background/95 pt-[env(safe-area-inset-top)] backdrop-blur supports-[backdrop-filter]:bg-background/80"
     >
-      <div className="mx-auto grid h-16 max-w-3xl grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:gap-3 sm:px-5">
-        <Button
-          asChild
-          variant="ghost"
-          size="icon"
-          className="size-10 rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
-        >
+      <div className="mx-auto grid h-16 max-w-3xl grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 px-5">
+        <Button asChild variant="ghost" size="icon" className="size-11 rounded-full">
           <Link to="/" aria-label="Back home">
             <ArrowLeft />
           </Link>
@@ -83,26 +78,26 @@ export function AppHeader() {
           className="flex min-w-0 items-center justify-center gap-2"
           aria-label="MealMate home"
         >
-          {/* The AI chat shows the mascot itself — never show it twice on one page. */}
+          {/* The AI chat shows the mascot itself; never show it twice on one page. */}
           {pathname.startsWith("/chat") ? (
-            <span className="text-lg font-medium tracking-tight text-foreground">MealMate</span>
+            <span className="font-display text-2xl leading-none text-foreground">MealMate</span>
           ) : (
-            <MealMateLogo imageClassName="size-9 rounded-xl object-contain" />
+            <MealMateLogo imageClassName="size-9 rounded-full object-contain" />
           )}
         </Link>
 
         {user ? (
-          <div className="flex items-center justify-end gap-1.5">
+          <div className="flex items-center justify-end gap-1">
             <Button
               variant="ghost"
               size="icon"
-              className="relative size-10 rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
+              className="relative size-11 rounded-full"
               aria-label={`Notifications${(unread.data?.unreadCount ?? 0) > 0 ? `, ${unread.data?.unreadCount} unread` : ""}`}
               onClick={() => navigate({ to: "/notifications" })}
             >
               <Bell aria-hidden="true" className="h-4 w-4" />
               {(unread.data?.unreadCount ?? 0) > 0 && (
-                <span className="absolute right-1 top-1 flex min-w-4 items-center justify-center rounded-md bg-[var(--periwinkle)] px-1 text-[10px] font-semibold leading-4 text-[var(--primary-foreground)]">
+                <span className="absolute right-1.5 top-1.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground">
                   {(unread.data?.unreadCount ?? 0) > 99 ? "99+" : unread.data?.unreadCount}
                 </span>
               )}
@@ -112,16 +107,13 @@ export function AppHeader() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-10 rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  className="size-11 rounded-full"
                   aria-label="Account menu"
                 >
-                  <UserRound className="h-4 w-4" />
+                  <UserRound />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="border-border bg-popover text-popover-foreground"
-              >
+              <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => navigate({ to: "/profile" })}>
                   Profile
                 </DropdownMenuItem>
@@ -148,7 +140,7 @@ export function AppHeader() {
         ) : (
           <Button
             size="sm"
-            className="rounded-xl bg-foreground px-3 text-xs font-medium text-background hover:opacity-90"
+            className="rounded-full px-3 text-xs"
             onClick={() => navigate({ to: "/auth" })}
           >
             Sign in

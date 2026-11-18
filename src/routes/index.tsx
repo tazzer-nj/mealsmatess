@@ -11,13 +11,19 @@ import {
   Loader2,
   User as UserIcon,
   MessageCircleQuestion,
-  ShoppingCart,
   Calendar,
   ChevronRight,
   Play,
   HeartPulse,
-  ChefHat,
-  Sparkles,
+  Coffee,
+  Utensils,
+  Flame,
+  Cake,
+  Cookie,
+  Compass,
+  Salad,
+  Leaf,
+  LayoutGrid,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -32,7 +38,9 @@ import { useSession } from "@/hooks/use-session";
 import { firebaseData } from "@/lib/firebase-data";
 import { getContinueCooking } from "@/lib/continue-cooking";
 import { TrendingCard } from "@/components/recipe-card";
+import { MiaLoadingCard } from "@/components/mia-loading-card";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { XpChip } from "@/components/xp-chip";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlanStatusCard } from "@/components/plan-status-card";
@@ -43,33 +51,21 @@ import { personalize } from "@/lib/preferences";
 export const Route = createFileRoute("/")({
   head: ({ matches }) => ({
     meta: [
-      {
-        title: matches[0]?.context.isHub
-          ? "MealMate Hub | Your restaurant workspace"
-          : "MealMate | Cook the world, one recipe at a time",
-      },
+      { title: "MealMate · Home" },
       {
         name: "description",
-        content: matches[0]?.context.isHub
-          ? "Manage your restaurant menu, photos and orders in MealMate Hub."
-          : "Discover South African favourites and global recipes, then plan, shop, and cook with MealMate.",
+        content: "Discover tailored recipes, pantry recommendations, and AI cooking guidance.",
       },
-      {
-        property: "og:title",
-        content: matches[0]?.context.isHub
-          ? "MealMate Hub | Your restaurant workspace"
-          : "MealMate | Cook the world, one recipe at a time",
-      },
-      {
-        property: "og:description",
-        content: matches[0]?.context.isHub
-          ? "Manage your restaurant menu, photos and orders in MealMate Hub."
-          : "Discover South African favourites and global recipes, then plan, shop, and cook with MealMate.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
+  loader: async ({ context }) => {
+    await Promise.all([
+      context.queryClient.ensureQueryData(trendingRecipesQuery()),
+      context.queryClient.ensureQueryData(southAfricanFavoritesQuery()),
+      context.queryClient.ensureQueryData(myFavoritesQuery()),
+      context.queryClient.ensureQueryData(myPreferencesQuery),
+    ]).catch(() => undefined);
+  },
   component: HomeSurface,
 });
 
@@ -79,14 +75,14 @@ function HomeSurface() {
 }
 
 const CATEGORY_PILLS = [
-  { label: "Breakfast", emoji: "🍳", search: { c: "Breakfast" } },
-  { label: "Lunch", emoji: "🥣", search: { c: "Lunch" } },
-  { label: "Dinner", emoji: "🍛", search: { c: "Dinner" } },
-  { label: "Dessert", emoji: "🍰", search: { c: "Dessert" } },
-  { label: "Snacks", emoji: "🍿", search: { c: "Snacks" } },
-  { label: "South African", emoji: "🇿🇦", search: { c: "South African Favorites" } },
-  { label: "Healthy", emoji: "🌿", search: { c: "Healthy Meals" } },
-  { label: "Vegan", emoji: "🌱", search: { c: "Vegan" } },
+  { label: "Breakfast", icon: Coffee, search: { c: "Breakfast" } },
+  { label: "Lunch", icon: Utensils, search: { c: "Lunch" } },
+  { label: "Dinner", icon: Flame, search: { c: "Dinner" } },
+  { label: "Dessert", icon: Cake, search: { c: "Dessert" } },
+  { label: "Snacks", icon: Cookie, search: { c: "Snacks" } },
+  { label: "South African", icon: Compass, search: { c: "South African Favorites" } },
+  { label: "Healthy", icon: Salad, search: { c: "Healthy Meals" } },
+  { label: "Vegan", icon: Leaf, search: { c: "Vegan" } },
 ] as const;
 
 function greeting() {
@@ -99,66 +95,71 @@ function greeting() {
 function Index() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useSession();
+  const { user, loading: sessionLoading } = useSession();
   const { preferences, hasPreferences } = usePreferences();
   const {
     data: trendingRaw = [],
     isLoading: trendingLoading,
     error: trendingError,
-  } = useQuery({ ...trendingRecipesQuery(), enabled: !!user });
+  } = useQuery(trendingRecipesQuery());
+
   const {
     data: southAfricanRaw = [],
     isLoading: southAfricanLoading,
     error: southAfricanError,
-  } = useQuery({ ...southAfricanFavoritesQuery(), enabled: !!user });
-  const recipeText = (r: RecipeRecord) => [
-    String(r.name),
-    r.description == null ? null : String(r.description),
-    r.cuisine == null ? null : String(r.cuisine),
-    r.category == null ? null : String(r.category),
-    Array.isArray(r.diet_tags) ? r.diet_tags.map(String) : [],
-  ];
-  const trending = personalize(hasPreferences ? preferences : null, trendingRaw ?? [], recipeText);
-  const southAfrican = southAfricanRaw
-    ? personalize(hasPreferences ? preferences : null, southAfricanRaw, recipeText)
-    : southAfricanRaw;
-  const { data: favorites } = useQuery({ ...myFavoritesQuery(), enabled: !!user });
+  } = useQuery(southAfricanFavoritesQuery());
+
+  const { data: favorites } = useQuery(myFavoritesQuery());
+  const favoriteIds = new Set(favorites?.map((f) => f.recipe_id) ?? []);
+
+  const { data: continueCooking } = useQuery({
+    queryKey: ["continue-cooking", user?.id],
+    queryFn: () => getContinueCooking(),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  const trending = personalize(hasPreferences ? preferences : null, trendingRaw, (r) => [
+    r.name,
+    r.cuisine,
+    r.difficulty,
+  ]);
+  const southAfrican = personalize(hasPreferences ? preferences : null, southAfricanRaw, (r) => [
+    r.name,
+    r.cuisine,
+  ]);
+
   const [query, setQuery] = useState("");
-  const [busy, setBusy] = useState<null | "search" | "surprise">(null);
-  const continueCooking = getContinueCooking();
-
-  const favoriteIds = new Set((favorites ?? []).map((f) => f.recipe_id));
-
-  const firstName = user?.displayName?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "there";
+  const [busy, setBusy] = useState<"search" | "surprise" | null>(null);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    if (!query.trim() || busy) return;
-    const term = query.trim();
-    await navigate({ to: "/recipes", search: { q: term } });
-    // Use the same explicit photo lookup as a search submitted from the library.
-    void queryClient
-      .fetchQuery(recipesByCategoryQuery(undefined, term))
-      .then((matches) => loadRecipeSearchImages(matches, queryClient))
-      .catch(() => {});
+    const q = query.trim();
+    if (!q) return;
+    setBusy("search");
+    try {
+      await loadRecipeSearchImages(q);
+      await navigate({ to: "/recipes", search: { q } });
+    } catch {
+      toast.error("Could not load recipes right now.");
+    } finally {
+      setBusy(null);
+    }
   }
 
-  async function handleSurprise() {
+  async function handleSurpriseMe() {
     if (busy) return;
     setBusy("surprise");
     try {
-      const { slug } = await surpriseMe();
-      navigate({ to: "/recipe/$slug", params: { slug } });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      const authError = /AUTH_REQUIRED|Unauthorized|Invalid user session|No authorization/i.test(
-        message,
-      );
-      toast.error(authError ? "Your session expired" : "The chef is busy", {
-        description: authError
-          ? "Please sign in again to cook a recipe."
-          : "The kitchen assistant is unavailable right now. Please try again.",
-      });
+      const res = await surpriseMe();
+      if (res?.slug) {
+        await queryClient.invalidateQueries({ queryKey: ["recipes"] });
+        await navigate({ to: "/recipe/$slug", params: { slug: res.slug } });
+        return;
+      }
+      throw new Error("No recipe returned");
+    } catch {
+      toast.error("Mia couldn't generate a surprise recipe right now. Try again in a moment.");
     } finally {
       setBusy(null);
     }
@@ -166,38 +167,47 @@ function Index() {
 
   async function toggleFavorite(recipeId: string) {
     if (!user) {
-      toast.info("Sign in to save favorites");
+      toast.error("Sign in to save favorite recipes.");
+      await navigate({ to: "/auth" });
       return;
     }
-    if (favoriteIds.has(recipeId)) {
-      await firebaseData
-        .from("favorites")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("recipe_id", recipeId);
-    } else {
-      await firebaseData.from("favorites").insert({ user_id: user.id, recipe_id: recipeId });
+    const isFav = favoriteIds.has(recipeId);
+    try {
+      if (isFav) {
+        await firebaseData
+          .from("favorites")
+          .delete()
+          .eq("recipe_id", recipeId)
+          .eq("user_id", user.id);
+        toast.success("Removed from favorites");
+      } else {
+        await firebaseData.from("favorites").insert({ recipe_id: recipeId, user_id: user.id });
+        toast.success("Added to favorites");
+      }
+      await queryClient.invalidateQueries({ queryKey: ["favorites", user.id] });
+    } catch {
+      toast.error("Could not update favorites.");
     }
-    queryClient.invalidateQueries({ queryKey: ["favorites"] });
   }
 
+  const firstName = user?.displayName?.split(" ")[0] || user?.email?.split("@")[0] || "Chef";
+
   return (
-    <main className="flex-1 overflow-x-hidden bg-background pb-8 text-foreground">
+    <main className="flex min-h-full flex-col pb-10">
       {/* Greeting header */}
       <div className="flex items-center justify-between px-4 pt-6">
         <div>
           <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             {greeting()}
           </p>
-          <h1 className="font-display text-4xl leading-tight">
-            Hi {firstName} <span aria-hidden="true">👋</span>
-          </h1>
+          <h1 className="font-display text-4xl leading-tight">Hi {firstName}</h1>
         </div>
         <div className="flex items-center gap-2">
+          <XpChip />
           <ThemeToggle />
           <Link
             to="/profile"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition-all duration-200 hover:scale-105 hover:bg-secondary/80 active:scale-95"
             aria-label="Profile"
           >
             <UserIcon className="h-4 w-4" />
@@ -214,13 +224,13 @@ function Index() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search recipes, ingredients, cuisines…"
             maxLength={200}
-            className="h-14 rounded-full border-none bg-card pl-11 pr-14 text-base shadow-sm"
+            className="h-14 rounded-full border-none bg-card pl-11 pr-14 text-base shadow-sm transition-all duration-200 focus:shadow-md"
           />
           <button
             type="submit"
             disabled={busy !== null}
             aria-label="Search"
-            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-all duration-200 hover:scale-105 hover:bg-muted hover:text-foreground active:scale-95"
           >
             {busy === "search" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -234,22 +244,25 @@ function Index() {
       {/* Category chips */}
       <section className="px-4 pt-5">
         <div className="flex flex-wrap gap-2">
-          {CATEGORY_PILLS.map((c) => (
-            <Link
-              key={c.label}
-              to="/recipes"
-              search={c.search}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
-            >
-              <span aria-hidden="true">{c.emoji}</span>
-              {c.label}
-            </Link>
-          ))}
+          {CATEGORY_PILLS.map((c) => {
+            const Icon = c.icon;
+            return (
+              <Link
+                key={c.label}
+                to="/recipes"
+                search={c.search}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted hover:shadow-sm active:scale-95"
+              >
+                <Icon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                {c.label}
+              </Link>
+            );
+          })}
           <Link
             to="/recipes"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted hover:shadow-sm active:scale-95"
           >
-            <span aria-hidden="true">⊞⊞</span>
+            <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
             More
           </Link>
         </div>
@@ -268,34 +281,30 @@ function Index() {
             <h2 className="mt-2 font-display text-2xl leading-tight">
               What&apos;s in your kitchen?
             </h2>
-            <p className="mt-2 text-xs leading-relaxed text-background/70">
-              Point your camera at the fridge or pantry, and we&apos;ll log every ingredient
-              automatically.
-            </p>
           </div>
-          <span className="pointer-events-none absolute right-4 top-4 flex h-14 w-14 items-center justify-center rounded-full border border-background/20">
-            <Camera className="h-5 w-5" />
-          </span>
-          <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-background px-4 py-2 text-xs font-semibold text-foreground">
-            <Camera className="h-3.5 w-3.5" />
-            Scan now
-          </span>
+          <div className="mt-6 flex items-center justify-between">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-background text-foreground transition-transform group-hover:scale-105">
+              <Camera className="h-4 w-4" />
+            </span>
+            <span className="text-xs font-semibold text-background/80 group-hover:underline">
+              Scan items &rarr;
+            </span>
+          </div>
         </Link>
 
         <button
           type="button"
-          onClick={handleSurprise}
           disabled={busy !== null}
-          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-gradient-to-br from-ink via-ink to-primary/40 p-5 text-left text-background"
+          onClick={handleSurpriseMe}
+          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-border bg-card p-5 text-left text-foreground transition-all hover:border-primary/40 hover:shadow-sm"
         >
           <div>
-            <Sparkles className="h-4 w-4 text-primary" />
-            <h2 className="mt-2 font-display text-2xl leading-tight text-primary">Surprise Me</h2>
-            <p className="mt-2 text-xs leading-relaxed text-background/70">
-              Get a random recipe made just for you!
+            <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              Chef Mia
             </p>
+            <h2 className="mt-2 font-display text-2xl leading-tight">Surprise me with a recipe</h2>
           </div>
-          <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-background px-4 py-2 text-xs font-semibold text-foreground">
+          <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
             {busy === "surprise" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
@@ -370,15 +379,23 @@ function Index() {
           </Link>
         </div>
 
-        {trendingLoading ? (
-          <div className="flex gap-4 overflow-x-auto px-4 pb-1">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-40 w-40 flex-shrink-0 rounded-2xl bg-secondary" />
-            ))}
+        {sessionLoading || trendingLoading ? (
+          <div className="space-y-4">
+            <div className="px-4">
+              <MiaLoadingCard
+                delayMs={700}
+                label="Mia is picking trending dishes for your kitchen..."
+              />
+            </div>
+            <div className="flex gap-4 overflow-x-auto px-4 pb-1">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-40 w-40 flex-shrink-0 rounded-2xl" />
+              ))}
+            </div>
           </div>
         ) : trendingError ? (
-          <div className="mx-4 rounded-2xl border border-dashed border-border bg-card p-8 text-center">
-            <p className="text-sm text-muted-foreground">
+          <div className="mx-4 rounded-2xl border border-dashed border-border p-10 text-center">
+            <p className="text-muted-foreground">
               Recipes are temporarily unavailable. You can still use the rest of MealMate.
             </p>
           </div>
@@ -395,10 +412,9 @@ function Index() {
             ))}
           </div>
         ) : (
-          <div className="mx-4 rounded-2xl border border-dashed border-border bg-card p-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              No recipes yet. Tap <strong className="text-foreground">Surprise me</strong> above to
-              create the first one.
+          <div className="mx-4 rounded-2xl border border-dashed border-border p-10 text-center">
+            <p className="text-muted-foreground">
+              No recipes yet. Hit <strong>Surprise me</strong> above to create the first one!
             </p>
           </div>
         )}
@@ -417,10 +433,10 @@ function Index() {
           </Link>
         </div>
 
-        {southAfricanLoading ? (
+        {sessionLoading || southAfricanLoading ? (
           <div className="flex gap-4 overflow-x-auto px-4 pb-1">
             {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 w-24 flex-shrink-0 rounded-2xl bg-secondary" />
+              <Skeleton key={i} className="h-24 w-24 flex-shrink-0 rounded-2xl" />
             ))}
           </div>
         ) : southAfricanError ? (
@@ -436,23 +452,21 @@ function Index() {
                 params={{ slug: r.slug }}
                 className="w-24 flex-shrink-0 text-center"
               >
-                <div className="aspect-square w-24 overflow-hidden rounded-2xl border border-border bg-card">
+                <div className="aspect-square w-24 overflow-hidden rounded-2xl bg-muted">
                   <RecipeImage recipe={r} size="thumb" className="h-full w-full object-cover" />
                 </div>
-                <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-tight text-muted-foreground">
-                  {r.name}
-                </p>
+                <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-tight">{r.name}</p>
               </Link>
             ))}
           </div>
         ) : southAfrican ? (
-          <div className="mx-4 rounded-2xl border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          <div className="mx-4 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             South African recipes will show up here once you generate a few.
           </div>
         ) : (
           <div className="flex gap-4 overflow-x-auto px-4 pb-1">
             {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 w-24 flex-shrink-0 rounded-2xl bg-secondary" />
+              <Skeleton key={i} className="h-24 w-24 flex-shrink-0 rounded-2xl" />
             ))}
           </div>
         )}
@@ -474,9 +488,9 @@ function Index() {
           <Link
             to="/recipe/$slug"
             params={{ slug: continueCooking.slug }}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 transition-colors hover:border-[var(--periwinkle)]"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
           >
-            <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl border border-border bg-secondary">
+            <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-muted">
               <RecipeImage
                 recipe={continueCooking}
                 size="thumb"
@@ -484,12 +498,10 @@ function Index() {
               />
             </div>
             <div className="flex-1">
-              <p className="text-base font-medium leading-tight text-foreground">
-                {continueCooking.name}
-              </p>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+              <p className="font-display text-lg leading-tight">{continueCooking.name}</p>
+              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full bg-[var(--periwinkle)]"
+                  className="h-full rounded-full bg-primary"
                   style={{ width: `${continueCooking.progress}%` }}
                 />
               </div>
@@ -501,21 +513,12 @@ function Index() {
                 {continueCooking.calories && <span>{continueCooking.calories} cal</span>}
               </div>
             </div>
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-foreground text-background">
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-ink text-background">
               <Play className="h-3.5 w-3.5 fill-current" />
             </span>
           </Link>
         </section>
       )}
-
-      {/* Floating AI assistant */}
-      <Link
-        to="/chat"
-        aria-label="AI Assistant"
-        className="fixed bottom-[calc(var(--app-nav-h,4.25rem)+14px)] right-4 z-30 flex h-12 w-12 items-center justify-center rounded-xl bg-foreground text-background shadow-lg transition-transform hover:scale-105 active:scale-95"
-      >
-        <MessageCircleQuestion className="h-5 w-5" />
-      </Link>
     </main>
   );
 }

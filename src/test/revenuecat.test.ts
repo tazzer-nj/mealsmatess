@@ -300,6 +300,31 @@ describe("purchase claim request origin", () => {
       }
     }
   });
+  it("accepts reverse-proxied same-host origins while still rejecting mismatches", () => {
+    const proxied = (headers: Record<string, string>) =>
+      new Request("http://0.0.0.0:3000/_serverFn/test", { headers });
+    expect(() =>
+      assertBillingOrigin(
+        proxied({
+          "x-forwarded-host": "ais-dev-preview.run.app",
+          "x-forwarded-proto": "https",
+          origin: "https://ais-dev-preview.run.app",
+        }),
+      ),
+    ).not.toThrow();
+    try {
+      assertBillingOrigin(
+        proxied({
+          "x-forwarded-host": "ais-dev-preview.run.app",
+          "x-forwarded-proto": "https",
+          origin: "https://attacker.test",
+        }),
+      );
+      throw new Error("Request unexpectedly accepted");
+    } catch (error) {
+      expect(error).toMatchObject({ status: 403 });
+    }
+  });
 });
 describe("checkout to Firebase account binding", () => {
   it("keeps the purchase claim separate from the public SDK identity", async () => {

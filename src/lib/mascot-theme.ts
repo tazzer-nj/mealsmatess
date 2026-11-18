@@ -1,5 +1,4 @@
 import {
-  MEALMATE_THEMES,
   THEME_BOOT_SCRIPT,
   THEME_V2_STORAGE_KEY,
   applyMealMateThemeToDom,
@@ -44,8 +43,8 @@ export const MASCOT_THEMES: MascotTheme[] = [
     accentDark: "oklch(0.76 0.16 60)",
     accentForeground: "oklch(0.15 0.03 50)",
     premium: true,
-    subtitle: "Warm sunset orange & amber",
-    colorScheme: "dark",
+    subtitle: "Warm sunset amber & golden kitchen",
+    colorScheme: "light",
   },
   {
     id: "midnight",
@@ -55,7 +54,7 @@ export const MASCOT_THEMES: MascotTheme[] = [
     accentDark: "oklch(0.7 0.15 275)",
     accentForeground: "oklch(0.99 0 0)",
     premium: true,
-    subtitle: "Deep indigo starry night",
+    subtitle: "Deep starry navy & luminous indigo",
     colorScheme: "dark",
   },
   {
@@ -66,7 +65,7 @@ export const MASCOT_THEMES: MascotTheme[] = [
     accentDark: "oklch(0.75 0.12 225)",
     accentForeground: "oklch(0.15 0.03 230)",
     premium: true,
-    subtitle: "Azure waves & coastal blue",
+    subtitle: "Coastal waves & azure sky",
     colorScheme: "light",
   },
   {
@@ -77,7 +76,7 @@ export const MASCOT_THEMES: MascotTheme[] = [
     accentDark: "oklch(0.7 0.17 12)",
     accentForeground: "oklch(0.99 0 0)",
     premium: true,
-    subtitle: "Ruby blossom & rich petals",
+    subtitle: "Ruby blossom & warm rose",
     colorScheme: "dark",
   },
   {
@@ -88,7 +87,7 @@ export const MASCOT_THEMES: MascotTheme[] = [
     accentDark: "oklch(0.74 0.13 138)",
     accentForeground: "oklch(0.99 0 0)",
     premium: true,
-    subtitle: "Fresh botanical green tea",
+    subtitle: "Botanical tea garden & serene green",
     colorScheme: "dark",
   },
 ];
@@ -113,8 +112,8 @@ export function getTheme(id: string | null | undefined): MascotTheme {
     subtitle: full.subtitle,
     colorScheme: full.colorScheme,
     image: full.mascotImage,
-    accent: full.tokens.periwinkle,
-    accentDark: full.tokens.periwinkle,
+    accent: full.tokens.primary,
+    accentDark: full.tokens.primary,
     accentForeground: full.tokens.primaryForeground,
     premium: full.premium,
   };

@@ -92,7 +92,19 @@ function ensureAuthStoreInitialized() {
   if (initialized || typeof window === "undefined") return;
   initialized = true;
 
+  const fallbackTimer = window.setTimeout(() => {
+    if (!snapshot.loading) return;
+    snapshot = {
+      session: auth.currentUser,
+      firebaseUser: auth.currentUser,
+      loading: false,
+      user: toSessionUser(auth.currentUser),
+    };
+    emit();
+  }, 3500);
+
   onAuthStateChanged(auth, (fbUser) => {
+    window.clearTimeout(fallbackTimer);
     if (fbUser) {
       const lastActivity = readLastActivity(fbUser.uid);
       if (lastActivity && Date.now() - lastActivity > INACTIVITY_LIMIT_MS) {

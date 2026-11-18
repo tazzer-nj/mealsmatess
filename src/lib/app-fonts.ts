@@ -1,4 +1,4 @@
-export type AppFontId = "jakarta" | "outfit" | "dm" | "fraunces";
+export type AppFontId = "editorial" | "jakarta" | "outfit" | "dm" | "fraunces";
 
 export type AppFontOption = {
   id: AppFontId;
@@ -8,13 +8,19 @@ export type AppFontOption = {
 };
 
 export const APP_FONT_STORAGE_KEY = "mealmate-font";
-export const DEFAULT_APP_FONT: AppFontId = "jakarta";
+export const DEFAULT_APP_FONT: AppFontId = "editorial";
 
 export const APP_FONTS: AppFontOption[] = [
   {
+    id: "editorial",
+    label: "MealMate Editorial",
+    description: "DM Serif headings & Manrope",
+    previewFamily: '"DM Serif Display", Georgia, serif',
+  },
+  {
     id: "jakarta",
     label: "Plus Jakarta",
-    description: "Outfit display · Jakarta body",
+    description: "Outfit display & Jakarta body",
     previewFamily: '"Plus Jakarta Sans", sans-serif',
   },
   {
@@ -38,5 +44,11 @@ export const APP_FONTS: AppFontOption[] = [
 ];
 
 export function isAppFontId(value: unknown): value is AppFontId {
-  return value === "jakarta" || value === "outfit" || value === "dm" || value === "fraunces";
+  return (
+    value === "editorial" ||
+    value === "jakarta" ||
+    value === "outfit" ||
+    value === "dm" ||
+    value === "fraunces"
+  );
 }

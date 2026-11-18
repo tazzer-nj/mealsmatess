@@ -323,6 +323,15 @@ export function OnboardingWizard({
       if (completed) {
         writeLocalPreferences(persistedPrefs);
         clearOnboardingDraft(userId);
+        queryClient.setQueryData(
+          ["user-flow-progress", userId],
+          (
+            prev: { onboardingCompleted?: boolean; tourCompleted?: boolean } | null | undefined,
+          ) => ({
+            onboardingCompleted: true,
+            tourCompleted: Boolean(prev?.tourCompleted),
+          }),
+        );
         await queryClient.invalidateQueries({ queryKey: ["user-flow-progress", userId] });
         await queryClient.invalidateQueries({ queryKey: ["preferences"] });
       } else {
@@ -439,6 +448,7 @@ export function OnboardingWizard({
               {stepError}
             </p>
           )}
+
           <button
             type="button"
             className="onboarding-primary-btn"

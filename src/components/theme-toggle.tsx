@@ -1,27 +1,26 @@
-import { Sun, Moon, Monitor, Check, Contrast, Palette, Lock } from "lucide-react";
+import { Sun, Moon, Monitor, Check, Palette, Lock } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useTheme } from "@/components/theme-provider";
-import { FREE_THEMES } from "@/lib/themes";
+import { useTheme, type ThemeMode } from "@/components/theme-provider";
 import { usePremium } from "@/hooks/use-premium";
 
+const OPTIONS: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Monitor },
+];
+
 export function ThemeToggle() {
-  const { activeThemeId, displayTheme, applyTheme, setMode, mode } = useTheme();
+  const { mode, displayTheme, setMode } = useTheme();
   const { isPremium } = usePremium();
-  const Icon =
-    displayTheme.id === "midnight-pro"
-      ? Contrast
-      : displayTheme.colorScheme === "dark"
-        ? Moon
-        : Sun;
+  const Icon = displayTheme.colorScheme === "dark" ? Moon : Sun;
 
   return (
     <DropdownMenu>
@@ -30,66 +29,35 @@ export function ThemeToggle() {
           type="button"
           variant="ghost"
           size="icon"
-          className="h-10 w-10 rounded-xl border border-border bg-card text-foreground hover:bg-secondary"
+          className="rounded-full bg-secondary hover:bg-secondary/80"
           aria-label="Choose theme"
         >
           <Icon className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="w-52 border-border bg-popover text-popover-foreground"
-      >
-        <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
-          Quick Themes
-        </DropdownMenuLabel>
-        {FREE_THEMES.map((t) => {
-          const active = activeThemeId === t.id;
+      <DropdownMenuContent align="end" className="min-w-[10.5rem]">
+        {OPTIONS.map((o) => {
+          const O = o.icon;
+          const active = mode === o.value;
           return (
             <DropdownMenuItem
-              key={t.id}
-              onClick={() => void applyTheme(t.id)}
-              className="flex items-center gap-2.5"
+              key={o.value}
+              onClick={() => setMode(o.value)}
+              className="flex items-center gap-2"
             >
-              <img
-                src={t.mascotImage}
-                alt=""
-                width={18}
-                height={18}
-                className="h-4.5 w-4.5 shrink-0 rounded object-cover"
-              />
-              <span className="flex-1 truncate">{t.name}</span>
-              {active && <Check className="h-3.5 w-3.5 text-[var(--periwinkle)]" />}
+              <O className="h-4 w-4" />
+              <span className="flex-1">{o.label}</span>
+              {active && <Check className="h-3.5 w-3.5 text-primary" />}
             </DropdownMenuItem>
           );
         })}
-        <DropdownMenuItem
-          onClick={() => (isPremium ? void applyTheme("midnight-pro") : setMode("system"))}
-          className="flex items-center gap-2.5"
-        >
-          {isPremium ? (
-            <>
-              <Contrast className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
-              <span className="flex-1">Midnight</span>
-              {activeThemeId === "midnight-pro" && (
-                <Check className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
-              )}
-            </>
-          ) : (
-            <>
-              <Monitor className="h-3.5 w-3.5" />
-              <span className="flex-1">System default</span>
-              {mode === "system" && <Check className="h-3.5 w-3.5 text-[var(--periwinkle)]" />}
-            </>
-          )}
-        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link to="/settings" className="flex items-center gap-2">
             {isPremium ? (
-              <Palette className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
+              <Palette className="h-3.5 w-3.5 text-primary" />
             ) : (
-              <Lock className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
+              <Lock className="h-3.5 w-3.5 text-primary" />
             )}
             <span>Browse all themes</span>
           </Link>

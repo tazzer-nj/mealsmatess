@@ -56,10 +56,8 @@ function getServices() {
   const bucketName = (
     process.env["FIREBASE_STORAGE_BUCKET"] ||
     process.env["VITE_FIREBASE_STORAGE_BUCKET"] ||
-    ""
+    `${projectId}.appspot.com`
   ).trim();
-  if (!bucketName)
-    throw new Error("FIREBASE_STORAGE_BUCKET or VITE_FIREBASE_STORAGE_BUCKET is required.");
 
   const existingApp = getApps().find((app) => app.name === "mealmate-admin");
   const app =

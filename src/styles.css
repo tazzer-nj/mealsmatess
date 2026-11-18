@@ -5,41 +5,22 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * MealMate Consumer design system — 4 curated font pairings (Plus Jakarta Sans, Outfit, DM Sans, Fraunces + JetBrains Mono), black/white core with warm neutral/grey depth and restrained periwinkle accent.
+ * MealMate design system — editorial food-first display type with clean,
+ * modern app typography; the selected theme supplies the color story.
  * Fonts are loaded via <link> in src/routes/__root.tsx (never @import here).
  */
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 0.375rem);
+  --radius-md: calc(var(--radius) - 0.125rem);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
-  --font-serif: var(
-    --app-font-display,
-    "Outfit",
-    "Plus Jakarta Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif
-  );
-  --font-sans: var(
-    --app-font-sans,
-    "Plus Jakarta Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif
-  );
-  --font-display: var(
-    --app-font-display,
-    "Outfit",
-    "Plus Jakarta Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif
-  );
+  --radius-xl: calc(var(--radius) + 0.125rem);
+  --radius-2xl: calc(var(--radius) + 0.25rem);
+  --radius-3xl: calc(var(--radius) + 0.5rem);
+  --radius-4xl: calc(var(--radius) + 0.75rem);
+  --font-serif: var(--app-font-display, "DM Serif Display", Georgia, serif);
+  --font-sans: var(--app-font-sans, "Manrope", ui-sans-serif, system-ui, sans-serif);
+  --font-display: var(--app-font-display, "DM Serif Display", Georgia, serif);
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --color-positive: var(--positive);
   --color-negative: var(--negative);
@@ -91,6 +72,11 @@
 }
 
 :root,
+html[data-font="editorial"] {
+  --app-font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --app-font-display: "DM Serif Display", Georgia, serif;
+}
+
 html[data-font="jakarta"] {
   --app-font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --app-font-display: "Outfit", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -113,64 +99,107 @@ html[data-font="fraunces"] {
 
 :root {
   color-scheme: light;
-  --radius: 0.75rem;
+  --radius: 0.875rem;
   --app-header-h: calc(4rem + env(safe-area-inset-top, 0px));
-  --app-nav-h: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+  --app-nav-h: calc(4rem + env(safe-area-inset-bottom, 0px));
   --shadow-admin: 0 4px 20px -12px rgba(19, 52, 27, 0.12);
 
-  /* Classic Light — Fresh botanical white, bowl green & forest ink matching MealMate logo */
-  --background: #f8faf6;
-  --foreground: #13341b;
-  --card: #ffffff;
-  --card-foreground: #13341b;
-  --popover: #ffffff;
-  --popover-foreground: #13341b;
-  --primary: #13341b;
-  --primary-foreground: #ffffff;
-  --secondary: #edf3e9;
-  --secondary-foreground: #13341b;
-  --muted: #eaf1e5;
-  --muted-foreground: #445948;
-  --accent: #e2ecdb;
-  --accent-foreground: #13341b;
-  --periwinkle: #3d7c1b;
-  --periwinkle-soft: rgba(61, 124, 27, 0.12);
-  --nav-background: rgba(248, 250, 246, 0.92);
-  --header-background: rgba(248, 250, 246, 0.92);
+  /* Editorial black & white core with MealMate green/ember brand accents */
+  --cream: oklch(0.982 0.012 115);
+  --ink: oklch(0.3 0.055 152);
+  --ember: oklch(0.72 0.16 55);
+  --leaf: oklch(0.61 0.16 139);
+  --background: oklch(0.992 0.003 95);
+  --foreground: oklch(0.12 0 0);
+  --card: oklch(0.975 0.005 95);
+  --card-foreground: oklch(0.12 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.12 0 0);
+  --primary: oklch(0.12 0 0);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.94 0 0);
+  --secondary-foreground: oklch(0.12 0 0);
+  --muted: oklch(0.94 0 0);
+  --muted-foreground: oklch(0.42 0 0);
+  --accent: oklch(0.92 0 0);
+  --accent-foreground: oklch(0.12 0 0);
+  --periwinkle: oklch(0.61 0.16 139);
+  --periwinkle-soft: oklch(0.61 0.16 139 / 12%);
+  --nav-background: rgba(252, 252, 251, 0.94);
+  --header-background: rgba(252, 252, 251, 0.94);
   --destructive: #d93424;
   --destructive-foreground: #ffffff;
-  --border: #dae5d4;
-  --input: #c1d2b8;
-  --ring: #3d7c1b;
-  --positive: #2f7d18;
+  --border: oklch(0.91 0.003 95);
+  --input: oklch(0.89 0.003 95);
+  --ring: oklch(0.25 0 0);
+  --positive: oklch(0.61 0.16 139);
   --negative: #d93424;
   --setup-mint: #edf3e9;
   --setup-coral: #edf3e9;
   --setup-sky: #edf3e9;
   --setup-yellow: #edf3e9;
   --setup-ink: #13341b;
-  --cream: #ffffff;
-  --ink: #13341b;
-  --ember: #3d7c1b;
-  --leaf: #2f7d18;
-  --market-hero: #13341b;
-  --chart-1: #13341b;
-  --chart-2: #3d7c1b;
-  --chart-3: #445948;
-  --chart-4: #8fa392;
-  --chart-5: #c1d2b8;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #13341b;
-  --sidebar-primary: #13341b;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #edf3e9;
-  --sidebar-accent-foreground: #13341b;
-  --sidebar-border: #dae5d4;
-  --sidebar-ring: #3d7c1b;
+  --market-hero: oklch(0.98 0.01 120);
+  --chart-1: oklch(0.61 0.16 139);
+  --chart-2: oklch(0.72 0.16 55);
+  --chart-3: oklch(0.82 0.13 100);
+  --chart-4: oklch(0.65 0.12 220);
+  --chart-5: oklch(0.68 0.15 15);
+  --sidebar: oklch(0.965 0.018 125);
+  --sidebar-foreground: oklch(0.3 0.055 152);
+  --sidebar-primary: oklch(0.61 0.16 139);
+  --sidebar-primary-foreground: oklch(0.99 0.004 120);
+  --sidebar-accent: oklch(0.94 0.03 132);
+  --sidebar-accent-foreground: oklch(0.34 0.07 152);
+  --sidebar-border: oklch(0.91 0.025 128);
+  --sidebar-ring: oklch(0.61 0.16 139);
+}
+
+.marketplace-dark {
+  --background: oklch(0.115 0.015 150);
+  --foreground: oklch(0.965 0.012 120);
+  --card: oklch(0.17 0.018 150);
+  --card-foreground: oklch(0.965 0.012 120);
+  --popover: oklch(0.17 0.018 150);
+  --popover-foreground: oklch(0.965 0.012 120);
+  --primary: oklch(0.75 0.17 140);
+  --primary-foreground: oklch(0.12 0.025 150);
+  --secondary: oklch(0.22 0.022 150);
+  --secondary-foreground: oklch(0.94 0.012 120);
+  --muted: oklch(0.21 0.02 150);
+  --muted-foreground: oklch(0.72 0.018 135);
+  --accent: oklch(0.27 0.06 60);
+  --accent-foreground: oklch(0.86 0.11 70);
+  --border: oklch(1 0 0 / 11%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.75 0.17 140);
+  --market-hero: oklch(0.98 0.01 120);
+  color-scheme: dark;
 }
 
 .marketplace-promo-overlay {
-  background: linear-gradient(90deg, rgba(8, 8, 8, 0.92), rgba(8, 8, 8, 0.2));
+  background: linear-gradient(90deg, oklch(0.08 0.01 150 / 0.92), oklch(0.08 0.01 150 / 0.12));
+}
+
+/* Dining uses the selected colorful mascot theme when one is active. */
+html[data-mascot]:not([data-mascot="classic"]) .marketplace-dark {
+  --background: inherit;
+  --foreground: inherit;
+  --card: inherit;
+  --card-foreground: inherit;
+  --popover: inherit;
+  --popover-foreground: inherit;
+  --primary: inherit;
+  --primary-foreground: inherit;
+  --secondary: inherit;
+  --secondary-foreground: inherit;
+  --muted: inherit;
+  --muted-foreground: inherit;
+  --accent: inherit;
+  --accent-foreground: inherit;
+  --border: inherit;
+  --input: inherit;
+  --ring: inherit;
 }
 
 @utility no-scrollbar {
@@ -182,48 +211,48 @@ html[data-font="fraunces"] {
 
 .dark {
   color-scheme: dark;
-  --positive: #4ade80;
+  --positive: oklch(0.72 0.16 140);
   --negative: #ef4444;
-  --periwinkle: #738cff;
-  --periwinkle-soft: rgba(115, 140, 255, 0.16);
-  --cream: #101420;
-  --ink: #f5f7ff;
-  --ember: #738cff;
-  --leaf: #4ade80;
-  --background: #07090f;
-  --foreground: #f5f7ff;
-  --card: #101420;
-  --card-foreground: #f5f7ff;
-  --popover: #151b2b;
-  --popover-foreground: #f5f7ff;
-  --primary: #f5f7ff;
-  --primary-foreground: #07090f;
-  --secondary: #0d111c;
-  --secondary-foreground: #f5f7ff;
-  --muted: #171d2e;
-  --muted-foreground: #9aa5c4;
-  --accent: #1c2438;
-  --accent-foreground: #f5f7ff;
-  --nav-background: rgba(7, 9, 15, 0.92);
-  --header-background: rgba(7, 9, 15, 0.92);
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #20283d;
-  --input: #2d3754;
-  --ring: #738cff;
-  --chart-1: #f5f7ff;
-  --chart-2: #738cff;
-  --chart-3: #9aa5c4;
-  --chart-4: #657294;
-  --chart-5: #3f4b69;
-  --sidebar: #101420;
-  --sidebar-foreground: #f5f7ff;
-  --sidebar-primary: #f5f7ff;
-  --sidebar-primary-foreground: #07090f;
-  --sidebar-accent: #0d111c;
-  --sidebar-accent-foreground: #f5f7ff;
-  --sidebar-border: #20283d;
-  --sidebar-ring: #738cff;
+  --periwinkle: oklch(0.72 0.16 140);
+  --periwinkle-soft: oklch(0.72 0.16 140 / 16%);
+  --cream: oklch(0.19 0.03 150);
+  --ink: oklch(0.95 0.015 125);
+  --ember: oklch(0.75 0.15 55);
+  --leaf: oklch(0.72 0.16 140);
+  --background: oklch(0.08 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.14 0 0);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.14 0 0);
+  --popover-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.98 0 0);
+  --primary-foreground: oklch(0.08 0 0);
+  --secondary: oklch(0.2 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.72 0 0);
+  --accent: oklch(0.24 0 0);
+  --accent-foreground: oklch(0.98 0 0);
+  --nav-background: rgba(10, 10, 10, 0.94);
+  --header-background: rgba(10, 10, 10, 0.94);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.72 0.16 140);
+  --chart-1: oklch(0.72 0.16 140);
+  --chart-2: oklch(0.75 0.15 55);
+  --chart-3: oklch(0.84 0.13 100);
+  --chart-4: oklch(0.72 0.11 220);
+  --chart-5: oklch(0.72 0.14 15);
+  --sidebar: oklch(0.18 0.028 150);
+  --sidebar-foreground: oklch(0.95 0.015 125);
+  --sidebar-primary: oklch(0.72 0.16 140);
+  --sidebar-primary-foreground: oklch(0.16 0.04 150);
+  --sidebar-accent: oklch(0.27 0.035 150);
+  --sidebar-accent-foreground: oklch(0.95 0.015 125);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.72 0.16 140);
 }
 
 /* Midnight Pro refined shadows */
@@ -285,8 +314,9 @@ html[data-app-theme="midnight-pro"] {
   h3,
   h4 {
     font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: -0.015em;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 1.08;
   }
 }
 
@@ -569,9 +599,78 @@ html.theme-transition *::after {
   animation: mascot-float 5s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .mascot-float {
+  .mascot-float,
+  .ai-floating-glow,
+  .recipe-card-lift {
     animation: none;
+    transition: none;
   }
+}
+
+/* Micro-animations & attention to detail */
+@keyframes ai-glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 6px 20px -3px var(--periwinkle),
+      0 0 0 0 color-mix(in oklab, var(--periwinkle) 25%, transparent);
+    transform: translateY(0);
+  }
+  50% {
+    box-shadow:
+      0 10px 28px -2px var(--periwinkle),
+      0 0 0 8px transparent;
+    transform: translateY(-3px);
+  }
+}
+
+.ai-floating-glow {
+  animation: ai-glow-pulse 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.recipe-card-lift {
+  transition:
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.2s ease;
+}
+
+.recipe-card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px -12px oklch(0 0 0 / 14%);
+}
+
+.recipe-card-lift:active {
+  transform: translateY(-1px) scale(0.985);
+}
+
+.tap-spring {
+  transition:
+    transform 0.16s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.16s ease;
+}
+
+.tap-spring:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+@keyframes pop-bounce {
+  0% {
+    opacity: 0;
+    transform: scale(0.88) translateY(6px);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.03) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-pop-bounce {
+  animation: pop-bounce 0.36s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
 }
 html[data-keyboard="open"] #app-nav {
   visibility: hidden;

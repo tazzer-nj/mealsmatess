@@ -145,6 +145,8 @@ export const surpriseMe = createServerFn({ method: "POST" })
         .select("id,slug")
         .single();
       if (error) throw new Error(error.message);
+      const { invalidateRecipeCatalogCache } = await import("@/lib/recipe-catalog.functions");
+      invalidateRecipeCatalogCache();
       void trackEvent({
         user_id: context.userId,
         kind: "ai",
@@ -260,6 +262,8 @@ export const generateRecipe = createServerFn({ method: "POST" })
           .select("id,slug")
           .single();
         if (error) throw new Error(error.message);
+        const { invalidateRecipeCatalogCache } = await import("@/lib/recipe-catalog.functions");
+        invalidateRecipeCatalogCache();
         await auditLog({
           actor_id: context.userId,
           action: "recipe.generated",

@@ -9,7 +9,8 @@ export const createPurchaseSession = createServerFn({ method: "POST" }).handler(
   let userId: string | undefined;
   let claims:
     { email?: string | null; admin?: unknown; isAdmin?: unknown; role?: unknown } | undefined;
-  const authorization = getRequest().headers.get("authorization");
+  const request = getRequest();
+  const authorization = request.headers.get("authorization");
   if (authorization) {
     const match = /^Bearer\s+(.+)$/i.exec(authorization);
     if (!match) throw new Response("Unauthorized", { status: 401 });
@@ -22,21 +23,28 @@ export const createPurchaseSession = createServerFn({ method: "POST" }).handler(
     }
   }
   const service = await billing();
-  service.assertBillingOrigin(getRequest());
-  const identity = await service.purchaseIdentity(getCookie(COOKIE), userId);
+  service.assertBillingOrigin(request);
+  const cookieToken = getCookie(COOKIE);
+  const identity = await service.purchaseIdentity(cookieToken, userId);
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const isHttps = forwardedProto === "https" || request.url.startsWith("https:");
   if (identity.token)
     setCookie(COOKIE, identity.token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: getRequest().url.startsWith("https:"),
+      secure: isHttps,
       path: "/",
       maxAge: 90 * 86400,
     });
-  let isActive = userId
-    ? (await service.verifyAccountAccess(userId, getCookie(COOKIE), claims)).isPremium
-    : false;
-  if (!isActive) {
-    isActive = (await service.verifyRevenueCatCustomer(identity.customerId)).isPremium;
+  let isActive = false;
+  try {
+    if (userId) {
+      isActive = (await service.verifyAccountAccess(userId, cookieToken, claims)).isPremium;
+    } else if (!identity.token) {
+      isActive = (await service.verifyRevenueCatCustomer(identity.customerId)).isPremium;
+    }
+  } catch {
+    isActive = false;
   }
   return {
     appUserId: identity.customerId,

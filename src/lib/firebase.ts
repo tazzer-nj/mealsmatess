@@ -73,7 +73,12 @@ let authStateReady: Promise<void> | null = null;
 export async function waitForFirebaseAuth() {
   if (!authStateReady) {
     authStateReady = new Promise<void>((resolve) => {
+      const timer = globalThis.setTimeout(() => {
+        unsubscribe();
+        resolve();
+      }, 3000);
       const unsubscribe = onAuthStateChanged(auth, () => {
+        globalThis.clearTimeout(timer);
         unsubscribe();
         resolve();
       });

@@ -2,11 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
-import { Crown, Loader2, Eye, AudioWaveform, Mic, X } from "lucide-react";
+import { Crown, Loader2, Sparkles, Wand2, AudioWaveform, Mic, X } from "lucide-react";
 import { ChefMascot } from "@/components/chef-mascot";
 import { CookingInput } from "@/components/cooking-input";
+import { MiaLoadingCard } from "@/components/mia-loading-card";
 import { useMia } from "@/hooks/use-mia";
-// Heavy media player (images + audio narration) — only loaded when a visual answer exists.
+// Heavy media player (images and audio narration), only loaded when a visual answer exists.
 const VisualExplainer = lazy(() =>
   import("@/components/visual-explainer").then((m) => ({ default: m.VisualExplainer })),
 );
@@ -89,26 +90,17 @@ function ChatPage() {
   const latestTurn = turns.at(-1);
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-x-hidden bg-background px-3.5 py-6 text-foreground sm:px-4 sm:py-8">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-x-hidden px-4 py-10 text-foreground">
       {turns.length === 0 ? (
         <div className="flex flex-col items-center py-6 text-center">
-          <ChefMascot animate className="h-32 w-32" />
-          <h1 className="mt-5 text-3xl font-medium tracking-tight text-foreground">
-            Hey, I&apos;m Mia.
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">What are we making today?</p>
+          <ChefMascot animate className="h-48 w-48" />
+          <h1 className="mt-6 font-display text-3xl">Your little kitchen companion.</h1>
+          <p className="mt-3 text-sm text-muted-foreground">What&apos;s cooking, Chef?</p>
         </div>
       ) : (
-        <div className="flex items-center justify-between border-b border-border pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card">
-              <ChefMascot className="h-8 w-8" />
-            </div>
-            <div>
-              <h1 className="text-lg font-medium tracking-tight text-foreground">Mia</h1>
-              <p className="text-xs text-muted-foreground">Personal culinary assistant</p>
-            </div>
-          </div>
+        <div className="flex items-center justify-between">
+          <h1 className="font-display text-2xl">MealMate Chef</h1>
+          <ChefMascot className="h-9 w-9" />
         </div>
       )}
 
@@ -117,75 +109,68 @@ function ChatPage() {
           type="button"
           variant="outline"
           onClick={() => setVoiceOpen(true)}
-          className="h-9 rounded-xl border-border bg-card text-xs font-medium text-foreground hover:bg-secondary"
+          className="rounded-full"
         >
-          <AudioWaveform className="mr-1.5 h-3.5 w-3.5 text-[var(--periwinkle)]" />
+          <AudioWaveform className="h-4 w-4 text-primary" />
           Voice mode
         </Button>
 
         {isPremium ? (
           <Button
             type="button"
-            variant="outline"
-            className={`h-9 rounded-xl border text-xs font-medium transition-colors ${
-              visualMode
-                ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
-                : "border-border bg-card text-foreground hover:bg-secondary"
-            }`}
+            variant={visualMode ? "default" : "outline"}
+            className="rounded-full"
             aria-pressed={visualMode}
             onClick={() => setVisualMode((v) => !v)}
           >
-            <Eye className="mr-1.5 h-3.5 w-3.5" /> Visual mode {visualMode ? "on" : "off"}
+            <Wand2 className="h-4 w-4" /> Visual Mode {visualMode ? "on" : "off"}
           </Button>
         ) : (
-          <Button
-            asChild
-            variant="ghost"
-            className="h-9 rounded-xl border border-border bg-card text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
-          >
+          <Button asChild variant="ghost" className="rounded-full text-muted-foreground">
             <Link to="/premium">
-              <Crown className="mr-1.5 h-3.5 w-3.5 text-[var(--periwinkle)]" /> Premium Visual Mode
+              <Crown className="h-4 w-4" /> Premium Visual Mode
             </Link>
           </Button>
         )}
       </div>
 
-      <div className="mt-6 flex-1 space-y-6">
+      <div className="mt-8 flex-1 space-y-6">
         {turns.length === 0 && (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="flex flex-wrap gap-2">
             {SUGGESTIONS.map((s) => (
-              <button
+              <Button
+                variant="outline"
                 key={s}
                 type="button"
                 onClick={() => void ask(s)}
-                className="rounded-xl border border-border bg-card px-4 py-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-secondary hover:text-foreground"
+                className="h-auto rounded-full border border-border bg-card px-4 py-2 text-left text-sm whitespace-normal transition-colors hover:bg-muted"
               >
                 {s}
-              </button>
+              </Button>
             ))}
           </div>
         )}
 
         {turns.map((t) => (
           <div key={t.id} className="space-y-3">
-            <div className="ml-auto max-w-[88%] break-words rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-sm font-medium text-primary-foreground">
+            <p className="ml-auto max-w-[85%] break-words rounded-2xl rounded-br-sm bg-primary px-4 py-2.5 text-sm text-primary-foreground">
               {t.question}
-            </div>
+            </p>
             {t.answer && (
-              <div className="mr-auto max-w-[94%] overflow-x-hidden break-words rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3.5 text-sm leading-relaxed text-foreground [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-1.5 [&_h2]:mt-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-medium [&_li]:my-0.5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p+p]:mt-2 [&_pre]:overflow-x-auto [&_strong]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5">
+              <div className="mr-auto max-w-[85%] overflow-x-hidden break-words rounded-2xl rounded-bl-sm bg-card px-4 py-2.5 text-sm leading-relaxed [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-1.5 [&_h2]:mt-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-medium [&_li]:my-0.5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p+p]:mt-2 [&_pre]:overflow-x-auto [&_strong]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5">
                 <ReactMarkdown>{t.answer}</ReactMarkdown>
               </div>
             )}
             {t.error && (
               <div
                 role="alert"
-                className="flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                className="flex flex-wrap items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
               >
                 <p className="flex-1">{t.error}</p>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-xl border-border bg-card text-foreground"
+                  className="rounded-full"
                   onClick={() => void mia.retry(t.id)}
                   disabled={busy}
                 >
@@ -195,17 +180,17 @@ function ChatPage() {
             )}
             {t.visualLoading && (
               <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin text-[var(--periwinkle)]" />
-                Directing your animated explainer with illustrations &amp; narration…
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Directing your animated explainer with illustrations + narration…
               </div>
             )}
             {t.visualError && (
-              <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-xs text-destructive">
+              <p className="rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-xs text-muted-foreground">
                 Visual explanation unavailable: {t.visualError}
               </p>
             )}
             {t.visual && (
-              <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-secondary" />}>
+              <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-muted" />}>
                 <VisualExplainer data={t.visual} />
               </Suspense>
             )}
@@ -213,9 +198,16 @@ function ChatPage() {
         ))}
 
         {busy && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin text-[var(--periwinkle)]" />
-            Thinking…
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Thinking…
+            </div>
+            <MiaLoadingCard
+              active={busy}
+              delayMs={900}
+              label="Mia is whisking together your answer..."
+            />
           </div>
         )}
       </div>
@@ -232,7 +224,8 @@ function ChatPage() {
         />
       </div>
       <p className="mt-2 flex items-center justify-center gap-1 text-center text-xs text-muted-foreground">
-        AI answers can be wrong. Always check allergies and food safety.
+        <Sparkles className="h-3 w-3" /> AI answers can be wrong. Use judgment for allergies and
+        food safety.
       </p>
 
       {/* Full-Screen Voice Mode */}
@@ -248,7 +241,7 @@ function ChatPage() {
               <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
                 Voice Mode
               </p>
-              <h2 className="text-lg font-medium tracking-tight text-foreground">Talk with Mia</h2>
+              <h2 className="font-display text-2xl text-foreground">Talk with Mia</h2>
             </div>
             <Button
               type="button"
@@ -256,7 +249,7 @@ function ChatPage() {
               size="icon"
               aria-label="Exit voice mode"
               onClick={() => setVoiceOpen(false)}
-              className="size-10 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
+              className="size-10 rounded-full"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -268,7 +261,7 @@ function ChatPage() {
                 aria-hidden="true"
                 className={`absolute inset-0 rounded-full border transition-transform duration-700 ${
                   voice.state === "speaking" || voice.state === "listening"
-                    ? "scale-110 border-[var(--periwinkle)]/50 motion-safe:animate-pulse"
+                    ? "scale-110 border-primary/50 motion-safe:animate-pulse"
                     : "scale-100 border-border"
                 }`}
               />
@@ -276,7 +269,7 @@ function ChatPage() {
                 aria-hidden="true"
                 className={`absolute inset-4 rounded-full border transition-transform duration-500 ${
                   voice.state === "speaking"
-                    ? "scale-105 border-[var(--periwinkle)]/70"
+                    ? "scale-105 border-primary/70"
                     : "scale-100 border-border"
                 }`}
               />
@@ -293,7 +286,7 @@ function ChatPage() {
             </p>
 
             {voice.transcript && (
-              <p className="mt-5 rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground">
+              <p className="mt-5 rounded-2xl border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground">
                 &ldquo;{voice.transcript}&rdquo;
               </p>
             )}
@@ -305,7 +298,7 @@ function ChatPage() {
             {voice.error && (
               <p
                 role="alert"
-                className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-xs text-destructive"
+                className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-xs text-destructive"
               >
                 {voice.error}
               </p>
@@ -318,7 +311,7 @@ function ChatPage() {
                 type="button"
                 size="lg"
                 onClick={() => mia.startVoice()}
-                className="h-12 w-full rounded-xl bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                className="h-12 w-full rounded-full"
               >
                 <Mic className="mr-2 h-4 w-4" />
                 Start voice session
@@ -329,7 +322,7 @@ function ChatPage() {
                 size="lg"
                 variant="outline"
                 onClick={() => mia.stopVoice()}
-                className="h-12 w-full rounded-xl border-border bg-card text-sm font-medium text-foreground hover:bg-secondary"
+                className="h-12 w-full rounded-full"
               >
                 Stop speaking &amp; pause
               </Button>
@@ -339,7 +332,7 @@ function ChatPage() {
                 type="button"
                 variant="ghost"
                 onClick={() => mia.endConversation()}
-                className="h-10 w-full rounded-xl text-xs text-muted-foreground hover:text-foreground"
+                className="h-10 w-full rounded-full text-xs text-muted-foreground hover:text-foreground"
               >
                 End conversation
               </Button>

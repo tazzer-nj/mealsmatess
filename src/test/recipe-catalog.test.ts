@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { filterRecipeCatalog, recipeCatalogRecord } from "@/lib/recipe-catalog";
+import {
+  CURATED_RECIPES,
+  findCuratedRecipeById,
+  findCuratedRecipeBySlug,
+} from "@/lib/curated-recipes";
+import { filterRecipeCatalog, mergeRecipeCatalog, recipeCatalogRecord } from "@/lib/recipe-catalog";
 import type { CatalogRecipe } from "@/lib/recipe-catalog";
 
 function recipe(values: Record<string, unknown> = {}): CatalogRecipe {
@@ -90,5 +95,52 @@ describe("recipe catalog search", () => {
     expect(row).not.toHaveProperty("private_notes");
     expect(row).not.toHaveProperty("image_signature");
     expect(recipeCatalogRecord({ id: "r", name: "Missing slug" })).toBeNull();
+  });
+
+  it("provides a complete curated starter catalog across every discovery category", () => {
+    expect(CURATED_RECIPES.length).toBeGreaterThanOrEqual(18);
+    const categories = [
+      "All",
+      "Breakfast",
+      "Lunch",
+      "Dinner",
+      "Dessert",
+      "Snacks",
+      "Drinks",
+      "Vegan",
+      "High Protein",
+      "Quick",
+      "Healthy Meals",
+      "South African Favorites",
+    ];
+    for (const category of categories) {
+      expect(filterRecipeCatalog(CURATED_RECIPES, { category }).length).toBeGreaterThan(0);
+    }
+
+    for (const item of CURATED_RECIPES) {
+      expect(item.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      expect(item.ingredients.length).toBeGreaterThanOrEqual(3);
+      expect(item.steps.length).toBeGreaterThanOrEqual(3);
+      const serialized = JSON.stringify(item);
+      expect(serialized).not.toMatch(/--|–|—/);
+    }
+
+    expect(findCuratedRecipeBySlug("cape-malay-bobotie")?.name).toBe("Cape Malay Bobotie");
+    expect(findCuratedRecipeById("00000000-0000-4000-8000-000000000001")?.slug).toBe(
+      "cape-malay-bobotie",
+    );
+  });
+
+  it("merges Firestore recipes ahead of curated entries without duplicating slugs or IDs", () => {
+    const customBobotie = recipe({
+      id: "custom-id",
+      slug: "cape-malay-bobotie",
+      name: "Custom Bobotie",
+    });
+    const merged = mergeRecipeCatalog([customBobotie], CURATED_RECIPES);
+    expect(merged[0]).toEqual(customBobotie);
+    const bobotieMatches = merged.filter((item) => item.slug === "cape-malay-bobotie");
+    expect(bobotieMatches).toHaveLength(1);
+    expect(merged.length).toBe(CURATED_RECIPES.length);
   });
 });

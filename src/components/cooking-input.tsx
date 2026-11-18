@@ -20,7 +20,7 @@ export function CookingInput({
         e.preventDefault();
         onSubmit();
       }}
-      className="cooking-input rounded-2xl border border-border bg-card p-3"
+      className="cooking-input rounded-3xl border border-border bg-popover p-3"
     >
       <Input
         aria-label="Ask MealMate"
@@ -28,52 +28,52 @@ export function CookingInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder="What can I cook today?"
         maxLength={200}
-        className="h-11 min-w-0 border-0 bg-transparent px-2 text-sm text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0"
+        className="h-11 min-w-0 border-0 bg-transparent px-2 text-base shadow-none focus-visible:ring-0"
       />
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 pt-1">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
         <div className="flex min-w-0 gap-1">
           <Button
             asChild
             variant="ghost"
             size="icon"
-            className="size-10 rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
+            className="size-11 rounded-full"
             title="Scan ingredients"
           >
             <Link to="/scan" search={{ mode: "ingredients" }} aria-label="Scan ingredients">
-              <Camera className="h-4 w-4" />
+              <Camera />
             </Link>
           </Button>
           <Button
             asChild
             variant="ghost"
             size="icon"
-            className="size-10 rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
+            className="size-11 rounded-full"
             title="Pantry"
           >
             <Link to="/pantry" aria-label="Pantry">
-              <Refrigerator className="h-4 w-4" />
+              <Refrigerator />
             </Link>
           </Button>
           <Button
             asChild
             variant="ghost"
             size="icon"
-            className="size-10 rounded-xl text-muted-foreground hover:bg-secondary hover:text-foreground"
+            className="size-11 rounded-full"
             title="Meal planner"
           >
             <Link to="/planner" aria-label="Meal planner">
-              <CalendarDays className="h-4 w-4" />
+              <CalendarDays />
             </Link>
           </Button>
         </div>
         <Button
           type="submit"
           size="icon"
-          className="size-10 shrink-0 rounded-xl bg-foreground text-background hover:opacity-90 disabled:opacity-40"
+          className="size-11 shrink-0 rounded-full"
           disabled={busy || !value.trim()}
           aria-label="Send question"
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
+          {busy ? <Loader2 className="animate-spin" /> : <ArrowUp />}
         </Button>
       </div>
     </form>

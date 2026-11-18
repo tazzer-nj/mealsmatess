@@ -1,7 +1,73 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { CURATED_RECIPES, findCuratedRecipeBySlug } from "@/lib/curated-recipes";
 import { requirePremium } from "@/lib/premium-middleware";
-import { filterRecipeCatalog, recipeCatalogRecord } from "@/lib/recipe-catalog";
+import {
+  filterRecipeCatalog,
+  mergeRecipeCatalog,
+  recipeCatalogRecord,
+  type CatalogRecipe,
+} from "@/lib/recipe-catalog";
+
+const CATALOG_CACHE_TTL_MS = 15_000;
+let cachedCatalog: { expiresAt: number; recipes: CatalogRecipe[] } | null = null;
+let inFlightCatalogRead: Promise<CatalogRecipe[]> | null = null;
+
+export function invalidateRecipeCatalogCache() {
+  cachedCatalog = null;
+}
+
+async function loadMergedRecipeCatalog(firebase: {
+  from: (table: string) => any;
+}): Promise<CatalogRecipe[]> {
+  const now = Date.now();
+  if (!process.env["VITEST"] && cachedCatalog && cachedCatalog.expiresAt > now) {
+    return cachedCatalog.recipes;
+  }
+
+  if (!process.env["VITEST"] && inFlightCatalogRead) {
+    return inFlightCatalogRead;
+  }
+
+  const load = (async (): Promise<CatalogRecipe[]> => {
+    let firestoreRecipes: CatalogRecipe[] = [];
+    try {
+      const { data: rows, error } = await firebase
+        .from("recipes")
+        .select("*")
+        .order("created_at", { ascending: false, nullsFirst: false })
+        .limit(200);
+      if (error) {
+        console.warn(
+          "[RecipeCatalog] Firestore read failed; serving curated catalog:",
+          error.message,
+        );
+      } else if (Array.isArray(rows)) {
+        firestoreRecipes = (rows as Record<string, unknown>[])
+          .map(recipeCatalogRecord)
+          .filter((recipe): recipe is CatalogRecipe => recipe !== null);
+      }
+    } catch (err) {
+      console.warn(
+        "[RecipeCatalog] Unexpected catalog read error; serving curated catalog:",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+
+    const merged = mergeRecipeCatalog(firestoreRecipes, CURATED_RECIPES);
+    if (!process.env["VITEST"]) {
+      cachedCatalog = { expiresAt: Date.now() + CATALOG_CACHE_TTL_MS, recipes: merged };
+    }
+    return merged;
+  })();
+
+  if (process.env["VITEST"]) return load;
+
+  inFlightCatalogRead = load.finally(() => {
+    if (inFlightCatalogRead === load) inFlightCatalogRead = null;
+  });
+  return inFlightCatalogRead;
+}
 
 export const listRecipeCatalog = createServerFn({ method: "GET" })
   .middleware([requirePremium])
@@ -15,14 +81,7 @@ export const listRecipeCatalog = createServerFn({ method: "GET" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.firebase
-      .from("recipes")
-      .select("*")
-      .order("created_at", { ascending: false, nullsFirst: false });
-    if (error) throw error;
-    const recipes = (rows as Record<string, unknown>[])
-      .map(recipeCatalogRecord)
-      .filter((recipe) => recipe !== null);
+    const recipes = await loadMergedRecipeCatalog(context.firebase);
     // Apply matching before the result limit, including older rows without created_at.
     return filterRecipeCatalog(recipes, data);
   });
@@ -31,12 +90,25 @@ export const getRecipeCatalogEntry = createServerFn({ method: "GET" })
   .middleware([requirePremium])
   .validator((input: unknown) => z.object({ slug: z.string().trim().min(1).max(300) }).parse(input))
   .handler(async ({ data, context }) => {
-    const { data: row, error } = await context.firebase
-      .from("recipes")
-      .select("*")
-      .eq("slug", data.slug)
-      .limit(1)
-      .maybeSingle();
-    if (error) throw error;
-    return row ? recipeCatalogRecord(row) : null;
+    try {
+      const { data: row, error } = await context.firebase
+        .from("recipes")
+        .select("*")
+        .eq("slug", data.slug)
+        .limit(1)
+        .maybeSingle();
+      if (!error && row) {
+        const record = recipeCatalogRecord(row as Record<string, unknown>);
+        if (record) return record;
+      }
+      if (error) {
+        console.warn("[RecipeCatalog] Firestore slug read failed:", error.message);
+      }
+    } catch (err) {
+      console.warn(
+        "[RecipeCatalog] Unexpected slug lookup error:",
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+    return findCuratedRecipeBySlug(data.slug);
   });

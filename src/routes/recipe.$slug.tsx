@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { recipeBySlugQuery, myFavoritesQuery } from "@/lib/queries";
+import { curatedRecipeImageUrl } from "@/lib/recipe-image";
 import { waitForFirebaseAuth } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
@@ -32,6 +33,7 @@ const CookingMode = lazy(() =>
   import("@/components/cooking-mode").then((m) => ({ default: m.CookingMode })),
 );
 import { RecipeImage } from "@/components/recipe-image";
+import { MiaLoadingCard } from "@/components/mia-loading-card";
 import { ChangeImageButton, ImageCredit } from "@/components/recipe-image-tools";
 import { awardXp } from "@/lib/xp.functions";
 import { useFeatureFlag } from "@/hooks/use-feature-flag";
@@ -97,7 +99,7 @@ type Ingredient = { name: string; quantity?: string };
 function RecipePage() {
   const { slug } = Route.useParams();
   const recipe = Route.useLoaderData();
-  const { user } = useSession();
+  const { user, loading: sessionLoading } = useSession();
   const { data, isLoading, isError, refetch } = useQuery({
     ...recipeBySlugQuery(slug),
     enabled: !!user,
@@ -144,9 +146,9 @@ function RecipePage() {
   }, [queryClient, r?.id, r?.slug, user]);
 
   useEffect(() => {
-    if (!user || !r?.id || r.image_url) return;
+    if (!user || !r?.id || r.image_url || curatedRecipeImageUrl(r)) return;
     void requestRecipeImage();
-  }, [user, r?.id, r?.image_url, requestRecipeImage]);
+  }, [user, r, requestRecipeImage]);
 
   async function regenerateImage() {
     if (!user || !r) {
@@ -185,9 +187,10 @@ function RecipePage() {
   }, [r, user]);
 
   if (!r) {
-    if (isLoading) {
+    if (sessionLoading || isLoading) {
       return (
         <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
+          <MiaLoadingCard delayMs={600} label="Mia is setting the prep table for this recipe..." />
           <div className="h-8 w-40 animate-pulse rounded-xl bg-muted" />
           <div className="grid gap-8 md:grid-cols-2">
             <div className="aspect-square w-full animate-pulse rounded-2xl bg-muted" />
@@ -211,7 +214,17 @@ function RecipePage() {
         </main>
       );
     }
-    return null;
+    return (
+      <main className="mx-auto flex max-w-md flex-1 flex-col items-center justify-center px-4 py-20 text-center">
+        <p className="text-base font-medium text-foreground">Recipe not found</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          This recipe may have been removed or the link may be out of date.
+        </p>
+        <Button asChild className="mt-4 rounded-xl">
+          <Link to="/recipes">Browse recipes</Link>
+        </Button>
+      </main>
+    );
   }
 
   const ingredients = (Array.isArray(r.ingredients) ? r.ingredients : []) as Ingredient[];

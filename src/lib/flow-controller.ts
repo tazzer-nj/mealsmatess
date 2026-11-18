@@ -45,6 +45,7 @@ export function useFlowController() {
     },
     enabled: !!userId && !isAdmin,
     staleTime: 5 * 60 * 1000,
+    retry: false,
   });
 
   if (sessionLoading) {

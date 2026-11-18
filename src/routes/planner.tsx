@@ -1,20 +1,13 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  CalendarDays,
-  Plus,
-  Trash2,
-  Loader2,
-  ShoppingCart,
-  ChefHat,
-  ShoppingBag,
-} from "lucide-react";
+import { CalendarDays, Plus, Trash2, Loader2, ShoppingCart, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { myPlannerQuery, myFavoritesQuery } from "@/lib/queries";
 import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
 import { Button } from "@/components/ui/button";
+import { MiaLoadingCard } from "@/components/mia-loading-card";
 import {
   generatePersonalizedPlan,
   buildGroceryFromPlan,
@@ -185,47 +178,34 @@ function PlannerPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 overflow-x-hidden bg-background px-3.5 py-6 text-foreground sm:px-4 sm:py-8">
+    <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-10 text-foreground">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground">
-            <CalendarDays className="h-5 w-5 text-[var(--periwinkle)]" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+            <CalendarDays className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
-              Meal planner
-            </h1>
+            <h1 className="truncate font-display text-3xl sm:text-4xl">Meal planner</h1>
             <p className="text-sm text-muted-foreground">This week&apos;s plan</p>
           </div>
         </div>
         <div className="col-span-2 flex flex-wrap gap-2 sm:col-auto">
           {aiPlannerEnabled && (
-            <Button
-              size="sm"
-              onClick={planAndShop}
-              disabled={planShop}
-              className="h-9 rounded-xl bg-foreground text-xs font-medium text-background hover:opacity-90"
-            >
+            <Button size="sm" onClick={planAndShop} disabled={planShop}>
               {planShop ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <ShoppingBag className="mr-2 h-4 w-4" />
+                <Wand2 className="mr-2 h-4 w-4" />
               )}
               Plan &amp; shop
             </Button>
           )}
           {aiPlannerEnabled && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={generateAiPlan}
-              disabled={aiLoading}
-              className="h-9 rounded-xl border-border bg-card text-xs font-medium text-foreground hover:bg-secondary"
-            >
+            <Button size="sm" variant="outline" onClick={generateAiPlan} disabled={aiLoading}>
               {aiLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <ChefHat className="mr-2 h-4 w-4" />
+                <Sparkles className="mr-2 h-4 w-4" />
               )}
               AI ideas
             </Button>
@@ -235,7 +215,6 @@ function PlannerPage() {
             variant="outline"
             onClick={autoGrocery}
             disabled={autoGroc || !plans || plans.length === 0}
-            className="h-9 rounded-xl border-border bg-card text-xs font-medium text-foreground hover:bg-secondary"
           >
             {autoGroc ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -247,8 +226,18 @@ function PlannerPage() {
         </div>
       </div>
 
+      {(planShop || aiLoading) && (
+        <div className="mt-6">
+          <MiaLoadingCard
+            active={planShop || aiLoading}
+            delayMs={600}
+            label="Mia is building your personalized weekly meal plan..."
+          />
+        </div>
+      )}
+
       {favorites && favorites.length === 0 && (
-        <div className="mt-6 rounded-2xl border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground">
+        <div className="mt-6 rounded-2xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           Save some recipes first so your favorites show up here to plan with.{" "}
           <Link to="/recipes" className="font-medium text-foreground hover:underline">
             Browse recipes
@@ -265,20 +254,19 @@ function PlannerPage() {
             <div
               key={dayISO}
               className={`rounded-2xl border bg-card p-4 ${
-                isToday ? "border-[var(--periwinkle)]" : "border-border"
+                isToday ? "border-primary" : "border-border"
               }`}
             >
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-medium tracking-tight text-foreground">
+                <h2 className="font-display text-xl">
                   {d.toLocaleDateString(undefined, { weekday: "long" })}
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
                     {d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                   </span>
                 </h2>
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-8 w-8 rounded-lg p-0 text-muted-foreground hover:bg-secondary hover:text-foreground"
                   onClick={() => setAddingDay(addingDay === dayISO ? null : dayISO)}
                 >
                   <Plus className="h-4 w-4" />
@@ -290,10 +278,10 @@ function PlannerPage() {
                   {dayPlans.map((p) => (
                     <li
                       key={p.id}
-                      className="flex items-center justify-between gap-2 rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm"
+                      className="flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2 text-sm"
                     >
-                      <span className="text-foreground">
-                        <span className="font-medium text-muted-foreground">{p.meal_type}:</span>{" "}
+                      <span>
+                        <span className="font-medium">{p.meal_type}:</span>{" "}
                         {p.recipes?.slug ? (
                           <Link
                             to="/recipe/$slug"
@@ -308,7 +296,7 @@ function PlannerPage() {
                       </span>
                       <button
                         onClick={() => removeMeal(p.id)}
-                        className="text-muted-foreground transition-colors hover:text-destructive"
+                        className="text-muted-foreground hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -320,10 +308,10 @@ function PlannerPage() {
               {addingDay === dayISO && (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Select value={mealType} onValueChange={setMealType}>
-                    <SelectTrigger className="w-full rounded-xl border-border bg-secondary text-foreground sm:w-36">
+                    <SelectTrigger className="w-36">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="border-border bg-popover text-popover-foreground">
+                    <SelectContent>
                       {MEAL_TYPES.map((m) => (
                         <SelectItem key={m} value={m}>
                           {m}
@@ -332,10 +320,10 @@ function PlannerPage() {
                     </SelectContent>
                   </Select>
                   <Select value={recipeId} onValueChange={setRecipeId}>
-                    <SelectTrigger className="w-full rounded-xl border-border bg-secondary text-foreground sm:min-w-48 sm:flex-1">
+                    <SelectTrigger className="min-w-48 flex-1">
                       <SelectValue placeholder="Choose a saved recipe" />
                     </SelectTrigger>
-                    <SelectContent className="border-border bg-popover text-popover-foreground">
+                    <SelectContent>
                       {favorites?.map((f) => (
                         <SelectItem key={f.recipe_id} value={f.recipe_id}>
                           {f.recipes?.name}
@@ -343,12 +331,7 @@ function PlannerPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button
-                    size="sm"
-                    onClick={() => addMeal(dayISO)}
-                    disabled={!recipeId || saving}
-                    className="h-9 rounded-xl bg-foreground px-4 text-background hover:opacity-90"
-                  >
+                  <Button size="sm" onClick={() => addMeal(dayISO)} disabled={!recipeId || saving}>
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
                   </Button>
                 </div>

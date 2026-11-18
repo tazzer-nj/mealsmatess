@@ -212,34 +212,34 @@ export function useFavouriteRestaurants() {
 /* ---------------- Discovery helpers ---------------- */
 
 export const DISCOVERY_CATEGORIES = [
-  { key: "deals", label: "Hot Deals", emoji: "🔥", terms: [] as string[] },
-  { key: "pizza", label: "Pizza", emoji: "🍕", terms: ["pizza"] },
+  { key: "deals", label: "Hot Deals", emoji: "", terms: [] as string[] },
+  { key: "pizza", label: "Pizza", emoji: "", terms: ["pizza"] },
   {
     key: "fastfood",
     label: "Fast Food",
-    emoji: "🍟",
+    emoji: "",
     terms: ["fast", "fries", "kota", "takeaway"],
   },
-  { key: "burgers", label: "Burgers", emoji: "🍔", terms: ["burger", "smash"] },
-  { key: "chicken", label: "Chicken", emoji: "🍗", terms: ["chicken", "wings", "poultry"] },
-  { key: "mexican", label: "Mexican", emoji: "🌮", terms: ["mexican", "taco", "burrito", "nacho"] },
-  { key: "sushi", label: "Sushi", emoji: "🍣", terms: ["sushi", "maki", "sashimi", "japanese"] },
+  { key: "burgers", label: "Burgers", emoji: "", terms: ["burger", "smash"] },
+  { key: "chicken", label: "Chicken", emoji: "", terms: ["chicken", "wings", "poultry"] },
+  { key: "mexican", label: "Mexican", emoji: "", terms: ["mexican", "taco", "burrito", "nacho"] },
+  { key: "sushi", label: "Sushi", emoji: "", terms: ["sushi", "maki", "sashimi", "japanese"] },
   {
     key: "healthy",
     label: "Healthy",
-    emoji: "🥗",
+    emoji: "",
     terms: ["healthy", "salad", "bowl", "vegan", "vegetarian"],
   },
   {
     key: "desserts",
     label: "Desserts",
-    emoji: "🍰",
+    emoji: "",
     terms: ["dessert", "cake", "sweet", "ice cream", "pudding"],
   },
   {
     key: "drinks",
     label: "Drinks",
-    emoji: "🥤",
+    emoji: "",
     terms: ["drink", "juice", "coffee", "smoothie", "soda"],
   },
 ] as const;

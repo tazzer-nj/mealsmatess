@@ -127,3 +127,26 @@ export function filterRecipeCatalog(
     })
     .slice(0, limit);
 }
+
+export function mergeRecipeCatalog(
+  primary: CatalogRecipe[],
+  fallback: CatalogRecipe[],
+): CatalogRecipe[] {
+  const seenSlugs = new Set<string>();
+  const seenIds = new Set<string>();
+  const merged: CatalogRecipe[] = [];
+  for (const item of primary) {
+    const slugKey = normalize(item.slug);
+    seenSlugs.add(slugKey);
+    seenIds.add(item.id);
+    merged.push(item);
+  }
+  for (const item of fallback) {
+    const slugKey = normalize(item.slug);
+    if (seenIds.has(item.id) || seenSlugs.has(slugKey)) continue;
+    seenSlugs.add(slugKey);
+    seenIds.add(item.id);
+    merged.push(item);
+  }
+  return merged;
+}

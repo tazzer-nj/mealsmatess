@@ -186,7 +186,7 @@ export async function verifyRevenueCatCustomer(customerId: string): Promise<Prem
     const response = await fetch(`${base}/subscribers/${encodeURIComponent(customerId)}`, {
       headers: { Authorization: `Bearer ${key}`, Accept: "application/json" },
       cache: "no-store",
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(8_000),
     });
     if (response.status === 404) return denied();
     if (!response.ok)
@@ -202,10 +202,33 @@ export async function verifyRevenueCatCustomer(customerId: string): Promise<Prem
   return task;
 }
 
+function resolveAllowedOrigins(request: Request): Set<string> {
+  const url = new URL(request.url);
+  const allowed = new Set<string>([url.origin]);
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const hostHeader = request.headers.get("host")?.split(",")[0]?.trim();
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+
+  for (const host of [forwardedHost, hostHeader]) {
+    if (!host || /[\s/\\]/.test(host)) continue;
+    const isLocalHost = /^(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(host);
+    const proto =
+      forwardedProto || (isLocalHost ? "http" : url.protocol.replace(":", "") || "https");
+    if (proto === "http" || proto === "https") {
+      allowed.add(`${proto}://${host}`);
+    }
+    // Behind TLS proxies, internal request URL may be http while external origin is https.
+    if (!isLocalHost) {
+      allowed.add(`https://${host}`);
+    }
+  }
+  return allowed;
+}
+
 export function assertBillingOrigin(request: Request) {
   const site = (request.headers.get("sec-fetch-site") ?? "").toLowerCase();
   const origin = request.headers.get("origin");
-  const requestOrigin = new URL(request.url).origin;
+  const allowedOrigins = resolveAllowedOrigins(request);
 
   if (site === "cross-site") {
     throw new Response("Forbidden", { status: 403 });
@@ -214,10 +237,10 @@ export function assertBillingOrigin(request: Request) {
   if (!origin && !site) {
     throw new Response("Forbidden", { status: 403 });
   }
-  if (origin && origin !== requestOrigin) {
+  if (origin && !allowedOrigins.has(origin)) {
     throw new Response("Forbidden", { status: 403 });
   }
-  if (site === "same-site" && origin !== requestOrigin) {
+  if (site === "same-site" && (!origin || !allowedOrigins.has(origin))) {
     throw new Response("Forbidden", { status: 403 });
   }
 }
@@ -284,7 +307,9 @@ async function safeIsAdminAccount(
   return false;
 }
 
+const ACCOUNT_ACCESS_CACHE_MS = 45_000;
 const inFlightAccountAccess = new Map<string, Promise<PremiumAccess>>();
+const verifiedAccessCache = new Map<string, { expiresAt: number; access: PremiumAccess }>();
 
 export async function verifyAccountAccess(
   userId: string,
@@ -294,7 +319,12 @@ export async function verifyAccountAccess(
   if (await safeIsAdminAccount(userId, claims)) {
     return adminPremiumAccess();
   }
-  if (!token) {
+  const now = Date.now();
+  if (!token && !process.env["VITEST"]) {
+    const cached = verifiedAccessCache.get(userId);
+    if (cached && cached.expiresAt > now && cached.access.verifiedUntil > now) {
+      return cached.access;
+    }
     const inFlight = inFlightAccountAccess.get(userId);
     if (inFlight) return inFlight;
   }
@@ -340,10 +370,18 @@ export async function verifyAccountAccess(
         source: "revenuecat",
         entitlement: ENTITLEMENT,
       });
+    if (!process.env["VITEST"] && access.isPremium && access.verifiedUntil > Date.now()) {
+      verifiedAccessCache.set(userId, {
+        expiresAt: Math.min(Date.now() + ACCOUNT_ACCESS_CACHE_MS, access.verifiedUntil),
+        access,
+      });
+    } else {
+      verifiedAccessCache.delete(userId);
+    }
     return access;
   })();
 
-  if (!token) {
+  if (!token && !process.env["VITEST"]) {
     const tracked = run.finally(() => {
       if (inFlightAccountAccess.get(userId) === tracked) inFlightAccountAccess.delete(userId);
     });

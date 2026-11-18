@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { findCuratedRecipeById } from "@/lib/curated-recipes";
 import { requirePremium } from "@/lib/premium-middleware";
 import { loadFirebaseAdmin } from "@/lib/firebase-admin-access";
 
@@ -38,7 +39,19 @@ export const listRecentlyViewed = createServerFn({ method: "GET" })
           .select("id, slug, name, image_url, image_source, cooking_time_minutes, calories")
           .eq("id", view.recipe_id)
           .maybeSingle();
-        return recipe;
+        if (recipe) return recipe;
+        const curated = findCuratedRecipeById(view.recipe_id);
+        return curated
+          ? {
+              id: curated.id,
+              slug: curated.slug,
+              name: curated.name,
+              image_url: curated.image_url,
+              image_source: curated.image_source,
+              cooking_time_minutes: curated.cooking_time_minutes,
+              calories: curated.calories,
+            }
+          : null;
       }),
     );
     return recipes.filter((recipe): recipe is NonNullable<typeof recipe> => !!recipe);

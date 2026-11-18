@@ -91,30 +91,35 @@ export const featuredRecipesQuery = () =>
   queryOptions({
     queryKey: ["recipes", "featured"],
     queryFn: () => listRecipeCatalog({ data: { limit: 12 } }),
+    staleTime: 60_000,
   });
 
 export const trendingRecipesQuery = () =>
   queryOptions({
     queryKey: ["recipes", "trending"],
     queryFn: () => listRecipeCatalog({ data: { limit: 8 } }),
+    staleTime: 60_000,
   });
 
 export const southAfricanFavoritesQuery = () =>
   queryOptions({
     queryKey: ["recipes", "south-african"],
     queryFn: () => listRecipeCatalog({ data: { category: "South African", limit: 8 } }),
+    staleTime: 60_000,
   });
 
 export const recipesByCategoryQuery = (category: string | undefined, search = "") =>
   queryOptions({
     queryKey: ["recipes", "category", category ?? "all", search.trim().toLowerCase()],
     queryFn: () => listRecipeCatalog({ data: { category, search } }),
+    staleTime: 60_000,
   });
 
 export const recipeBySlugQuery = (slug: string) =>
   queryOptions({
     queryKey: ["recipe", slug],
     queryFn: () => getRecipeCatalogEntry({ data: { slug } }),
+    staleTime: 60_000,
   });
 
 export const myFavoritesQuery = () =>

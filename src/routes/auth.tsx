@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import authHeroImage from "@/assets/images/auth_culinary_hero_1794593250334.jpg";
+import { AuthMiaStage } from "@/components/auth-mia-stage";
 import {
   getRedirectResult,
   auth,
@@ -395,59 +395,15 @@ function AuthPage() {
 
   return (
     <main
-      className={`${isHub ? "hub-auth " : ""}auth-redesign flex min-h-dvh items-center justify-center bg-background px-4 py-6 sm:px-6 lg:px-10 lg:py-8`}
+      className={`${isHub ? "hub-auth " : ""}auth-redesign flex h-dvh w-full items-center justify-center bg-background px-3 py-2 sm:px-6 lg:py-8 overflow-hidden`}
     >
-      <div className="grid w-full max-w-[1040px] grid-cols-1 overflow-hidden rounded-[22px] border border-border bg-card shadow-sm lg:grid-cols-12">
-        {/* Editorial Food Photography Panel */}
-        <section className="relative flex min-h-[210px] flex-col justify-between overflow-hidden border-b border-border bg-[#0c0c0c] sm:min-h-[260px] lg:col-span-6 lg:min-h-[680px] lg:border-b-0 lg:border-r">
-          {heroFailed ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#111111] text-[#71717A]">
-              <UtensilsCrossed className="h-8 w-8" strokeWidth={1.25} />
-              <span className="text-xs font-medium text-[#A1A1AA]">MealMate Kitchen</span>
-            </div>
-          ) : (
-            <img
-              src={authHeroImage}
-              alt="Handmade seared sourdough pasta and charred garlic in a matte charcoal stoneware bowl"
-              referrerPolicy="no-referrer"
-              onError={() => setHeroFailed(true)}
-              className="absolute inset-0 h-full w-full object-cover object-center brightness-90 contrast-105"
-            />
-          )}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 bg-gradient-to-t from-[#080808] via-[#080808]/45 to-[#080808]/20"
-          />
-
-          <div className="relative z-10 flex items-center justify-between p-6 sm:p-8 lg:p-10">
-            <MealMateLogo
-              className="text-white"
-              imageClassName="size-9 rounded-xl border border-white/15"
-              showName
-            />
-            <span className="text-[11px] font-medium tracking-wider text-white/75 uppercase">
-              Taz Technologies
-            </span>
-          </div>
-
-          <div className="relative z-10 p-6 sm:p-8 lg:p-10">
-            <p className="inline-flex items-center gap-2 text-xs font-medium tracking-wide text-[#A5B4FC]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#7C8CFF]" aria-hidden="true" />
-              Discover. Plan. Eat. Enjoy.
-            </p>
-            <h2 className="mt-2.5 max-w-sm text-balance text-2xl font-medium leading-[1.18] tracking-tight text-white sm:text-[28px]">
-              Your personal companion for better meals.
-            </h2>
-            <p className="mt-2.5 hidden max-w-sm text-sm leading-relaxed text-zinc-300 sm:block">
-              Explore tailored recipes, scan ingredients, plan weekly meals, and cook effortlessly
-              with Mia.
-            </p>
-          </div>
-        </section>
+      <div className="grid w-full max-w-[1000px] grid-cols-1 overflow-hidden rounded-[20px] border border-border bg-card shadow-sm lg:grid-cols-12 max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] lg:max-h-none">
+        {/* Animated Mia Mascot & Fun Fact Stage */}
+        <AuthMiaStage />
 
         {/* Authentication Workspace */}
-        <section className="flex flex-col justify-center bg-card p-6 sm:p-10 lg:col-span-6 lg:p-12">
-          <div className="mx-auto w-full max-w-[390px]">
+        <section className="flex flex-col justify-center bg-card p-4 sm:p-8 lg:col-span-6 lg:p-10 overflow-y-auto">
+          <div className="mx-auto w-full max-w-[380px]">
             {view === "entry" && (
               <div key="entry" className="auth-view-enter">
                 <div className="mb-8">
@@ -458,7 +414,8 @@ function AuthPage() {
                     Let&apos;s get you cooking.
                   </h1>
                   <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-                    Discover better meals, plan effortlessly and make every meal count.
+                    Discover better meals, plan effortlessly, and make every ingredient count with
+                    Mia.
                   </p>
                 </div>
 

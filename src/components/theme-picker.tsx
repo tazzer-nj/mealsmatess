@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Check, Expand, Lock, Loader2 } from "lucide-react";
+import { Check, Expand, Lock, Loader2, Sun, Moon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { useMascotTheme } from "@/hooks/use-mascot-theme";
+import { useTheme } from "@/components/theme-provider";
 import { usePremium } from "@/hooks/use-premium";
 import { useUpgradeModal } from "@/components/upgrade-modal";
 import { MASCOT_THEMES } from "@/lib/mascot-theme";
@@ -13,9 +15,10 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-/** Native-style mascot theme setting matching https://mealsmates.lovable.app. Colourful themes are Premium, matching the artwork. */
+/** Native-style mascot theme setting matching MealMate artwork. */
 export function ThemePicker() {
   const { theme, setTheme, saving } = useMascotTheme();
+  const { activeThemeId, applyTheme } = useTheme();
   const { isPremium } = usePremium();
   const { open } = useUpgradeModal();
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -29,48 +32,79 @@ export function ThemePicker() {
         >
           App theme
         </h2>
-        {saving && (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-label="Saving" />
-        )}
+        <div className="flex items-center gap-2">
+          {saving && (
+            <Loader2
+              className="h-3.5 w-3.5 animate-spin text-muted-foreground"
+              aria-label="Saving"
+            />
+          )}
+          <Link to="/settings" className="text-xs font-medium text-primary hover:underline">
+            Theme studio
+          </Link>
+        </div>
       </div>
       <div className="space-y-3 rounded-3xl border border-border bg-card p-3">
-        {/* Selected theme image preview */}
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-secondary/60 p-2.5">
-          <button
-            type="button"
-            onClick={() => setPreviewOpen(true)}
-            aria-label={`Preview ${theme.name} theme image`}
-            className="group relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-border bg-card transition-transform hover:scale-105 active:scale-95"
-          >
-            <img
-              src={theme.image}
-              alt={`${theme.name} theme preview`}
-              className="h-full w-full object-cover"
-            />
-            <span className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-md bg-background/90 text-foreground opacity-90 shadow-sm">
-              <Expand className="h-3 w-3" />
-            </span>
-          </button>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ background: theme.accent }}
-                aria-hidden="true"
+        {/* Default Black & White quick switcher + Selected image preview */}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-secondary/60 p-2.5">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(true)}
+              aria-label={`Preview ${theme.name} theme image`}
+              className="group relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-border bg-card transition-transform hover:scale-105 active:scale-95"
+            >
+              <img
+                src={theme.image}
+                alt={`${theme.name} theme preview`}
+                className="h-full w-full object-cover"
               />
-              <span className="truncate text-sm font-semibold text-foreground">{theme.name}</span>
+              <span className="absolute bottom-0.5 right-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-md bg-background/90 text-foreground shadow-sm">
+                <Expand className="h-2.5 w-2.5" />
+              </span>
+            </button>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ background: theme.accent }}
+                  aria-hidden="true"
+                />
+                <span className="truncate text-sm font-semibold text-foreground">{theme.name}</span>
+              </div>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                {theme.subtitle ?? "Tap a logo below to switch theme"}
+              </p>
             </div>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {theme.subtitle ?? "Tap a logo below to switch theme"}
-            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setPreviewOpen(true)}
-            className="shrink-0 rounded-xl border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-          >
-            Preview
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => void applyTheme("classic-light")}
+              aria-pressed={activeThemeId === "classic-light"}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                activeThemeId === "classic-light"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:bg-muted",
+              )}
+            >
+              <Sun className="h-3 w-3" /> White
+            </button>
+            <button
+              type="button"
+              onClick={() => void applyTheme("midnight-black")}
+              aria-pressed={activeThemeId === "midnight-black"}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                activeThemeId === "midnight-black"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:bg-muted",
+              )}
+            >
+              <Moon className="h-3 w-3" /> Black
+            </button>
+          </div>
         </div>
 
         <div

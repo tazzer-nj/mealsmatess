@@ -28,7 +28,7 @@ export interface TrendingCardData {
 
 const DIFFICULTY_DOTS: Record<string, number> = { Easy: 1, Medium: 2, Hard: 3 };
 
-/** Horizontal-rail card used on the home screen — image with overlaid time/cal
+/** Horizontal-rail card used on the home screen: image with overlaid time/cal
  * badge and a favorite heart, name, and a difficulty pill below. */
 export function TrendingCard({
   recipe,
@@ -48,7 +48,7 @@ export function TrendingCard({
       <Link
         to="/recipe/$slug"
         params={{ slug: recipe.slug }}
-        className="group relative block aspect-square w-40 overflow-hidden rounded-2xl border border-border bg-card"
+        className="md3-surface group relative block aspect-square w-40 overflow-hidden rounded-2xl bg-muted"
       >
         <RecipeImage
           recipe={recipe}
@@ -66,38 +66,38 @@ export function TrendingCard({
           }}
           aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
           aria-pressed={isFavorite}
-          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-xl border border-white/15 bg-black/75 text-white backdrop-blur transition-colors hover:bg-black/90"
+          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-foreground backdrop-blur transition-transform active:scale-90"
         >
-          <Heart className={isFavorite ? "h-4 w-4 fill-white text-white" : "h-4 w-4"} />
+          <Heart className={isFavorite ? "h-4 w-4 fill-primary text-primary" : "h-4 w-4"} />
         </button>
         {(recipe.cooking_time_minutes || recipe.calories) && (
-          <div className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-lg border border-white/15 bg-black/75 px-2 py-1 text-[11px] font-medium text-white backdrop-blur">
+          <div className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-ink/80 px-2.5 py-1 text-[11px] font-medium text-cream backdrop-blur">
             {recipe.cooking_time_minutes ? (
               <span className="inline-flex items-center gap-1">
-                <Clock className="h-3 w-3 text-zinc-300" />
+                <Clock className="h-3 w-3" />
                 {recipe.cooking_time_minutes} min
               </span>
             ) : null}
             {recipe.calories ? (
               <span className="inline-flex items-center gap-1">
-                <Flame className="h-3 w-3 text-zinc-300" />
+                <Flame className="h-3 w-3 text-primary" />
                 {recipe.calories} cal
               </span>
             ) : null}
           </div>
         )}
       </Link>
-      <h3 className="mt-2 line-clamp-2 text-sm font-medium leading-tight text-foreground">
-        {recipe.name}
-      </h3>
+      <h3 className="mt-2 line-clamp-2 font-display text-base leading-tight">{recipe.name}</h3>
       {recipe.difficulty && (
-        <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+        <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
           {recipe.difficulty}
           <span className="flex items-center gap-0.5">
             {[0, 1, 2].map((i) => (
               <span
                 key={i}
-                className={`h-1.5 w-1.5 rounded-full ${i < dots ? "bg-foreground" : "bg-border"}`}
+                className={`h-1.5 w-1.5 rounded-full ${
+                  i < dots ? "bg-primary" : "bg-muted-foreground/30"
+                }`}
               />
             ))}
           </span>
@@ -118,9 +118,9 @@ export function RecipeCard({
     <Link
       to="/recipe/$slug"
       params={{ slug: recipe.slug }}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-[var(--periwinkle)]"
+      className="md3-surface group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-1 hover:shadow-lg"
     >
-      <div className="aspect-[4/3] w-full overflow-hidden bg-secondary">
+      <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
         <RecipeImage
           recipe={recipe}
           size="card"
@@ -139,13 +139,13 @@ export function RecipeCard({
             </span>
           ) : null}
         </div>
-        <h3 className="text-base font-medium leading-tight text-foreground">{recipe.name}</h3>
+        <h3 className="font-display text-xl leading-tight">{recipe.name}</h3>
         {recipe.diet_tags && recipe.diet_tags.length > 0 && (
-          <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
+          <div className="mt-auto flex flex-wrap gap-1 pt-1">
             {recipe.diet_tags.slice(0, 3).map((t) => (
               <span
                 key={t}
-                className="rounded-lg border border-border bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+                className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground"
               >
                 {t}
               </span>

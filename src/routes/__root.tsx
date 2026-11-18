@@ -30,6 +30,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { LocaleProvider } from "@/components/locale-provider";
 import { UpgradeModalProvider } from "@/components/upgrade-modal";
 import { ConsumerAccessGate } from "@/components/consumer-access-gate";
+import { GlobalLoadingCompanion } from "@/components/global-loading-companion";
 import { useShellMetrics } from "@/hooks/use-shell-metrics";
 import {
   myFavoritesQuery,
@@ -159,7 +160,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=DM+Serif+Display&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
       },
     ],
   }),
@@ -289,6 +290,7 @@ function RootComponent() {
                           </div>
                         </div>
                         {isFlow ? null : <BottomNav />}
+                        <GlobalLoadingCompanion />
                       </div>
                     </MiaProvider>
                   </ConsumerAccessGate>

@@ -8,6 +8,7 @@ import { loadRecipeSearchImages } from "@/lib/recipe-search-images";
 import { recipesByCategoryQuery } from "@/lib/queries";
 import { generateRecipe, surpriseMe } from "@/lib/ai.functions";
 import { RecipeCard } from "@/components/recipe-card";
+import { MiaLoadingCard } from "@/components/mia-loading-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,7 +57,7 @@ function RecipesPage() {
   const { c, q } = Route.useSearch();
   const active = c ?? "All";
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, loading: sessionLoading } = useSession();
   const {
     data: recipes,
     isLoading,
@@ -66,6 +67,7 @@ function RecipesPage() {
     ...recipesByCategoryQuery(active !== "All" ? active : undefined, q),
     enabled: !!user,
   });
+  const loadingRecipes = sessionLoading || isLoading;
   const [query, setQuery] = useState(q ?? "");
   useEffect(() => {
     setQuery(q ?? "");
@@ -205,11 +207,14 @@ function RecipesPage() {
       </div>
 
       <div className="mt-8">
-        {isLoading ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-[4/3] w-full rounded-2xl bg-secondary" />
-            ))}
+        {loadingRecipes ? (
+          <div className="space-y-5">
+            <MiaLoadingCard delayMs={600} label="Mia is pulling your recipes together..." />
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="aspect-[4/3] w-full rounded-2xl bg-secondary" />
+              ))}
+            </div>
           </div>
         ) : isError ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
@@ -231,8 +236,22 @@ function RecipesPage() {
         ) : (
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
             <p className="text-sm text-muted-foreground">
-              Nothing here yet. Try generating a recipe above!
+              {q || active !== "All"
+                ? "No recipes matched this filter. Try clearing your search or generating a recipe above."
+                : "Nothing here yet. Try generating a recipe above!"}
             </p>
+            {(q || active !== "All") && (
+              <Button
+                variant="outline"
+                className="mt-4 rounded-xl border-border bg-secondary text-foreground"
+                onClick={() => {
+                  setQuery("");
+                  void navigate({ to: "/recipes", search: {} });
+                }}
+              >
+                Show all recipes
+              </Button>
+            )}
           </div>
         )}
       </div>

@@ -79,7 +79,7 @@ beforeEach(() => {
         kind: "yearly",
         price: "R399.00",
         period: "year",
-        trialDays: 7,
+        trialDays: 3,
         purchase: mocks.purchase,
       },
     ],
@@ -116,18 +116,18 @@ describe("onboarding and mandatory paywall", () => {
   it("keeps cancelled checkout on the paywall with no free exit", async () => {
     mocks.purchase.mockRejectedValue({ userCancelled: true });
     mount(<PremiumPaywall />);
-    fireEvent.click(await screen.findByRole("button", { name: "Start 7-day free trial" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Start 3-day free trial" }));
     await screen.findByText(/Checkout cancelled/);
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(mocks.verify).not.toHaveBeenCalled();
     expect(screen.queryByText(/Continue Free|Skip|Close paywall/)).not.toBeInTheDocument();
-    expect(screen.getByText(/7 days free, then R399.00 every year/)).toBeInTheDocument();
+    expect(screen.getByText(/3 days free, then R399.00 every year/)).toBeInTheDocument();
   });
 
   it("handles pending store payments without opening the app", async () => {
     mocks.purchase.mockRejectedValue({ errorCode: 20, name: "PaymentPendingError" });
     mount(<PremiumPaywall />);
-    fireEvent.click(await screen.findByRole("button", { name: "Start 7-day free trial" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Start 3-day free trial" }));
     await screen.findByText(/pending confirmation/);
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Check subscription access" })).toBeEnabled();
@@ -141,7 +141,7 @@ describe("onboarding and mandatory paywall", () => {
       }),
     );
     mount(<PremiumPaywall />);
-    fireEvent.click(await screen.findByRole("button", { name: "Start 7-day free trial" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Start 3-day free trial" }));
     await waitFor(() => expect(mocks.verify).toHaveBeenCalled());
     expect(mocks.navigate).not.toHaveBeenCalled();
     resolve({ isPremium: true });
@@ -166,7 +166,7 @@ describe("onboarding and mandatory paywall", () => {
   it("keeps failed verification retryable without opening the app", async () => {
     mocks.verify.mockRejectedValue(new Error("offline"));
     mount(<PremiumPaywall />);
-    fireEvent.click(await screen.findByRole("button", { name: "Start 7-day free trial" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Start 3-day free trial" }));
     await screen.findByText(/couldn’t confirm/);
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Check subscription access" })).toBeEnabled();
@@ -185,7 +185,7 @@ describe("onboarding and mandatory paywall", () => {
 
   it("blocks checkout while offline", async () => {
     mount(<PremiumPaywall />);
-    const purchase = await screen.findByRole("button", { name: "Start 7-day free trial" });
+    const purchase = await screen.findByRole("button", { name: "Start 3-day free trial" });
     Object.defineProperty(navigator, "onLine", { value: false, configurable: true });
     fireEvent(window, new Event("offline"));
     expect(purchase).toBeDisabled();
@@ -199,7 +199,7 @@ describe("onboarding and mandatory paywall", () => {
     mocks.load.mockRejectedValue(new Error("unconfigured"));
     mount(<PremiumPaywall />);
     await screen.findByText(/couldn’t load/);
-    expect(screen.getByRole("button", { name: "Subscribe" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Start 3-day free trial" })).toBeDisabled();
     expect(screen.queryByText("7 days free")).not.toBeInTheDocument();
   });
 
@@ -315,5 +315,29 @@ describe("Consumer route enforcement", () => {
     );
     expect(screen.getByText("Legal terms")).toBeInTheDocument();
     expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("never traps /premium behind subscription-error or checking-access screens", () => {
+    mocks.session.user = { id: "user-on-paywall" };
+    mocks.path = "/premium";
+    mocks.access.error = new Error("offline");
+    const errored = mount(
+      <ConsumerAccessGate>
+        <div>Paywall Screen</div>
+      </ConsumerAccessGate>,
+    );
+    expect(screen.getByText("Paywall Screen")).toBeInTheDocument();
+    expect(screen.queryByText(/Let’s check your subscription/)).not.toBeInTheDocument();
+    errored.unmount();
+
+    mocks.access.error = null;
+    mocks.access.loading = true;
+    mount(
+      <ConsumerAccessGate>
+        <div>Paywall Screen</div>
+      </ConsumerAccessGate>,
+    );
+    expect(screen.getByText("Paywall Screen")).toBeInTheDocument();
+    expect(screen.queryByText(/Checking your access/)).not.toBeInTheDocument();
   });
 });
