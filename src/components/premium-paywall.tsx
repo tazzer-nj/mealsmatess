@@ -20,7 +20,9 @@ import {
   getIntroCompletion,
 } from "@/lib/billing.functions";
 import {
+  getCachedBillingStore,
   loadBillingStore,
+  preloadBillingSdk,
   purchaseIsPending,
   purchaseWasCancelled,
   type BillingStore,
@@ -94,13 +96,26 @@ export function PremiumPaywall() {
   }, [navigate, userId]);
 
   useEffect(() => {
+    preloadBillingSdk();
+  }, []);
+
+  useEffect(() => {
     if (sessionLoading) return;
     let active = true;
     identityRef.current = null;
     loadedCurrencyRef.current = null;
-    setLoading(true);
-    setStore(null);
     setMessage("");
+
+    const cached = userId ? getCachedBillingStore(userId, currencyRef.current) : null;
+    if (cached) {
+      setStore(cached);
+      const best = cached.plans.find((p) => p.kind === "yearly") ?? cached.plans[0];
+      if (best) setSelected(best.kind);
+      setLoading(false);
+    } else {
+      setLoading(true);
+      setStore(null);
+    }
 
     let timerId: number | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -109,7 +124,7 @@ export function PremiumPaywall() {
           reject(
             new Error("We couldn’t load subscription plans. Check your connection and try again."),
           ),
-        12_000,
+        4_500,
       );
     });
 
@@ -172,7 +187,7 @@ export function PremiumPaywall() {
                 kind: "monthly",
                 price: isUsd ? "$7.99" : "R189.00",
                 period: "month",
-                trialDays: 0,
+                trialDays: 3,
                 purchase: async () => {},
               },
               {
@@ -180,7 +195,7 @@ export function PremiumPaywall() {
                 kind: "family",
                 price: isUsd ? "$11.99" : "R249.00",
                 period: "month",
-                trialDays: 0,
+                trialDays: 3,
                 purchase: async () => {},
               },
             ],
@@ -235,7 +250,7 @@ export function PremiumPaywall() {
                 kind: "monthly",
                 price: isUsd ? "$7.99" : "R189.00",
                 period: "month",
-                trialDays: 0,
+                trialDays: 3,
                 purchase: async () => {},
               },
               {
@@ -243,7 +258,7 @@ export function PremiumPaywall() {
                 kind: "family",
                 price: isUsd ? "$11.99" : "R249.00",
                 period: "month",
-                trialDays: 0,
+                trialDays: 3,
                 purchase: async () => {},
               },
             ],
@@ -492,15 +507,9 @@ export function PremiumPaywall() {
                                 </span>
                               )}
                             </div>
-                            {kind === "yearly" || option?.trialDays ? (
-                              <span className="plan-trial">3-day free trial included</span>
-                            ) : (
-                              <span className="text-[11px] text-muted-foreground">
-                                {kind === "monthly"
-                                  ? "Flexible month-to-month"
-                                  : "Shared household pantry & lists"}
-                              </span>
-                            )}
+                            <span className="plan-trial">
+                              {`${option?.trialDays && option.trialDays > 0 ? option.trialDays : 3}-day free trial included`}
+                            </span>
                           </div>
                         </div>
 
@@ -578,9 +587,7 @@ export function PremiumPaywall() {
                     ) : (
                       <>
                         <span>
-                          {selected === "yearly" || plan?.trialDays
-                            ? "Start 3-day free trial"
-                            : "Subscribe"}
+                          {`Start ${plan?.trialDays && plan.trialDays > 0 ? plan.trialDays : 3}-day free trial`}
                         </span>
                         <ArrowRight size={15} aria-hidden="true" />
                       </>
@@ -590,9 +597,7 @@ export function PremiumPaywall() {
 
                 {plan && (
                   <p className="premium-terms">
-                    {selected === "yearly" || plan.trialDays
-                      ? `3 days free, then ${plan.price} every ${plan.period}.`
-                      : `${plan.price} billed every ${plan.period}.`}{" "}
+                    {`${plan.trialDays && plan.trialDays > 0 ? plan.trialDays : 3} days free, then ${plan.price} every ${plan.period}.`}{" "}
                     Cancel anytime before renewal in your store settings.
                   </p>
                 )}

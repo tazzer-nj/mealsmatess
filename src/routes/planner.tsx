@@ -230,7 +230,7 @@ function PlannerPage() {
         <div className="mt-6">
           <MiaLoadingCard
             active={planShop || aiLoading}
-            delayMs={600}
+            delayMs={120_000}
             label="Mia is building your personalized weekly meal plan..."
           />
         </div>

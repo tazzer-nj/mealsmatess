@@ -61,11 +61,29 @@ function NotFoundComponent() {
   );
 }
 
+function isModuleFetchError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error ?? "");
+  return /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk/i.test(
+    msg,
+  );
+}
+
 function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    if (isModuleFetchError(error) && typeof window !== "undefined") {
+      try {
+        const key = "mealmate-chunk-reload";
+        if (!window.sessionStorage.getItem(key)) {
+          window.sessionStorage.setItem(key, "1");
+          window.location.reload();
+        }
+      } catch {
+        // Ignore storage errors
+      }
+    }
   }, [error]);
 
   return (
@@ -201,6 +219,23 @@ function RootComponent() {
     pathname.startsWith("/auth");
   const showAppHeader = !isHub && pathname !== "/" && !isMarketplace && !isFlow;
   useShellMetrics(showAppHeader ? "with-header" : "no-header");
+
+  useEffect(() => {
+    if (import.meta.env.DEV && typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+      void navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => {
+          for (const reg of regs) {
+            const scriptUrl =
+              reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL || "";
+            if (!scriptUrl.includes("firebase-messaging-sw.js")) {
+              void reg.unregister();
+            }
+          }
+        })
+        .catch(() => undefined);
+    }
+  }, []);
 
   useEffect(() => {
     const warmRoutesAndData = (firebaseUser: unknown) => {

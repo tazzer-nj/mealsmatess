@@ -108,9 +108,11 @@ export function useHasInlineMiaLoadingCard() {
   return hasInline;
 }
 
+export const MIA_STUCK_LOADING_DELAY_MS = 120_000;
+
 export function MiaLoadingCard({
   active = true,
-  delayMs = 700,
+  delayMs = MIA_STUCK_LOADING_DELAY_MS,
   rotateMs = 4500,
   variant = "inline",
   label = "Taking a moment while Mia preps the kitchen...",

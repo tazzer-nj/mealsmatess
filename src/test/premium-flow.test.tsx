@@ -203,6 +203,49 @@ describe("onboarding and mandatory paywall", () => {
     expect(screen.queryByText("7 days free")).not.toBeInTheDocument();
   });
 
+  it("applies a free trial across yearly, monthly, and family plans", async () => {
+    mocks.load.mockResolvedValueOnce({
+      plans: [
+        {
+          id: "yearly",
+          kind: "yearly",
+          price: "R399.00",
+          period: "year",
+          trialDays: 3,
+          purchase: mocks.purchase,
+        },
+        {
+          id: "monthly",
+          kind: "monthly",
+          price: "R189.00",
+          period: "month",
+          trialDays: 0,
+          purchase: mocks.purchase,
+        },
+        {
+          id: "family",
+          kind: "family",
+          price: "R249.00",
+          period: "month",
+          trialDays: 0,
+          purchase: mocks.purchase,
+        },
+      ],
+      restore: mocks.restore,
+    });
+    mount(<PremiumPaywall />);
+    await screen.findByText("R399.00");
+    expect(screen.getAllByText(/3-day free trial included/i)).toHaveLength(4);
+
+    fireEvent.click(screen.getByText("Monthly Plan"));
+    expect(screen.getByRole("button", { name: "Start 3-day free trial" })).toBeEnabled();
+    expect(screen.getByText(/3 days free, then R189.00 every month/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Family Plan"));
+    expect(screen.getByRole("button", { name: "Start 3-day free trial" })).toBeEnabled();
+    expect(screen.getByText(/3 days free, then R249.00 every month/)).toBeInTheDocument();
+  });
+
   it("does not invent trial eligibility or map unrelated package names", () => {
     expect(sevenDayTrial("P7D", false)).toBe(7);
     expect(sevenDayTrial("P1W", false)).toBe(7);

@@ -1,11 +1,25 @@
 // Server-only security helpers. Import inside handlers only.
 import { firebaseAdmin } from "@/server/firebase-admin";
 
+const memoryRateLimits = new Map<string, { windowStart: number; count: number }>();
+
+function checkMemoryRateLimit(bucket: string, identifier: string, maxPerMinute: number): boolean {
+  const key = `${bucket}:${identifier}`;
+  const now = Date.now();
+  const entry = memoryRateLimits.get(key);
+  if (!entry || entry.windowStart <= now - 60_000) {
+    memoryRateLimits.set(key, { windowStart: now, count: 1 });
+    return true;
+  }
+  if (entry.count >= maxPerMinute) return false;
+  entry.count += 1;
+  return true;
+}
+
 /**
  * Enforce a per-minute rate limit for a (bucket, identifier) pair.
  * Throws Response(429) when the caller is over budget.
- * Fails open (allows the request) if the RPC itself errors so a DB blip
- * cannot lock users out.
+ * Falls back to an in-memory window if Firebase Admin is unconfigured or errors.
  */
 export async function enforceRateLimit(
   bucket: string,
@@ -13,13 +27,24 @@ export async function enforceRateLimit(
   maxPerMinute: number,
 ): Promise<void> {
   if (!identifier) return;
-  const { data, error } = await firebaseAdmin.rpc("check_rate_limit", {
-    _bucket: bucket,
-    _identifier: identifier,
-    _max_per_minute: maxPerMinute,
-  });
+  let data: unknown = null;
+  let error: Error | null = null;
+  try {
+    const result = await firebaseAdmin.rpc("check_rate_limit", {
+      _bucket: bucket,
+      _identifier: identifier,
+      _max_per_minute: maxPerMinute,
+    });
+    data = result.data;
+    error = result.error;
+  } catch (err) {
+    error = err instanceof Error ? err : new Error(String(err));
+  }
   if (error) {
     console.warn("rate_limit_error", bucket, error.message);
+    if (!checkMemoryRateLimit(bucket, identifier, maxPerMinute)) {
+      throw new Response("Too many requests. Please slow down.", { status: 429 });
+    }
     return;
   }
   if (data === false) {
@@ -36,16 +61,20 @@ export async function auditLog(entry: {
   ip_address?: string | null;
   user_agent?: string | null;
 }): Promise<void> {
-  const { error } = await firebaseAdmin.from("audit_logs").insert({
-    actor_id: entry.actor_id,
-    action: entry.action,
-    target_table: entry.target_table ?? null,
-    target_id: entry.target_id ?? null,
-    metadata: (entry.metadata ?? {}) as never,
-    ip_address: entry.ip_address ?? null,
-    user_agent: entry.user_agent ?? null,
-  });
-  if (error) console.warn("audit_log_error", entry.action, error.message);
+  try {
+    const { error } = await firebaseAdmin.from("audit_logs").insert({
+      actor_id: entry.actor_id,
+      action: entry.action,
+      target_table: entry.target_table ?? null,
+      target_id: entry.target_id ?? null,
+      metadata: (entry.metadata ?? {}) as never,
+      ip_address: entry.ip_address ?? null,
+      user_agent: entry.user_agent ?? null,
+    });
+    if (error) console.warn("audit_log_error", entry.action, error.message);
+  } catch (err) {
+    console.warn("audit_log_exception", entry.action, err);
+  }
 }
 
 export function clientIpFromRequest(req: Request | undefined): string | null {

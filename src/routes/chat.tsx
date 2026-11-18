@@ -205,7 +205,7 @@ function ChatPage() {
             </div>
             <MiaLoadingCard
               active={busy}
-              delayMs={900}
+              delayMs={120_000}
               label="Mia is whisking together your answer..."
             />
           </div>

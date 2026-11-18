@@ -105,11 +105,67 @@ function preferredWebCurrency(explicit?: CurrencyCode): string {
 let nativeUser: string | null = null;
 let webUser: string | null = null;
 let queue: Promise<unknown> = Promise.resolve();
+let sdkPreloadPromise: Promise<unknown> | null = null;
+
+const STORE_CACHE_TTL_MS = 5 * 60_000;
+const storeCache = new Map<string, { expiresAt: number; store: BillingStore }>();
+const inFlightStoreLoads = new Map<string, Promise<BillingStore>>();
+
+function isTestEnv() {
+  return typeof process !== "undefined" && Boolean(process.env["VITEST"]);
+}
+
+export function preloadBillingSdk(): void {
+  if (typeof window === "undefined" || isTestEnv() || Capacitor.isNativePlatform()) return;
+  if (!sdkPreloadPromise) {
+    sdkPreloadPromise = import("@revenuecat/purchases-js").catch(() => undefined);
+  }
+}
+
+export function getCachedBillingStore(
+  appUserId: string,
+  currency?: CurrencyCode,
+): BillingStore | null {
+  if (isTestEnv()) return null;
+  const targetCurrency = preferredWebCurrency(currency);
+  const key = `${appUserId}:${targetCurrency}`;
+  const entry = storeCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    storeCache.delete(key);
+    return null;
+  }
+  return entry.store;
+}
 
 export function loadBillingStore(
   identity: Identity,
   currency?: CurrencyCode,
 ): Promise<BillingStore> {
+  if (!isTestEnv()) {
+    const targetCurrency = preferredWebCurrency(currency);
+    const key = `${identity.appUserId}:${targetCurrency}`;
+    const cached = getCachedBillingStore(identity.appUserId, currency);
+    if (cached) return Promise.resolve(cached);
+
+    const existing = inFlightStoreLoads.get(key);
+    if (existing) return existing;
+
+    const task = queue
+      .catch(() => undefined)
+      .then(() => configureStore(identity, currency))
+      .then((store) => {
+        storeCache.set(key, { expiresAt: Date.now() + STORE_CACHE_TTL_MS, store });
+        return store;
+      })
+      .finally(() => {
+        if (inFlightStoreLoads.get(key) === task) inFlightStoreLoads.delete(key);
+      });
+    queue = task;
+    inFlightStoreLoads.set(key, task);
+    return task;
+  }
+
   const task = queue.catch(() => undefined).then(() => configureStore(identity, currency));
   queue = task;
   return task;

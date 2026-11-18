@@ -614,135 +614,144 @@ async function premiumActive(userId: string) {
 }
 
 async function runRpc(name: string, args: Record<string, unknown>): Promise<DbResult<any>> {
-  const { db } = getServices();
-  switch (name) {
-    case "check_rate_limit": {
-      const bucket = String(args["_bucket"] ?? "default");
-      const identifier = String(args["_identifier"] ?? "");
-      const max = Math.max(1, Number(args["_max_per_minute"] ?? 1));
-      if (!identifier) return { data: true, error: null };
-      const id = `${bucket}:${identifier}`.replaceAll("/", "_");
-      const ref = db.collection("rate_limits").doc(id);
-      const allowed = await db.runTransaction(async (transaction) => {
-        const snap = await transaction.get(ref);
-        const now = Date.now();
-        const record = snap.data();
-        const start = Number(record?.window_start ?? 0);
-        const count = start > now - 60_000 ? Number(record?.count ?? 0) : 0;
-        if (count >= max) return false;
-        transaction.set(ref, {
-          bucket,
-          identifier,
-          window_start: start > now - 60_000 ? start : now,
-          count: count + 1,
-          expires_at: new Date(now + 120_000).toISOString(),
+  try {
+    const { db } = getServices();
+    switch (name) {
+      case "check_rate_limit": {
+        const bucket = String(args["_bucket"] ?? "default");
+        const identifier = String(args["_identifier"] ?? "");
+        const max = Math.max(1, Number(args["_max_per_minute"] ?? 1));
+        if (!identifier) return { data: true, error: null };
+        const id = `${bucket}:${identifier}`.replaceAll("/", "_");
+        const ref = db.collection("rate_limits").doc(id);
+        const allowed = await db.runTransaction(async (transaction) => {
+          const snap = await transaction.get(ref);
+          const now = Date.now();
+          const record = snap.data();
+          const start = Number(record?.window_start ?? 0);
+          const count = start > now - 60_000 ? Number(record?.count ?? 0) : 0;
+          if (count >= max) return false;
+          transaction.set(ref, {
+            bucket,
+            identifier,
+            window_start: start > now - 60_000 ? start : now,
+            count: count + 1,
+            expires_at: new Date(now + 120_000).toISOString(),
+          });
+          return true;
         });
-        return true;
-      });
-      return { data: allowed, error: null };
-    }
-    case "consume_ai_credit":
-    case "consume_image_credit": {
-      const userId = String(args["_user_id"] ?? "");
-      if (!userId)
+        return { data: allowed, error: null };
+      }
+      case "consume_ai_credit":
+      case "consume_image_credit": {
+        const userId = String(args["_user_id"] ?? "");
+        if (!userId)
+          return {
+            data: { allowed: false, reason: "daily", resets_at: startOfUtcDay().toISOString() },
+            error: null,
+          };
+        const { requireActivePremium } = await import("@/server/revenuecat");
+        await requireActivePremium(userId);
+        return { data: { allowed: true, premium: true }, error: null };
+      }
+      case "increment_dish_search": {
+        const dish = String(args["_name"] ?? "")
+          .trim()
+          .toLowerCase();
+        if (!dish) return { data: 0, error: null };
+        const ref = db.collection("dish_searches").doc(dish);
+        const count = await db.runTransaction(async (transaction) => {
+          const snap = await transaction.get(ref);
+          const next = Number(snap.data()?.count ?? 0) + 1;
+          transaction.set(
+            ref,
+            { name: dish, count: next, updated_at: new Date().toISOString() },
+            { merge: true },
+          );
+          return next;
+        });
+        return { data: count, error: null };
+      }
+      case "is_premium":
+        return { data: await premiumActive(String(args["_user_id"] ?? "")), error: null };
+      case "setting_int": {
+        const { data } = await firebaseAdmin
+          .from("app_settings")
+          .select("value")
+          .eq("key", String(args["_key"] ?? ""))
+          .maybeSingle();
+        return { data: Number(data?.value ?? args["_default"] ?? 0), error: null };
+      }
+      case "recalc_recipe_rating": {
+        const recipeId = String(args["_recipe_id"] ?? "");
+        const { data: ratings } = await firebaseAdmin
+          .from("recipe_ratings")
+          .select("rating")
+          .eq("recipe_id", recipeId);
+        const values = (ratings ?? [])
+          .map((row: Row) => Number(row.rating))
+          .filter(Number.isFinite);
+        const average = values.length
+          ? values.reduce((sum: number, value: number) => sum + value, 0) / values.length
+          : 0;
+        await firebaseAdmin
+          .from("recipes")
+          .update({ rating: average, rating_count: values.length })
+          .eq("id", recipeId);
+        return { data: null, error: null };
+      }
+      case "my_ai_usage": {
+        const userId = String(args["_user_id"] ?? "");
+        const dayKey = startOfUtcDay().toISOString().slice(0, 10);
+        const monthKey = startOfUtcMonth().toISOString().slice(0, 7);
+        const { data: daily } = await firebaseAdmin
+          .from("usage_limits")
+          .select("count")
+          .eq("user_id", userId)
+          .eq("feature_key", "ai_chat")
+          .eq("period_key", dayKey)
+          .maybeSingle();
+        const { data: monthly } = await firebaseAdmin
+          .from("usage_limits")
+          .select("count")
+          .eq("user_id", userId)
+          .eq("feature_key", "ai_month")
+          .eq("period_key", monthKey)
+          .maybeSingle();
+        const { count: favoritesCount } = await firebaseAdmin
+          .from("favorites")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId);
+        const { count: plansCount } = await firebaseAdmin
+          .from("meal_plans")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId);
         return {
-          data: { allowed: false, reason: "daily", resets_at: startOfUtcDay().toISOString() },
+          data: {
+            day_used: Number(daily?.count ?? 0),
+            day_max: 10,
+            month_used: Number(monthly?.count ?? 0),
+            month_max: null,
+            favorites_used: favoritesCount ?? 0,
+            favorites_max: null,
+            plans_used: plansCount ?? 0,
+            plans_max: null,
+            day_resets_at: new Date(startOfUtcDay().getTime() + 86_400_000).toISOString(),
+            month_resets_at: new Date(
+              Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1),
+            ).toISOString(),
+          },
           error: null,
         };
-      const { requireActivePremium } = await import("@/server/revenuecat");
-      await requireActivePremium(userId);
-      return { data: { allowed: true, premium: true }, error: null };
+      }
+      default:
+        return { data: null, error: new Error(`Unsupported Firebase operation: ${name}`) };
     }
-    case "increment_dish_search": {
-      const dish = String(args["_name"] ?? "")
-        .trim()
-        .toLowerCase();
-      if (!dish) return { data: 0, error: null };
-      const ref = db.collection("dish_searches").doc(dish);
-      const count = await db.runTransaction(async (transaction) => {
-        const snap = await transaction.get(ref);
-        const next = Number(snap.data()?.count ?? 0) + 1;
-        transaction.set(
-          ref,
-          { name: dish, count: next, updated_at: new Date().toISOString() },
-          { merge: true },
-        );
-        return next;
-      });
-      return { data: count, error: null };
-    }
-    case "is_premium":
-      return { data: await premiumActive(String(args["_user_id"] ?? "")), error: null };
-    case "setting_int": {
-      const { data } = await firebaseAdmin
-        .from("app_settings")
-        .select("value")
-        .eq("key", String(args["_key"] ?? ""))
-        .maybeSingle();
-      return { data: Number(data?.value ?? args["_default"] ?? 0), error: null };
-    }
-    case "recalc_recipe_rating": {
-      const recipeId = String(args["_recipe_id"] ?? "");
-      const { data: ratings } = await firebaseAdmin
-        .from("recipe_ratings")
-        .select("rating")
-        .eq("recipe_id", recipeId);
-      const values = (ratings ?? []).map((row: Row) => Number(row.rating)).filter(Number.isFinite);
-      const average = values.length
-        ? values.reduce((sum: number, value: number) => sum + value, 0) / values.length
-        : 0;
-      await firebaseAdmin
-        .from("recipes")
-        .update({ rating: average, rating_count: values.length })
-        .eq("id", recipeId);
-      return { data: null, error: null };
-    }
-    case "my_ai_usage": {
-      const userId = String(args["_user_id"] ?? "");
-      const dayKey = startOfUtcDay().toISOString().slice(0, 10);
-      const monthKey = startOfUtcMonth().toISOString().slice(0, 7);
-      const { data: daily } = await firebaseAdmin
-        .from("usage_limits")
-        .select("count")
-        .eq("user_id", userId)
-        .eq("feature_key", "ai_chat")
-        .eq("period_key", dayKey)
-        .maybeSingle();
-      const { data: monthly } = await firebaseAdmin
-        .from("usage_limits")
-        .select("count")
-        .eq("user_id", userId)
-        .eq("feature_key", "ai_month")
-        .eq("period_key", monthKey)
-        .maybeSingle();
-      const { count: favoritesCount } = await firebaseAdmin
-        .from("favorites")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId);
-      const { count: plansCount } = await firebaseAdmin
-        .from("meal_plans")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId);
-      return {
-        data: {
-          day_used: Number(daily?.count ?? 0),
-          day_max: 10,
-          month_used: Number(monthly?.count ?? 0),
-          month_max: null,
-          favorites_used: favoritesCount ?? 0,
-          favorites_max: null,
-          plans_used: plansCount ?? 0,
-          plans_max: null,
-          day_resets_at: new Date(startOfUtcDay().getTime() + 86_400_000).toISOString(),
-          month_resets_at: new Date(
-            Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1),
-          ).toISOString(),
-        },
-        error: null,
-      };
-    }
-    default:
-      return { data: null, error: new Error(`Unsupported Firebase operation: ${name}`) };
+  } catch (error) {
+    return {
+      data: null,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
   }
 }
 

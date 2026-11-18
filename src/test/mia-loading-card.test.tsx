@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { MIA_WAIT_MOMENTS, MiaLoadingCard } from "@/components/mia-loading-card";
+import {
+  MIA_STUCK_LOADING_DELAY_MS,
+  MIA_WAIT_MOMENTS,
+  MiaLoadingCard,
+} from "@/components/mia-loading-card";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -29,12 +33,18 @@ describe("Mia loading companion card", () => {
     vi.useRealTimers();
   });
 
-  it("stays hidden on sub-second fast loads and appears only when loading takes time", () => {
-    render(<MiaLoadingCard active delayMs={700} />);
+  it("stays hidden until loading persists for 2 minutes by default", () => {
+    expect(MIA_STUCK_LOADING_DELAY_MS).toBe(120_000);
+    render(<MiaLoadingCard active />);
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
 
     act(() => {
-      vi.advanceTimersByTime(700);
+      vi.advanceTimersByTime(119_999);
+    });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
     });
 
     expect(screen.getByRole("status")).toBeInTheDocument();

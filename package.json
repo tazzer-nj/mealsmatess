@@ -7,6 +7,7 @@
     "dev": "node scripts/prepare-mia-voice.mjs && vite dev --host 0.0.0.0 --port 3000",
     "build": "node scripts/prepare-mia-voice.mjs && vite build",
     "build:dev": "node scripts/prepare-mia-voice.mjs && vite build --mode development",
+    "start": "node .output/server/index.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",

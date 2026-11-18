@@ -209,7 +209,7 @@ function RecipesPage() {
       <div className="mt-8">
         {loadingRecipes ? (
           <div className="space-y-5">
-            <MiaLoadingCard delayMs={600} label="Mia is pulling your recipes together..." />
+            <MiaLoadingCard delayMs={120_000} label="Mia is pulling your recipes together..." />
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="aspect-[4/3] w-full rounded-2xl bg-secondary" />

@@ -25,7 +25,15 @@ export const createPurchaseSession = createServerFn({ method: "POST" }).handler(
   const service = await billing();
   service.assertBillingOrigin(request);
   const cookieToken = getCookie(COOKIE);
-  const identity = await service.purchaseIdentity(cookieToken, userId);
+  let identity: { customerId: string; token: string | null } = {
+    customerId: userId ?? `guest_${Date.now()}`,
+    token: null,
+  };
+  try {
+    identity = await service.purchaseIdentity(cookieToken, userId);
+  } catch {
+    // Allow paywall offerings to load cleanly even when Firebase Admin is unconfigured.
+  }
   const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
   const isHttps = forwardedProto === "https" || request.url.startsWith("https:");
   if (identity.token)
@@ -37,14 +45,24 @@ export const createPurchaseSession = createServerFn({ method: "POST" }).handler(
       maxAge: 90 * 86400,
     });
   let isActive = false;
-  try {
-    if (userId) {
-      isActive = (await service.verifyAccountAccess(userId, cookieToken, claims)).isPremium;
-    } else if (!identity.token) {
-      isActive = (await service.verifyRevenueCatCustomer(identity.customerId)).isPremium;
+  const hasSecretKey = Boolean((process.env["REVENUECAT_SECRET_API_KEY"] ?? "").trim());
+  if (hasSecretKey) {
+    try {
+      const checkPromise = userId
+        ? service.verifyAccountAccess(userId, cookieToken, claims)
+        : !identity.token
+          ? service.verifyRevenueCatCustomer(identity.customerId)
+          : Promise.resolve({ isPremium: false });
+      const result = await Promise.race([
+        checkPromise,
+        new Promise<{ isPremium: boolean }>((resolve) =>
+          setTimeout(() => resolve({ isPremium: false }), 2500),
+        ),
+      ]);
+      isActive = result.isPremium;
+    } catch {
+      isActive = false;
     }
-  } catch {
-    isActive = false;
   }
   return {
     appUserId: identity.customerId,

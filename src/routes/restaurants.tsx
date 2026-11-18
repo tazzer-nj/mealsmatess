@@ -867,7 +867,7 @@ function MarketplaceSkeleton() {
   return (
     <div className="space-y-8 px-4" aria-label="Loading restaurants">
       <MiaLoadingCard
-        delayMs={600}
+        delayMs={120_000}
         label="Mia is scouting nearby kitchens and 20% off dining specials..."
       />
       <Skeleton className="h-52 rounded-3xl" />

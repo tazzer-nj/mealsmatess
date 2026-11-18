@@ -24,6 +24,7 @@ import {
   Salad,
   Leaf,
   LayoutGrid,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -63,7 +64,6 @@ export const Route = createFileRoute("/")({
       context.queryClient.ensureQueryData(trendingRecipesQuery()),
       context.queryClient.ensureQueryData(southAfricanFavoritesQuery()),
       context.queryClient.ensureQueryData(myFavoritesQuery()),
-      context.queryClient.ensureQueryData(myPreferencesQuery),
     ]).catch(() => undefined);
   },
   component: HomeSurface,
@@ -138,10 +138,11 @@ function Index() {
     if (!q) return;
     setBusy("search");
     try {
-      await loadRecipeSearchImages(q);
+      const matches = await queryClient.fetchQuery(recipesByCategoryQuery(undefined, q));
+      void loadRecipeSearchImages(matches, queryClient);
       await navigate({ to: "/recipes", search: { q } });
     } catch {
-      toast.error("Could not load recipes right now.");
+      await navigate({ to: "/recipes", search: { q } });
     } finally {
       setBusy(null);
     }
@@ -383,7 +384,7 @@ function Index() {
           <div className="space-y-4">
             <div className="px-4">
               <MiaLoadingCard
-                delayMs={700}
+                delayMs={120_000}
                 label="Mia is picking trending dishes for your kitchen..."
               />
             </div>

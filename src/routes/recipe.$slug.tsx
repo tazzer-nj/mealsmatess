@@ -190,7 +190,10 @@ function RecipePage() {
     if (sessionLoading || isLoading) {
       return (
         <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
-          <MiaLoadingCard delayMs={600} label="Mia is setting the prep table for this recipe..." />
+          <MiaLoadingCard
+            delayMs={120_000}
+            label="Mia is setting the prep table for this recipe..."
+          />
           <div className="h-8 w-40 animate-pulse rounded-xl bg-muted" />
           <div className="grid gap-8 md:grid-cols-2">
             <div className="aspect-square w-full animate-pulse rounded-2xl bg-muted" />

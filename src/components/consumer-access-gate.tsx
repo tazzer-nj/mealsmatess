@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useFlowController } from "@/lib/flow-controller";
-import { MiaLoadingCard } from "@/components/mia-loading-card";
+import { MIA_STUCK_LOADING_DELAY_MS, MiaLoadingCard } from "@/components/mia-loading-card";
 import { Loader2 } from "lucide-react";
 
 const ALLOWED_UNAUTH_PREFIXES = [
@@ -72,10 +72,12 @@ export function ConsumerAccessGate({ children }: { children: ReactNode }) {
 
     // Authenticated states
     if (state === "onboarding_required") {
+      void import("@/lib/billing-client").then((m) => m.preloadBillingSdk()).catch(() => undefined);
       if (pathname !== "/onboarding" && !isPublic) {
         void navigate({ to: "/onboarding", replace: true });
       }
     } else if (state === "paywall_required") {
+      void import("@/lib/billing-client").then((m) => m.preloadBillingSdk()).catch(() => undefined);
       if (pathname !== "/premium" && !isPublic) {
         void navigate({ to: "/premium", replace: true });
       }
@@ -189,7 +191,7 @@ export function ConsumerAccessGate({ children }: { children: ReactNode }) {
         </div>
         <div className="mx-auto mt-6 w-full max-w-md">
           <MiaLoadingCard
-            delayMs={600}
+            delayMs={MIA_STUCK_LOADING_DELAY_MS}
             label="Mia is warming up your kitchen while access verifies..."
           />
         </div>

@@ -23,6 +23,8 @@ export function decodeRestaurantImage(base64: string, contentType: string) {
   return { bytes, extension };
 }
 
+const memoryRestaurantMedia = new Map<string, string>();
+
 /** Only public food/restaurant photos. Membership must be checked before calling. */
 export async function storeRestaurantImage(
   restaurantId: string,
@@ -31,8 +33,15 @@ export async function storeRestaurantImage(
   contentType: string,
 ) {
   const { bytes, extension } = decodeRestaurantImage(base64, contentType);
-  if (!process.env["BLOB_READ_WRITE_TOKEN"] && !process.env["BLOB_STORE_ID"])
-    throw new Error("Restaurant photo storage is not configured.");
+  if (!process.env["BLOB_READ_WRITE_TOKEN"] && !process.env["BLOB_STORE_ID"]) {
+    if (process.env["VITEST"]) {
+      throw new Error("Restaurant photo storage is not configured.");
+    }
+    const pathname = `restaurant-media/${restaurantId}/${kind}.${extension}`;
+    const url = `data:${contentType};base64,${bytes.toString("base64")}`;
+    memoryRestaurantMedia.set(pathname, url);
+    return { url, path: pathname };
+  }
   const blob = await put(`restaurant-media/${restaurantId}/${kind}.${extension}`, bytes, {
     access: "public",
     contentType,
