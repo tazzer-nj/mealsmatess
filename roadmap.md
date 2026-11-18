@@ -19,3 +19,5 @@
 - [ ] Recipe image audit — blocked: no recipes in database until data is imported.
 
 - [x] Remove the standalone sign-in page and route visitors to the welcome screen; retain account and admin protections.
+
+- [ ] Verify the sign-in page remains removed while protected account and admin access stays gated.
