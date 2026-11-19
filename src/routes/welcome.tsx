@@ -17,6 +17,7 @@ import { completeIntro } from "@/lib/billing.functions";
 import { useSession } from "@/hooks/use-session";
 import { markTourSeen } from "@/lib/preferences";
 import { useQueryClient } from "@tanstack/react-query";
+import { OnboardingRewardCard } from "@/components/onboarding-reward-card";
 
 export const Route = createFileRoute("/welcome")({
   head: () => ({ meta: [{ title: "Welcome to MealMate | App Tour" }] }),
@@ -214,6 +215,12 @@ function WelcomeTourPage() {
           ))}
         </div>
       </header>
+
+      {step === 0 && (
+        <div className="mb-4">
+          <OnboardingRewardCard />
+        </div>
+      )}
 
       <section key={step} className="tour-step-card">
         <div className="tour-photo-wrapper">

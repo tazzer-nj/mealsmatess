@@ -33,7 +33,7 @@ export function SuccessAnimation({ onComplete }: { onComplete?: () => void }) {
           Subscription Confirmed!
         </h2>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-          Your 3-day free trial is active. Preparing your personalized kitchen...
+          Your 3-day free trial is active. Your Onboarding Reward Card and badges are unlocked!
         </p>
 
         <div className="mt-6 flex items-center justify-center gap-1.5">

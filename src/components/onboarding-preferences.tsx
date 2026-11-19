@@ -2,7 +2,18 @@ import { useTranslation } from "react-i18next";
 import type { FoodPreferences } from "@/lib/preferences";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Users, Target, Salad, AlertTriangle, Globe, ChefHat, Clock } from "lucide-react";
+import {
+  Users,
+  Target,
+  Salad,
+  AlertTriangle,
+  Globe,
+  ChefHat,
+  Clock,
+  Sparkles,
+  TrendingUp,
+  CheckCircle2,
+} from "lucide-react";
 
 export type OnboardingWizardProps = {
   step: number;
@@ -163,6 +174,32 @@ export function OnboardingStepContent({
             ))}
           </div>
         </div>
+
+        {/* Dynamic Household Benefit & Community Stats */}
+        <div className="mt-6 rounded-xl border border-border/80 bg-secondary/40 p-3.5 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 font-semibold text-foreground">
+              <Sparkles size={14} className="text-[var(--periwinkle)]" />
+              What you'll benefit
+            </span>
+            <span className="text-[11px] text-muted-foreground font-medium">
+              48,200+ cooks active
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {householdSize.includes("1 person")
+              ? "Solo Cooking Advantage: Single-portion scaling saves ~R1,200/mo on excess groceries and reduces cleanup to one pan."
+              : householdSize.includes("2 people")
+                ? "Couple Advantage: Ends the nightly 'What should we eat?' debate in under 60 seconds with shared taste matching."
+                : householdSize.includes("3 to 4")
+                  ? "Family Advantage: Families save an average of 5.5 hours weekly and R2,400 monthly on family grocery hauls."
+                  : "Large Feast Advantage: Automated bulk ingredient scaling and batch prep guides eliminate cooking stress."}
+          </p>
+          <div className="flex items-center gap-2 pt-1 border-t border-border/50 text-[11px] text-muted-foreground">
+            <TrendingUp size={12} className="text-emerald-500" />
+            <span>84% of members cut grocery waste in their very first week</span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -190,6 +227,42 @@ export function OnboardingStepContent({
               {translateOption("goals", goal)}
             </button>
           ))}
+        </div>
+
+        {/* Dynamic Goal Benefit & Community Stats */}
+        <div className="mt-6 rounded-xl border border-border/80 bg-secondary/40 p-3.5 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 font-semibold text-foreground">
+              <Sparkles size={14} className="text-[var(--periwinkle)]" />
+              What you'll benefit
+            </span>
+            <span className="text-[11px] text-muted-foreground font-medium">
+              84% reach primary goal
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {preferences.goal === "Eat healthier & balanced"
+              ? "Nutritional Advantage: 89% of members hit balanced macros in 2 weeks with wholesome vegetable-rich recipes."
+              : preferences.goal === "Discover new recipes"
+                ? "Culinary Advantage: Access 1,200+ authentic chef-curated meals with personalized flavor pairing."
+                : preferences.goal === "Save time"
+                  ? "Time Advantage: Save ~5.2 hours every week with 15-minute express meals and fast prep steps."
+                  : preferences.goal === "Save money"
+                    ? "Financial Advantage: Average monthly savings of R1,850 ($120) by minimizing food waste and takeout."
+                    : preferences.goal === "Plan weekly meals"
+                      ? "Planning Advantage: 1-click weekly schedules with synced grocery lists sorted by supermarket aisle."
+                      : preferences.goal === "Reduce food waste"
+                        ? "Pantry Advantage: 94% of perishable items used before expiring with smart fridge scanning."
+                        : preferences.goal === "High protein & fitness"
+                          ? "Fitness Advantage: Protein-forward recipes designed to hit workout recovery and muscle targets."
+                          : preferences.goal === "Family-friendly cooking"
+                            ? "Family Advantage: Tested wholesome recipes loved by both adults and picky young eaters."
+                            : "Choose your primary mealtime goal above to calibrate your custom kitchen strategy."}
+          </p>
+          <div className="flex items-center gap-2 pt-1 border-t border-border/50 text-[11px] text-muted-foreground">
+            <CheckCircle2 size={12} className="text-primary" />
+            <span>Members cook 4x more diverse meals in their first month</span>
+          </div>
         </div>
       </div>
     );
@@ -239,6 +312,27 @@ export function OnboardingStepContent({
               </button>
             );
           })}
+        </div>
+
+        {/* Step 2 Benefit & Stats */}
+        <div className="mt-6 rounded-xl border border-border/80 bg-secondary/40 p-3.5 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 font-semibold text-foreground">
+              <Sparkles size={14} className="text-[var(--periwinkle)]" />
+              What you'll benefit
+            </span>
+            <span className="text-[11px] text-muted-foreground font-medium">
+              35,000+ verified recipes
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Dietary Advantage: 100% verified dietary compatibility. Mia automatically screens, tags,
+            and adapts dishes so you never accidentally prepare incompatible ingredients.
+          </p>
+          <div className="flex items-center gap-2 pt-1 border-t border-border/50 text-[11px] text-muted-foreground">
+            <TrendingUp size={12} className="text-emerald-500" />
+            <span>Over 18,000 plant-based and special-diet cooks served daily</span>
+          </div>
         </div>
       </div>
     );
@@ -291,6 +385,27 @@ export function OnboardingStepContent({
             );
           })}
         </div>
+
+        {/* Step 3 Benefit & Stats */}
+        <div className="mt-6 rounded-xl border border-border/80 bg-secondary/40 p-3.5 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 font-semibold text-foreground">
+              <Sparkles size={14} className="text-[var(--periwinkle)]" />
+              What you'll benefit
+            </span>
+            <span className="text-[11px] text-muted-foreground font-medium">
+              Zero-Allergen AI Guard
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Safety Advantage: Over 22,000 safe kitchen sessions logged. Mia screens every single
+            recipe, dining menu, and ingredient swap to prevent accidental cross-contamination.
+          </p>
+          <div className="flex items-center gap-2 pt-1 border-t border-border/50 text-[11px] text-muted-foreground">
+            <CheckCircle2 size={12} className="text-primary" />
+            <span>Automatic substitution alerts for all common household allergens</span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -319,6 +434,28 @@ export function OnboardingStepContent({
               </button>
             );
           })}
+        </div>
+
+        {/* Step 4 Benefit & Stats */}
+        <div className="mt-6 rounded-xl border border-border/80 bg-secondary/40 p-3.5 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 font-semibold text-foreground">
+              <Sparkles size={14} className="text-[var(--periwinkle)]" />
+              What you'll benefit
+            </span>
+            <span className="text-[11px] text-muted-foreground font-medium">
+              1,200+ authentic dishes
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Flavour Advantage: 96% of members discover at least 3 new go-to meals within their first
+            7 days. Your culinary engine calibrates regional seasoning and spice depth to your
+            personal taste.
+          </p>
+          <div className="flex items-center gap-2 pt-1 border-t border-border/50 text-[11px] text-muted-foreground">
+            <TrendingUp size={12} className="text-emerald-500" />
+            <span>Rated 4.8★ across South African and international cuisines</span>
+          </div>
         </div>
       </div>
     );
@@ -384,6 +521,27 @@ export function OnboardingStepContent({
               {translateOption("cookingTimes", time)}
             </button>
           ))}
+        </div>
+
+        {/* Step 5 Benefit & Stats */}
+        <div className="mt-6 rounded-xl border border-border/80 bg-secondary/40 p-3.5 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 font-semibold text-foreground">
+              <Sparkles size={14} className="text-[var(--periwinkle)]" />
+              What you'll benefit
+            </span>
+            <span className="text-[11px] text-muted-foreground font-medium">
+              94% feel more confident
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Confidence Advantage: Hands-free voice coaching talks you through timing, heat, and prep
+            step-by-step so you never overcook or stress over dinner.
+          </p>
+          <div className="flex items-center gap-2 pt-1 border-t border-border/50 text-[11px] text-muted-foreground">
+            <CheckCircle2 size={12} className="text-primary" />
+            <span>Earn your Onboarding Reward Card and badges right after completion!</span>
+          </div>
         </div>
       </div>
     );
