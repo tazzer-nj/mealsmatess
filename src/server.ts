@@ -1,7 +1,8 @@
 import "./lib/error-capture";
 
+import { applyHomepageLinkHeaders, handleAgentDiscoveryRequest } from "./lib/agent-discovery";
 import { consumeLastCapturedError } from "./lib/error-capture";
-import { renderErrorPage } from "./lib/error-page";
+import { renderErrorPage, renderErrorResponse } from "./lib/error-page";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -84,30 +85,33 @@ export default {
           },
         );
       }
+
+      const discoveryResponse = handleAgentDiscoveryRequest(request);
+      if (discoveryResponse) {
+        return discoveryResponse;
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       const normalized = await normalizeCatastrophicSsrResponse(response, request);
+      const withDiscoveryLinks = applyHomepageLinkHeaders(normalized, url.pathname);
       if (url.pathname === "/ai-founder") {
-        const headers = new Headers(normalized.headers);
+        const headers = new Headers(withDiscoveryLinks.headers);
         headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
-        return new Response(normalized.body, {
-          status: normalized.status,
-          statusText: normalized.statusText,
+        return new Response(withDiscoveryLinks.body, {
+          status: withDiscoveryLinks.status,
+          statusText: withDiscoveryLinks.statusText,
           headers,
         });
       }
-      return normalized;
+      return withDiscoveryLinks;
     } catch (error) {
       console.error(error);
-      if (!isHtmlDocumentRequest(request)) {
-        return Response.json(
-          { error: "INTERNAL_SERVER_ERROR", message: "The request could not be completed." },
-          { status: 500 },
-        );
-      }
-      return new Response(renderErrorPage(), {
+      return renderErrorResponse(request, {
         status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
+        code: "INTERNAL_SERVER_ERROR",
+        title: "This page didn't load",
+        message: "The request could not be completed. Please try again or head back home.",
       });
     }
   },
