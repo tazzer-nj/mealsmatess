@@ -731,6 +731,15 @@ function AuthPage() {
                 className="mt-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 text-xs text-muted-foreground"
               >
                 <Link
+                  to="/about"
+                  className="font-medium text-foreground transition-colors hover:text-[var(--periwinkle)] hover:underline hover:underline-offset-4"
+                >
+                  Features
+                </Link>
+                <span aria-hidden="true" className="text-border">
+                  |
+                </span>
+                <Link
                   to="/legal/privacy"
                   className="font-medium text-foreground transition-colors hover:text-[var(--periwinkle)] hover:underline hover:underline-offset-4"
                 >

@@ -136,26 +136,33 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "MealMate" },
       { name: "application-name", content: "MealMate" },
-      { title: "MealMate" },
+      { title: "MealMate – AI Recipe Generator, Meal Planner & Smart Pantry" },
       {
         name: "description",
         content:
-          "Smart cooking companion, AI recipe generator, meal planner, and pantry grocery manager.",
+          "Cook smarter with Mia AI voice chef, fridge photo scanning, weekly meal planning, aisle-sorted grocery lists, and local dining.",
       },
-      { name: "author", content: "MealMate" },
-      { property: "og:title", content: "MealMate" },
+      { name: "author", content: "MealMate · Taz Technologies" },
+      { property: "og:site_name", content: "MealMate" },
+      {
+        property: "og:title",
+        content: "MealMate – AI Recipe Generator, Meal Planner & Smart Pantry",
+      },
       {
         property: "og:description",
         content:
-          "Smart cooking companion, AI recipe generator, meal planner, and pantry grocery manager.",
+          "Cook smarter with Mia AI voice chef, fridge photo scanning, weekly meal planning, aisle-sorted grocery lists, and local dining.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "MealMate" },
+      {
+        name: "twitter:title",
+        content: "MealMate – AI Recipe Generator, Meal Planner & Smart Pantry",
+      },
       {
         name: "twitter:description",
         content:
-          "Smart cooking companion, AI recipe generator, meal planner, and pantry grocery manager.",
+          "Cook smarter with Mia AI voice chef, fridge photo scanning, weekly meal planning, aisle-sorted grocery lists, and local dining.",
       },
     ],
     links: [
@@ -166,7 +173,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "alternate",
         type: "text/markdown",
         href: "/llms.txt",
-        title: "AI Context & Founder Briefing",
+        title: "MealMate Features & AI Context Directory",
       },
       {
         rel: "apple-touch-icon",
@@ -188,11 +195,47 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+const MEALMATE_SCHEMA_JSON_LD = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "MealMate",
+  applicationCategory: "LifestyleApplication",
+  operatingSystem: "Web, iOS, Android",
+  url: "https://mealsmates.site",
+  description:
+    "Personal food companion featuring Mia AI voice cooking, fridge photo scanning, AI recipe generation, smart pantry tracking, weekly meal planning, aisle-sorted grocery lists, and local dining discovery.",
+  featureList: [
+    "Mia AI Voice Sous Chef for hands-free step-by-step cooking",
+    "Fridge & Pantry Photo Scanner for instant ingredient-matched recipes",
+    "AI Recipe Generator tailored to dietary goals, allergies, and cooking time",
+    "Smart Pantry Inventory & Zero-Waste Alerts",
+    "Weekly Meal Planner with Aisle-Sorted Grocery Lists",
+    "Local Restaurant & Dining Discovery",
+    "Offline Cookbook, Nutrition Insights & Ingredient Substitutions",
+    "MealMate Hub Partner Platform for Culinary Merchants",
+  ],
+  publisher: {
+    "@type": "Organization",
+    name: "Taz Technologies",
+    url: "https://mealsmates.site",
+  },
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    description: "3-day free trial included across Monthly, Annual, and Family plans",
+  },
+});
+
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: MEALMATE_SCHEMA_JSON_LD }}
+        />
         <HeadContent />
       </head>
       <body

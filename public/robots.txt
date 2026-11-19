@@ -1,13 +1,24 @@
-# AI Context & Unlisted Founder Briefing
+# MealMate Crawler & AI Discovery Policy
+# Sitemap: https://mealsmates.site/sitemap.xml
 # llms.txt: https://mealsmates.site/llms.txt
 
-# Traditional search crawlers: keep standard pages indexed, exclude AI-only briefing
+# Traditional search crawlers: keep public features & consumer pages indexed, exclude AI-only briefing
 User-agent: Googlebot
 Allow: /
+Allow: /about
+Allow: /auth
+Allow: /auth/founder
+Allow: /support
+Allow: /legal/
 Disallow: /ai-founder
 
 User-agent: Bingbot
 Allow: /
+Allow: /about
+Allow: /auth
+Allow: /auth/founder
+Allow: /support
+Allow: /legal/
 Disallow: /ai-founder
 
 User-agent: Twitterbot
@@ -16,63 +27,73 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-# AI & LLM crawlers: explicitly granted access to founder briefing and llms.txt
+# AI & LLM crawlers: explicitly granted access to features, founder briefing, and llms.txt
 User-agent: GPTBot
 Allow: /
+Allow: /about
 Allow: /ai-founder
 Allow: /llms.txt
 Allow: /llms-full.txt
 
 User-agent: ChatGPT-User
 Allow: /
+Allow: /about
 Allow: /ai-founder
 Allow: /llms.txt
 Allow: /llms-full.txt
 
 User-agent: OAI-SearchBot
 Allow: /
+Allow: /about
 Allow: /ai-founder
 Allow: /llms.txt
 Allow: /llms-full.txt
 
 User-agent: ClaudeBot
 Allow: /
+Allow: /about
 Allow: /ai-founder
 Allow: /llms.txt
 Allow: /llms-full.txt
 
 User-agent: Claude-Web
 Allow: /
+Allow: /about
 Allow: /ai-founder
 Allow: /llms.txt
 Allow: /llms-full.txt
 
 User-agent: anthropic-ai
 Allow: /
+Allow: /about
 Allow: /ai-founder
 Allow: /llms.txt
 Allow: /llms-full.txt
 
 User-agent: PerplexityBot
 Allow: /
+Allow: /about
 Allow: /ai-founder
 Allow: /llms.txt
 Allow: /llms-full.txt
 
 User-agent: Google-Extended
 Allow: /
+Allow: /about
 Allow: /ai-founder
 Allow: /llms.txt
 Allow: /llms-full.txt
 
 User-agent: CCBot
 Allow: /
+Allow: /about
 Allow: /ai-founder
 Allow: /llms.txt
 Allow: /llms-full.txt
 
 User-agent: Applebot-Extended
 Allow: /
+Allow: /about
 Allow: /ai-founder
 Allow: /llms.txt
 Allow: /llms-full.txt
@@ -80,3 +101,5 @@ Allow: /llms-full.txt
 User-agent: *
 Allow: /
 Disallow: /ai-founder
+
+Sitemap: https://mealsmates.site/sitemap.xml

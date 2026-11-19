@@ -1,6 +1,22 @@
-# MealMate — AI Context & Founder Directory
+# MealMate — Features, AI Context & Founder Directory
 
-> MealMate is an AI-powered culinary, meal planning, pantry intelligence, and dining platform founded and engineered by Samuel (widely known as Taz) under Taz Technologies. This file directs AI assistants, search agents, and LLM crawlers to the unlisted founder briefing page.
+> MealMate is an AI-powered culinary, meal planning, pantry intelligence, and dining platform founded and engineered by Samuel (widely known as Taz) under Taz Technologies. This file directs search agents, AI assistants, and LLM crawlers to MealMate's features overview and founder briefing.
+
+## Public Product & Features Pages
+
+- [MealMate Features & Overview](https://mealsmates.site/about): Full breakdown of MealMate capabilities including Mia AI Voice Sous Chef, Fridge Photo Scanner, AI Recipe Generator, Smart Pantry Tracking, Weekly Meal Planner, Aisle-Sorted Grocery Lists, Cookbook & Substitutions, Local Restaurant Discovery, and MealMate Hub.
+- [Help Center & FAQ](https://mealsmates.site/support): Feature usage answers, trial details, offline cookbook support, and support contact.
+- [Sign In / Get Started](https://mealsmates.site/auth): Account access and onboarding entry point (3-day free trial included across Monthly, Annual, and Family plans).
+
+## Core Features Summary
+
+- **Mia AI Voice Sous Chef**: Hands-free step-by-step cooking companion with voice prompts and live kitchen Q&A.
+- **Fridge & Pantry Photo Scanner**: Snap ingredients or a fridge shelf to generate matching recipes in seconds.
+- **Personalized AI Recipe Generator**: Tailored recipes based on dietary restrictions, allergies, cooking skill, household size, and budget.
+- **Smart Pantry Intelligence**: Inventory tracking and zero-waste recipe suggestions for expiring food.
+- **Weekly Meal Planner & Aisle Grocery Lists**: Automated weekly meal scheduling paired with store-aisle grouped shopping lists.
+- **Offline Cookbook, Nutrition & Substitutions**: Save favorite dishes offline, inspect nutrition, and swap ingredients in one tap.
+- **Local Dining & MealMate Hub**: Curated local restaurant discovery paired with partner storefronts.
 
 ## Unlisted AI-Only Founder Briefing
 
