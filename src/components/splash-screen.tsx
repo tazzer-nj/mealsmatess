@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import logo from "@/assets/mealmate-logo.png.asset.json";
 
 const KEY = "mealmate.splash.shown";
 
@@ -32,7 +31,13 @@ export function SplashScreen() {
   if (phase === "hidden") return null;
   return (
     <div className="splash-screen pointer-events-none" data-leaving={phase === "leave"} aria-hidden>
-      <img src={logo.url} alt="" width={112} height={112} className="splash-logo" />
+      <img
+        src="/mascots/mascot-classic.png"
+        alt=""
+        width={112}
+        height={112}
+        className="splash-logo"
+      />
       <p className="splash-tagline">Discover. Plan. Eat better.</p>
     </div>
   );

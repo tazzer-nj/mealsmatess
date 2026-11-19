@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AiFounderRouteImport } from './routes/ai-founder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as CheckoutRouteImport } from './routes/checkout'
@@ -62,6 +63,11 @@ const AboutRoute = AboutRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiFounderRoute = AiFounderRouteImport.update({
+  id: '/ai-founder',
+  path: '/ai-founder',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -252,6 +258,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/ai-founder': typeof AiFounderRoute
   '/auth': typeof AuthRouteWithChildren
   '/chat': typeof ChatRoute
   '/checkout': typeof CheckoutRoute
@@ -293,6 +300,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/ai-founder': typeof AiFounderRoute
   '/auth': typeof AuthRouteWithChildren
   '/chat': typeof ChatRoute
   '/checkout': typeof CheckoutRoute
@@ -335,6 +343,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRoute
+  '/ai-founder': typeof AiFounderRoute
   '/auth': typeof AuthRouteWithChildren
   '/chat': typeof ChatRoute
   '/checkout': typeof CheckoutRoute
@@ -378,6 +387,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/ai-founder'
     | '/auth'
     | '/chat'
     | '/checkout'
@@ -419,6 +429,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/ai-founder'
     | '/auth'
     | '/chat'
     | '/checkout'
@@ -460,6 +471,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/admin'
+    | '/ai-founder'
     | '/auth'
     | '/chat'
     | '/checkout'
@@ -502,6 +514,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRoute
+  AiFounderRoute: typeof AiFounderRoute
   AuthRoute: typeof AuthRouteWithChildren
   ChatRoute: typeof ChatRoute
   CheckoutRoute: typeof CheckoutRoute
@@ -558,6 +571,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-founder': {
+      id: '/ai-founder'
+      path: '/ai-founder'
+      fullPath: '/ai-founder'
+      preLoaderRoute: typeof AiFounderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -842,6 +862,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AdminRoute: AdminRoute,
+  AiFounderRoute: AiFounderRoute,
   AuthRoute: AuthRouteWithChildren,
   ChatRoute: ChatRoute,
   CheckoutRoute: CheckoutRoute,

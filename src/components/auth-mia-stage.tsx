@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, Lightbulb, RefreshCw, Crown } from "lucide-react";
+import { Sparkles, RefreshCw } from "lucide-react";
 import { ChefMascot } from "@/components/chef-mascot";
 import { MealMateLogo } from "@/components/mealmate-logo";
+import { MiaThoughtBubble } from "@/components/mia-thought-bubble";
 
 const AUTH_MIA_FACTS = [
   {
@@ -112,63 +113,59 @@ export function AuthMiaStage() {
 
       {/* Main Animated Stage: Mia Dancing / Thinking + Thought Bubble */}
       <div className="relative z-10 my-2 flex flex-col items-center justify-center py-2">
-        {/* Thought Bubble / Fun Fact Callout */}
-        <div className="relative mb-2 flex min-h-[110px] w-full max-w-[320px] flex-col items-center justify-end sm:min-h-[140px]">
+        {/* Animated Cloud Thought Bubble / Fun Fact Callout */}
+        <div className="relative mb-2 flex min-h-[124px] w-full max-w-[330px] flex-col items-center justify-end sm:min-h-[154px]">
           {motion === "thinking" && (
-            <div
-              className="flex flex-col items-center gap-1 transition-opacity duration-300"
-              aria-label="Mia is thinking of a cooking tip"
-            >
-              <div className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/90 backdrop-blur-md animate-pulse">
-                <Lightbulb className="size-3 text-amber-300 animate-spin" />
-                <span>Mia is thinking...</span>
-              </div>
-              {/* Rising mini thought dots */}
-              <div className="flex flex-col items-center gap-0.5 pt-0.5">
-                <span className="size-1.5 rounded-full bg-white/70 animate-bounce" />
-                <span className="size-1 rounded-full bg-white/40" />
-              </div>
-            </div>
+            <MiaThoughtBubble
+              variant="thinking"
+              tone="light"
+              tailPosition="bottom"
+              thinkingLabel="Mia is thinking..."
+              ariaLabel="Mia is thinking of a cooking tip"
+            />
           )}
 
           {motion === "popped" && (
-            <div
+            <MiaThoughtBubble
+              variant="thought"
+              tone="light"
+              tailPosition="bottom"
+              interactive
               onClick={handleUserTap}
-              className="group relative w-full cursor-pointer rounded-xl border border-white/20 bg-white/95 p-3 text-slate-900 shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-[1.02] active:scale-[0.99] animate-in fade-in zoom-in-95"
               role="status"
-              aria-live="polite"
+              ariaLive="polite"
+              className="w-full"
             >
-              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-1.5">
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[var(--periwinkle)]">
-                  <Sparkles className="size-2.5 text-[var(--periwinkle)]" />
-                  Mia Fun Fact
-                </span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500">
-                  <RefreshCw className="size-2.5 transition-transform duration-300 group-hover:rotate-180" />
-                  Tap
-                </span>
+              <div className="group">
+                <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-1.5">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[var(--periwinkle)]">
+                    <Sparkles className="size-2.5 text-[var(--periwinkle)]" />
+                    Mia Fun Fact
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500">
+                    <RefreshCw className="size-2.5 transition-transform duration-300 group-hover:rotate-180" />
+                    Tap
+                  </span>
+                </div>
+
+                <h3 className="mt-1.5 text-xs font-bold leading-snug text-slate-900 sm:text-sm">
+                  {currentFact.title}
+                </h3>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600 sm:text-xs">
+                  {currentFact.body}
+                </p>
               </div>
-
-              <h3 className="mt-1.5 text-xs font-bold leading-snug text-slate-900 sm:text-sm">
-                {currentFact.title}
-              </h3>
-              <p className="mt-0.5 text-[11px] leading-relaxed text-slate-600 sm:text-xs">
-                {currentFact.body}
-              </p>
-
-              {/* Speech bubble pointer notch pointing down to Mia */}
-              <div
-                aria-hidden="true"
-                className="absolute -bottom-2 left-1/2 -translate-x-1/2 border-x-6 border-t-6 border-x-transparent border-t-white/95 filter drop-shadow-sm"
-              />
-            </div>
+            </MiaThoughtBubble>
           )}
 
           {motion === "dancing" && (
-            <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[11px] font-medium text-white/80 backdrop-blur-sm animate-in fade-in">
-              <Sparkles className="size-3 text-[var(--periwinkle)] animate-spin" />
-              <span>Chef Mia is getting ready...</span>
-            </div>
+            <MiaThoughtBubble
+              variant="thinking"
+              tone="light"
+              tailPosition="bottom"
+              thinkingLabel="Chef Mia is getting ready..."
+              ariaLabel="Chef Mia is getting ready"
+            />
           )}
         </div>
 

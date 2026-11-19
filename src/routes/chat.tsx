@@ -6,6 +6,7 @@ import { Crown, Loader2, Sparkles, Wand2, AudioWaveform, Mic, X } from "lucide-r
 import { ChefMascot } from "@/components/chef-mascot";
 import { CookingInput } from "@/components/cooking-input";
 import { MiaLoadingCard } from "@/components/mia-loading-card";
+import { MiaThoughtBubble } from "@/components/mia-thought-bubble";
 import { useMia } from "@/hooks/use-mia";
 // Heavy media player (images and audio narration), only loaded when a visual answer exists.
 const VisualExplainer = lazy(() =>
@@ -199,9 +200,17 @@ function ChatPage() {
 
         {busy && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Thinking…
+            <div className="flex items-end gap-2.5">
+              <ChefMascot animate className="h-10 w-10 shrink-0" />
+              <MiaThoughtBubble
+                variant="thinking"
+                tone="surface"
+                tailPosition="left"
+                thinkingLabel="Mia is thinking..."
+                role="status"
+                ariaLive="polite"
+                className="max-w-xs"
+              />
             </div>
             <MiaLoadingCard
               active={busy}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Mic, MicOff, Volume2, Loader2 } from "lucide-react";
 import { useMia } from "@/hooks/use-mia";
+import { MiaThoughtBubble } from "@/components/mia-thought-bubble";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -95,6 +96,15 @@ export function MiaVoiceControls() {
       {(expanded || conversation || voice.error) && (
         <div className="mia-voice-detail">
           {voice.transcript && <p className="mia-voice-transcript">You: {voice.transcript}</p>}
+          {voice.state === "thinking" && (
+            <MiaThoughtBubble
+              variant="thinking"
+              tone="surface"
+              tailPosition="left"
+              thinkingLabel="Mia is thinking..."
+              className="my-1 max-w-xs"
+            />
+          )}
           {voice.state === "speaking" && lastAnswer && (
             <p className="mia-voice-reply">{lastAnswer}</p>
           )}

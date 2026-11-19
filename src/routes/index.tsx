@@ -37,6 +37,7 @@ import {
 import { surpriseMe } from "@/lib/ai.functions";
 import { useSession } from "@/hooks/use-session";
 import { firebaseData } from "@/lib/firebase-data";
+import { waitForFirebaseAuth } from "@/lib/firebase";
 import { getContinueCooking } from "@/lib/continue-cooking";
 import { TrendingCard } from "@/components/recipe-card";
 import { MiaLoadingCard } from "@/components/mia-loading-card";
@@ -60,6 +61,9 @@ export const Route = createFileRoute("/")({
     ],
   }),
   loader: async ({ context }) => {
+    if (typeof window === "undefined") return;
+    const user = await waitForFirebaseAuth();
+    if (!user) return;
     await Promise.all([
       context.queryClient.ensureQueryData(trendingRecipesQuery()),
       context.queryClient.ensureQueryData(southAfricanFavoritesQuery()),
@@ -101,15 +105,15 @@ function Index() {
     data: trendingRaw = [],
     isLoading: trendingLoading,
     error: trendingError,
-  } = useQuery(trendingRecipesQuery());
+  } = useQuery({ ...trendingRecipesQuery(), enabled: !!user });
 
   const {
     data: southAfricanRaw = [],
     isLoading: southAfricanLoading,
     error: southAfricanError,
-  } = useQuery(southAfricanFavoritesQuery());
+  } = useQuery({ ...southAfricanFavoritesQuery(), enabled: !!user });
 
-  const { data: favorites } = useQuery(myFavoritesQuery());
+  const { data: favorites } = useQuery({ ...myFavoritesQuery(), enabled: !!user });
   const favoriteIds = new Set(favorites?.map((f) => f.recipe_id) ?? []);
 
   const { data: continueCooking } = useQuery({

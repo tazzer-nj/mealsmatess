@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Check, Copy, RefreshCw, Sparkles, Tag, X } from "lucide-react";
 import { toast } from "sonner";
 import { ChefMascot } from "@/components/chef-mascot";
+import { MiaThoughtBubble } from "@/components/mia-thought-bubble";
 import { cn } from "@/lib/utils";
 
 export type MiaWaitMoment =
@@ -196,14 +197,13 @@ export function MiaLoadingCard({
       role="status"
       aria-live="polite"
       className={cn(
-        "rounded-2xl border border-border bg-card/95 p-4 text-left text-foreground shadow-sm backdrop-blur-md transition-all",
-        isDiscount && "border-[var(--periwinkle)]/40",
-        variant === "floating" && "shadow-lg",
+        "text-left text-foreground transition-all",
+        variant === "floating" && "drop-shadow-lg",
         className,
       )}
     >
-      <div className="flex items-start gap-3">
-        <div className="flex shrink-0 flex-col items-center">
+      <div className="flex items-start gap-2.5">
+        <div className="flex shrink-0 flex-col items-center pt-2">
           <ChefMascot
             animate
             interactive
@@ -212,7 +212,16 @@ export function MiaLoadingCard({
           />
         </div>
 
-        <div className="min-w-0 flex-1">
+        <MiaThoughtBubble
+          variant="thought"
+          tone="surface"
+          tailPosition="left"
+          className="min-w-0 flex-1"
+          bubbleClassName={cn(
+            isDiscount && "border-[var(--periwinkle)]/40",
+            variant === "floating" && "shadow-lg",
+          )}
+        >
           <div className="flex items-center justify-between gap-2">
             <span
               className={cn(
@@ -272,7 +281,7 @@ export function MiaLoadingCard({
           ) : (
             <p className="mt-2 text-[11px] text-muted-foreground">{label}</p>
           )}
-        </div>
+        </MiaThoughtBubble>
       </div>
     </aside>
   );

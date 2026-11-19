@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronLeft, Mail } from "lucide-react";
+import { useSession } from "@/hooks/use-session";
 
 export const Route = createFileRoute("/support")({
   head: () => ({
@@ -55,14 +56,16 @@ const FAQ = [
 ];
 
 function SupportPage() {
+  const { user } = useSession();
+
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
       <Link
-        to="/profile"
+        to={user ? "/profile" : "/auth"}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
-        Back to settings
+        {user ? "Back to settings" : "Back to sign in"}
       </Link>
       <h1 className="mt-4 font-display text-4xl">Help Center</h1>
       <p className="mt-2 text-sm text-muted-foreground">

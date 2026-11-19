@@ -32,6 +32,7 @@ import { UpgradeModalProvider } from "@/components/upgrade-modal";
 import { ConsumerAccessGate } from "@/components/consumer-access-gate";
 import { GlobalLoadingCompanion } from "@/components/global-loading-companion";
 import { useShellMetrics } from "@/hooks/use-shell-metrics";
+import { useSession } from "@/hooks/use-session";
 import {
   myFavoritesQuery,
   myPantryQuery,
@@ -251,6 +252,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient, isHub } = Route.useRouteContext();
+  const { user } = useSession();
   const router = useRouter();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isMarketplace = pathname === "/restaurants" || pathname.startsWith("/restaurant/");
@@ -260,7 +262,13 @@ function RootComponent() {
     pathname === "/onboarding" ||
     pathname === "/ai-founder" ||
     pathname.startsWith("/auth");
-  const showAppHeader = !isHub && pathname !== "/" && !isMarketplace && !isFlow;
+  const isStandalonePublic =
+    pathname === "/about" ||
+    pathname === "/support" ||
+    pathname.startsWith("/legal/") ||
+    pathname === "/reset-password";
+  const hideConsumerChrome = isFlow || (!user && isStandalonePublic);
+  const showAppHeader = !isHub && pathname !== "/" && !isMarketplace && !hideConsumerChrome;
   useShellMetrics(showAppHeader ? "with-header" : "no-header");
 
   useEffect(() => {
@@ -352,10 +360,10 @@ function RootComponent() {
                         {showAppHeader && <AppHeader />}
                         <div
                           id="app-scroll"
-                          className={`h-full overflow-x-hidden overflow-y-auto overscroll-y-none ${isFlow ? "" : "pb-[calc(var(--app-nav-h)+14px)] pt-[var(--app-header-h)]"}`}
+                          className={`h-full overflow-x-hidden overflow-y-auto overscroll-y-none ${hideConsumerChrome ? "" : "pb-[calc(var(--app-nav-h)+14px)] pt-[var(--app-header-h)]"}`}
                         >
                           <div
-                            className={`mx-auto flex min-h-full w-full min-w-0 flex-col ${isFlow ? "" : pathname === "/admin" ? "max-w-6xl" : "max-w-3xl"}`}
+                            className={`mx-auto flex min-h-full w-full min-w-0 flex-col ${hideConsumerChrome ? "" : pathname === "/admin" ? "max-w-6xl" : "max-w-3xl"}`}
                           >
                             <AuthGate>
                               <div
@@ -367,7 +375,7 @@ function RootComponent() {
                             </AuthGate>
                           </div>
                         </div>
-                        {isFlow ? null : <BottomNav />}
+                        {hideConsumerChrome ? null : <BottomNav />}
                         <GlobalLoadingCompanion />
                       </div>
                     </MiaProvider>

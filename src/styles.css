@@ -1017,6 +1017,102 @@ html[data-mascot]:not([data-mascot="classic"]):not([data-mascot="classic-light"]
   text-align: center;
 }
 
+/* Mia animated thought bubble motion */
+@keyframes mia-thought-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.86);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes mia-thought-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes mia-thought-puff {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: translateY(0) scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.1);
+  }
+}
+
+@keyframes mia-thought-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.45;
+    transform: translateY(0) scale(0.85);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.12);
+  }
+}
+
+.mia-thought-pop {
+  animation: mia-thought-pop 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mia-thought-float {
+  animation: mia-thought-float 4.2s ease-in-out infinite;
+}
+
+.mia-thought-puff-1 {
+  animation: mia-thought-puff 2.2s ease-in-out 0ms infinite;
+}
+
+.mia-thought-puff-2 {
+  animation: mia-thought-puff 2.2s ease-in-out 220ms infinite;
+}
+
+.mia-thought-puff-3 {
+  animation: mia-thought-puff 2.2s ease-in-out 440ms infinite;
+}
+
+.mia-thought-dot-1 {
+  animation: mia-thought-dot 1.2s ease-in-out 0ms infinite;
+}
+
+.mia-thought-dot-2 {
+  animation: mia-thought-dot 1.2s ease-in-out 160ms infinite;
+}
+
+.mia-thought-dot-3 {
+  animation: mia-thought-dot 1.2s ease-in-out 320ms infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mia-thought-pop,
+  .mia-thought-float,
+  .mia-thought-puff-1,
+  .mia-thought-puff-2,
+  .mia-thought-puff-3,
+  .mia-thought-dot-1,
+  .mia-thought-dot-2,
+  .mia-thought-dot-3 {
+    animation: none;
+  }
+}
+
 @import "./styles-onboarding-override.css";
 @import "./styles-paywall-override.css";
 @import "./styles-auth-override.css";

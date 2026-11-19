@@ -38,9 +38,12 @@ import {
 import { pantryRecipeQuery } from "@/lib/pantry-recipe";
 
 export const Route = createFileRoute("/scan")({
-  validateSearch: (search: Record<string, unknown>): { mode?: "ingredients" | "dish" } => ({
-    mode: search["mode"] === "dish" ? "dish" : "ingredients",
-  }),
+  validateSearch: (search: Record<string, unknown>): { mode?: "ingredients" | "dish" } =>
+    search["mode"] === "dish"
+      ? { mode: "dish" }
+      : search["mode"] === "ingredients"
+        ? { mode: "ingredients" }
+        : {},
   head: () => ({
     meta: [
       { title: "Food & Ingredient Scanner | MealMate" },
