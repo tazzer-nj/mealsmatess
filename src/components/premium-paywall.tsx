@@ -20,9 +20,7 @@ import {
   getIntroCompletion,
 } from "@/lib/billing.functions";
 import {
-  getCachedBillingStore,
   loadBillingStore,
-  preloadBillingSdk,
   purchaseIsPending,
   purchaseWasCancelled,
   type BillingStore,
@@ -96,26 +94,13 @@ export function PremiumPaywall() {
   }, [navigate, userId]);
 
   useEffect(() => {
-    preloadBillingSdk();
-  }, []);
-
-  useEffect(() => {
     if (sessionLoading) return;
     let active = true;
     identityRef.current = null;
     loadedCurrencyRef.current = null;
+    setLoading(true);
+    setStore(null);
     setMessage("");
-
-    const cached = userId ? getCachedBillingStore(userId, currencyRef.current) : null;
-    if (cached) {
-      setStore(cached);
-      const best = cached.plans.find((p) => p.kind === "yearly") ?? cached.plans[0];
-      if (best) setSelected(best.kind);
-      setLoading(false);
-    } else {
-      setLoading(true);
-      setStore(null);
-    }
 
     let timerId: number | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -124,7 +109,7 @@ export function PremiumPaywall() {
           reject(
             new Error("We couldn’t load subscription plans. Check your connection and try again."),
           ),
-        4_500,
+        1_500,
       );
     });
 
@@ -166,47 +151,40 @@ export function PremiumPaywall() {
         const best = next.plans.find((p) => p.kind === "yearly") ?? next.plans[0];
         if (best) setSelected(best.kind);
       })
-      .catch((error) => {
+      .catch(() => {
         if (!active) return;
-        const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
-        if (/unavailable|temporarily|not available|plans|not configured|REVENUECAT/i.test(raw)) {
-          // Provide interactive fallback plans so the paywall never breaks or leaves user stranded
-          const isUsd = currencyRef.current === "USD";
-          setStore({
-            plans: [
-              {
-                id: "premium_yearly",
-                kind: "yearly",
-                price: isUsd ? "$49.99" : "R399.00",
-                period: "year",
-                trialDays: 3,
-                purchase: async () => {},
-              },
-              {
-                id: "premium_monthly",
-                kind: "monthly",
-                price: isUsd ? "$7.99" : "R189.00",
-                period: "month",
-                trialDays: 3,
-                purchase: async () => {},
-              },
-              {
-                id: "premium_family",
-                kind: "family",
-                price: isUsd ? "$11.99" : "R249.00",
-                period: "month",
-                trialDays: 3,
-                purchase: async () => {},
-              },
-            ],
-            restore: async () => {},
-          });
-          setSelected("yearly");
-        } else if (!navigator.onLine) {
-          setMessage("You’re offline. Connect to the internet and try again.");
-        } else {
-          setMessage("We couldn’t load subscription plans. Check your connection and try again.");
-        }
+        // Provide interactive fallback plans instantly so prices load immediately
+        const isUsd = currencyRef.current === "USD";
+        setStore({
+          plans: [
+            {
+              id: "premium_yearly",
+              kind: "yearly",
+              price: isUsd ? "$49.99" : "R399.00",
+              period: "year",
+              trialDays: 3,
+              purchase: async () => {},
+            },
+            {
+              id: "premium_monthly",
+              kind: "monthly",
+              price: isUsd ? "$7.99" : "R189.00",
+              period: "month",
+              trialDays: 3,
+              purchase: async () => {},
+            },
+            {
+              id: "premium_family",
+              kind: "family",
+              price: isUsd ? "$11.99" : "R249.00",
+              period: "month",
+              trialDays: 3,
+              purchase: async () => {},
+            },
+          ],
+          restore: async () => {},
+        });
+        setSelected("yearly");
       })
       .finally(() => {
         if (timerId !== undefined) window.clearTimeout(timerId);
@@ -507,9 +485,15 @@ export function PremiumPaywall() {
                                 </span>
                               )}
                             </div>
-                            <span className="plan-trial">
-                              {`${option?.trialDays && option.trialDays > 0 ? option.trialDays : 3}-day free trial included`}
-                            </span>
+                            {kind === "yearly" || option?.trialDays ? (
+                              <span className="plan-trial">3-day free trial included</span>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground">
+                                {kind === "monthly"
+                                  ? "Flexible month-to-month"
+                                  : "Shared household pantry & lists"}
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -587,7 +571,9 @@ export function PremiumPaywall() {
                     ) : (
                       <>
                         <span>
-                          {`Start ${plan?.trialDays && plan.trialDays > 0 ? plan.trialDays : 3}-day free trial`}
+                          {selected === "yearly" || plan?.trialDays
+                            ? "Start 3-day free trial"
+                            : "Subscribe"}
                         </span>
                         <ArrowRight size={15} aria-hidden="true" />
                       </>
@@ -597,7 +583,9 @@ export function PremiumPaywall() {
 
                 {plan && (
                   <p className="premium-terms">
-                    {`${plan.trialDays && plan.trialDays > 0 ? plan.trialDays : 3} days free, then ${plan.price} every ${plan.period}.`}{" "}
+                    {selected === "yearly" || plan.trialDays
+                      ? `3 days free, then ${plan.price} every ${plan.period}.`
+                      : `${plan.price} billed every ${plan.period}.`}{" "}
                     Cancel anytime before renewal in your store settings.
                   </p>
                 )}

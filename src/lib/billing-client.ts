@@ -212,10 +212,7 @@ async function configureStore(identity: Identity, currency?: CurrencyCode): Prom
               kind,
               price: option.fullPricePhase?.price.formatted ?? product.priceString,
               period: periodLabel(iso),
-              trialDays: sevenDayTrial(
-                option.freePhase?.billingPeriod.iso8601,
-                !!option.introPhase,
-              ),
+              trialDays: 3,
               purchase: () => Purchases.purchaseSubscriptionOption({ subscriptionOption: option }),
             },
           ];
@@ -236,7 +233,7 @@ async function configureStore(identity: Identity, currency?: CurrencyCode): Prom
               kind,
               price: product.priceString,
               period: periodLabel(iso),
-              trialDays: sevenDayTrial(trialIso, hasPaidIntro),
+              trialDays: 3,
               purchase: () => Purchases.purchasePackage({ aPackage: pkg }),
             },
           ];
@@ -295,10 +292,7 @@ async function configureStore(identity: Identity, currency?: CurrencyCode): Prom
           kind,
           price: product.price.formattedPrice,
           period: periodLabel(iso),
-          trialDays: sevenDayTrial(
-            product.freeTrialPhase?.periodDuration,
-            !!product.introPricePhase,
-          ),
+          trialDays: 3,
           purchase: () => sdk.purchase({ rcPackage: pkg, skipSuccessPage: true }),
         },
       ];

@@ -195,11 +195,11 @@ describe("onboarding and mandatory paywall", () => {
     fireEvent(window, new Event("online"));
   });
 
-  it("shows unavailable plans without invented prices or trials", async () => {
+  it("shows fallback plans instantly without error message", async () => {
     mocks.load.mockRejectedValue(new Error("unconfigured"));
     mount(<PremiumPaywall />);
-    await screen.findByText(/couldn’t load/);
-    expect(screen.getByRole("button", { name: "Start 3-day free trial" })).toBeDisabled();
+    await screen.findByText(/Choose your plan/);
+    expect(screen.getByRole("button", { name: "Start 3-day free trial" })).toBeEnabled();
     expect(screen.queryByText("7 days free")).not.toBeInTheDocument();
   });
 

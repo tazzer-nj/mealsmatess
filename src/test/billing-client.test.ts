@@ -67,7 +67,7 @@ describe("Android RevenueCat store adapter", () => {
       kind: "yearly",
       price: "R399.00",
       period: "year",
-      trialDays: 7,
+      trialDays: 3,
     });
     await store.plans[0].purchase();
     expect(mocks.purchase).toHaveBeenCalledWith({ subscriptionOption: option });
@@ -149,9 +149,9 @@ describe("Web RevenueCat store adapter", () => {
     const store = await loadBillingStore(identity, "ZAR");
     expect(getOfferings).toHaveBeenCalledWith({ offeringIdentifier: "default", currency: "ZAR" });
     expect(store.plans.map((p) => [p.kind, p.price, p.period, p.trialDays])).toEqual([
-      ["monthly", "R 189.00", "month", 0],
-      ["yearly", "R 1,399.00", "year", 7],
-      ["family", "R 249.00", "month", 0],
+      ["monthly", "R 189.00", "month", 3],
+      ["yearly", "R 1,399.00", "year", 3],
+      ["family", "R 249.00", "month", 3],
     ]);
     await store.plans[1].purchase();
     expect(purchase).toHaveBeenCalledWith({

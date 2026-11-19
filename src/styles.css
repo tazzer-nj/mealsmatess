@@ -109,9 +109,9 @@ html[data-font="fraunces"] {
   --ink: oklch(0.3 0.055 152);
   --ember: oklch(0.72 0.16 55);
   --leaf: oklch(0.61 0.16 139);
-  --background: oklch(0.992 0.003 95);
+  --background: #ffffff;
   --foreground: oklch(0.12 0 0);
-  --card: oklch(0.975 0.005 95);
+  --card: #ffffff;
   --card-foreground: oklch(0.12 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.12 0 0);
