@@ -52,7 +52,15 @@ export function DesktopNav() {
       </nav>
 
       <div className="mt-auto flex items-center gap-3 rounded-xl border border-[#1e1e1e] bg-[#111111] p-3">
-        <span className="mm-avatar size-9 text-[13px]">{initial}</span>
+        {user?.photoURL ? (
+          <img
+            src={user.photoURL}
+            alt={user.displayName ?? "Avatar"}
+            className="size-9 rounded-full object-cover shrink-0"
+          />
+        ) : (
+          <span className="mm-avatar size-9 text-[13px]">{initial}</span>
+        )}
         <span className="min-w-0">
           <span className="block truncate text-[13px] font-medium">
             {user?.displayName ?? "Your account"}

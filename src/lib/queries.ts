@@ -87,39 +87,46 @@ const list = async (
   }
 };
 
+const defaultSWROptions = {
+  staleTime: 5 * 60_000,
+  gcTime: 30 * 60_000,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: true,
+};
+
 export const featuredRecipesQuery = () =>
   queryOptions({
     queryKey: ["recipes", "featured"],
     queryFn: () => listRecipeCatalog({ data: { limit: 12 } }),
-    staleTime: 60_000,
+    ...defaultSWROptions,
   });
 
 export const trendingRecipesQuery = () =>
   queryOptions({
     queryKey: ["recipes", "trending"],
     queryFn: () => listRecipeCatalog({ data: { limit: 8 } }),
-    staleTime: 60_000,
+    ...defaultSWROptions,
   });
 
 export const southAfricanFavoritesQuery = () =>
   queryOptions({
     queryKey: ["recipes", "south-african"],
     queryFn: () => listRecipeCatalog({ data: { category: "South African", limit: 8 } }),
-    staleTime: 60_000,
+    ...defaultSWROptions,
   });
 
 export const recipesByCategoryQuery = (category: string | undefined, search = "") =>
   queryOptions({
     queryKey: ["recipes", "category", category ?? "all", search.trim().toLowerCase()],
     queryFn: () => listRecipeCatalog({ data: { category, search } }),
-    staleTime: 60_000,
+    ...defaultSWROptions,
   });
 
 export const recipeBySlugQuery = (slug: string) =>
   queryOptions({
     queryKey: ["recipe", slug],
     queryFn: () => getRecipeCatalogEntry({ data: { slug } }),
-    staleTime: 60_000,
+    ...defaultSWROptions,
   });
 
 export const myFavoritesQuery = () =>
@@ -132,6 +139,7 @@ export const myFavoritesQuery = () =>
         orderBy("created_at", "desc"),
       ])) as FavoriteRecord[];
     },
+    ...defaultSWROptions,
   });
 
 export const myGroceryQuery = () =>
@@ -144,6 +152,7 @@ export const myGroceryQuery = () =>
             orderBy("created_at", "desc"),
           ])) as GroceryRecord[])
         : [],
+    ...defaultSWROptions,
   });
 
 export const myPantryQuery = () =>
@@ -155,6 +164,7 @@ export const myPantryQuery = () =>
             orderBy("created_at", "desc"),
           ])) as PantryRecord[])
         : [],
+    ...defaultSWROptions,
   });
 
 export const myPlannerQuery = (fromISO: string, toISO: string) =>
@@ -168,6 +178,7 @@ export const myPlannerQuery = (fromISO: string, toISO: string) =>
             orderBy("plan_date"),
           ])) as MealPlanRecord[])
         : [],
+    ...defaultSWROptions,
   });
 
 export const myProfileQuery = () =>
@@ -187,10 +198,12 @@ export const myProfileQuery = () =>
         roles: [],
       };
     },
+    ...defaultSWROptions,
   });
 
 export const announcementsQuery = () =>
   queryOptions({
     queryKey: ["announcements"],
     queryFn: () => list("announcements", [orderBy("created_at", "desc"), limit(10)]),
+    ...defaultSWROptions,
   });

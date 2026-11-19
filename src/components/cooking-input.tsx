@@ -20,7 +20,7 @@ export function CookingInput({
         e.preventDefault();
         onSubmit();
       }}
-      className="cooking-input rounded-3xl border border-border bg-popover p-3"
+      className="cooking-input rounded-3xl bg-card/95 p-3 shadow-md backdrop-blur-md"
     >
       <Input
         aria-label="Ask MealMate"

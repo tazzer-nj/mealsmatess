@@ -47,7 +47,7 @@ function RecipePhoto({
 
   return (
     <div
-      className={`relative isolate overflow-hidden bg-muted ${className ?? ""}`}
+      className={`relative isolate overflow-hidden rounded-xl bg-muted shadow-xs hover:shadow-md border border-border/40 transition-all duration-300 group ${className ?? ""}`}
       style={{ aspectRatio: "1 / 1" }}
     >
       {unavailable ? (
@@ -104,7 +104,7 @@ function RecipePhoto({
                 setUseCurated(true);
               else setFailed(true);
             }}
-            className={`h-full w-full object-cover transition-opacity duration-300 motion-reduce:transition-none ${loaded === src ? "opacity-100" : "opacity-0"}`}
+            className={`h-full w-full object-cover transition-all duration-500 ease-out group-hover:scale-105 motion-reduce:transition-none ${loaded === src ? "opacity-100" : "opacity-0"}`}
           />
         </>
       )}

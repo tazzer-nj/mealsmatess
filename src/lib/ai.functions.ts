@@ -78,6 +78,7 @@ async function callModel(prompt: string): Promise<GeneratedRecipe> {
     instructions: SYSTEM,
     prompt,
     schema: RecipeSchema,
+    timeoutMs: 15_000,
   });
 }
 

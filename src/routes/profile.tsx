@@ -20,7 +20,16 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { firebaseData } from "@/lib/firebase-data";
-import { sendPasswordReset } from "@/lib/firebase";
+import { auth, sendPasswordReset } from "@/lib/firebase";
+import { updateProfile } from "firebase/auth";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   getMyNotificationPreferences,
   registerMyPushToken,
@@ -32,6 +41,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { GamificationCard } from "@/components/gamification-card";
 import { ThemePicker } from "@/components/theme-picker";
+import { ProfileAvatarUploader } from "@/components/profile-avatar-uploader";
 import {
   Select,
   SelectContent,
@@ -129,6 +139,7 @@ function SettingsPage() {
   const { user } = useSession();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
 
   const notificationPreferences = useQuery({
     queryKey: ["notification-preferences", user?.id],
@@ -375,20 +386,39 @@ function SettingsPage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 overflow-x-hidden bg-background px-3.5 pb-28 pt-6 text-foreground sm:px-4 sm:pt-8">
       <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
-        <div className="flex items-center gap-3.5 sm:gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-secondary text-foreground sm:h-14 sm:w-14">
-            <UserIcon className="h-6 w-6" />
+        <div className="flex items-center justify-between gap-3.5 sm:gap-4">
+          <div className="flex items-center gap-3.5 sm:gap-4">
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt={user.displayName ?? "Profile"}
+                className="h-14 w-14 shrink-0 rounded-2xl border border-border object-cover"
+              />
+            ) : (
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border bg-secondary text-foreground">
+                <UserIcon className="h-6 w-6" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-medium tracking-tight text-foreground">
+                {user?.displayName || "Profile"}
+              </h1>
+              <p className="truncate text-sm text-muted-foreground">
+                {user?.email ?? "Sign in to sync your recipes"}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-medium tracking-tight text-foreground">
-              {user?.displayName || "Profile"}
-            </h1>
-            <p className="truncate text-sm text-muted-foreground">
-              {user?.email ?? "Sign in to sync your recipes"}
-            </p>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setEditProfileOpen(true)}
+            className="rounded-xl border-border bg-secondary text-xs font-medium text-foreground hover:bg-muted"
+          >
+            Edit Profile
+          </Button>
         </div>
       </div>
+      <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
 
       {/* XP, levels, streaks & challenges */}
       <div className="mt-6">
@@ -634,5 +664,101 @@ function ActionCard({
       </span>
       <span className="text-sm font-medium text-foreground">{label}</span>
     </button>
+  );
+}
+
+function EditProfileDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { user } = useSession();
+  const [displayName, setDisplayName] = useState(user?.displayName ?? "");
+  const [photoURL, setPhotoURL] = useState(user?.photoURL ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setDisplayName(user.displayName ?? "");
+      setPhotoURL(user.photoURL ?? "");
+    }
+  }, [user, open]);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!auth.currentUser) {
+      toast.error("You must be signed in to update your profile.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateProfile(auth.currentUser, {
+        displayName: displayName.trim() || null,
+        photoURL: photoURL.trim() || null,
+      });
+      toast.success("Profile updated successfully!");
+      onOpenChange(false);
+      window.location.reload();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update profile.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md border-border bg-card text-foreground">
+        <DialogHeader>
+          <DialogTitle>Edit Profile & Picture</DialogTitle>
+          <DialogDescription>Update your display name and profile picture.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSave} className="space-y-4 pt-2">
+          <ProfileAvatarUploader value={photoURL} onChange={setPhotoURL} />
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Display Name</label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Your name"
+              className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-sm text-foreground outline-none focus:border-ring"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Profile Picture URL</label>
+            <input
+              type="url"
+              value={photoURL}
+              onChange={(e) => setPhotoURL(e.target.value)}
+              placeholder="https://example.com/avatar.jpg"
+              className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-sm text-foreground outline-none focus:border-ring"
+            />
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="rounded-xl border-border"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={saving}
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
