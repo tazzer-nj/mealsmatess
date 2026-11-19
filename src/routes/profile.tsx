@@ -21,7 +21,7 @@ import {
 import { toast } from "sonner";
 import { firebaseData } from "@/lib/firebase-data";
 import { auth, sendPasswordReset } from "@/lib/firebase";
-import { updateProfile } from "firebase/auth";
+import { saveUserProfile } from "@/lib/profile-avatar";
 import {
   Dialog,
   DialogContent,
@@ -385,14 +385,14 @@ function SettingsPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 overflow-x-hidden bg-background px-3.5 pb-28 pt-6 text-foreground sm:px-4 sm:pt-8">
-      <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+      <div className="rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:shadow-sm sm:p-5">
         <div className="flex items-center justify-between gap-3.5 sm:gap-4">
           <div className="flex items-center gap-3.5 sm:gap-4">
             {user?.photoURL ? (
               <img
                 src={user.photoURL}
                 alt={user.displayName ?? "Profile"}
-                className="h-14 w-14 shrink-0 rounded-2xl border border-border object-cover"
+                className="h-14 w-14 shrink-0 rounded-2xl border border-primary/25 object-cover shadow-xs ring-2 ring-primary/10 transition-transform duration-200 hover:scale-105"
               />
             ) : (
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border bg-secondary text-foreground">
@@ -412,7 +412,7 @@ function SettingsPage() {
             variant="outline"
             size="sm"
             onClick={() => setEditProfileOpen(true)}
-            className="rounded-xl border-border bg-secondary text-xs font-medium text-foreground hover:bg-muted"
+            className="tap-spring rounded-xl border-border bg-secondary text-xs font-medium text-foreground hover:bg-muted"
           >
             Edit Profile
           </Button>
@@ -694,19 +694,20 @@ function EditProfileDialog({
     }
     setSaving(true);
     try {
-      await updateProfile(auth.currentUser, {
+      await saveUserProfile({
         displayName: displayName.trim() || null,
         photoURL: photoURL.trim() || null,
       });
       toast.success("Profile updated successfully!");
       onOpenChange(false);
-      window.location.reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to update profile.");
     } finally {
       setSaving(false);
     }
   }
+
+  const isUploadedDataUrl = photoURL.startsWith("data:image/");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -730,14 +731,32 @@ function EditProfileDialog({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Profile Picture URL</label>
-            <input
-              type="url"
-              value={photoURL}
-              onChange={(e) => setPhotoURL(e.target.value)}
-              placeholder="https://example.com/avatar.jpg"
-              className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-sm text-foreground outline-none focus:border-ring"
-            />
+            <label className="text-xs font-medium text-muted-foreground">
+              Profile Picture URL (optional)
+            </label>
+            {isUploadedDataUrl ? (
+              <div className="flex items-center justify-between rounded-xl border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground">
+                <span className="truncate font-medium text-foreground">
+                  Custom device photo ready to save
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPhotoURL("")}
+                  className="ml-2 shrink-0 font-medium text-primary hover:underline"
+                >
+                  Use URL instead
+                </button>
+              </div>
+            ) : (
+              <input
+                type="text"
+                inputMode="url"
+                value={photoURL}
+                onChange={(e) => setPhotoURL(e.target.value)}
+                placeholder="https://example.com/avatar.jpg"
+                className="w-full rounded-xl border border-border bg-secondary px-3 py-2 text-sm text-foreground outline-none focus:border-ring"
+              />
+            )}
           </div>
 
           <DialogFooter className="pt-2">

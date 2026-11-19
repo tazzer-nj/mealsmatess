@@ -31,6 +31,7 @@ import { LocaleProvider } from "@/components/locale-provider";
 import { UpgradeModalProvider } from "@/components/upgrade-modal";
 import { ConsumerAccessGate } from "@/components/consumer-access-gate";
 import { GlobalLoadingCompanion } from "@/components/global-loading-companion";
+import { WebMcpProvider } from "@/components/web-mcp-provider";
 import { useShellMetrics } from "@/hooks/use-shell-metrics";
 import { useSession } from "@/hooks/use-session";
 import {
@@ -382,6 +383,7 @@ function RootComponent() {
                   </ConsumerAccessGate>
                 )}
               </HubContext.Provider>
+              <WebMcpProvider />
               <Toaster position="top-center" />
               {!isHub && <SplashScreen />}
             </UpgradeModalProvider>

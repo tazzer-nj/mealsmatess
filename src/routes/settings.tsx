@@ -39,15 +39,10 @@ import { APP_FONTS, type AppFontId } from "@/lib/app-fonts";
 import { createPurchaseSession, verifyMyPremium } from "@/lib/billing.functions";
 import { loadBillingStore } from "@/lib/billing-client";
 import { useCurrency } from "@/lib/currency";
-import {
-  auth,
-  db,
-  sendPasswordReset as sendFirebasePasswordReset,
-  signOutUser,
-} from "@/lib/firebase";
+import { auth, sendPasswordReset as sendFirebasePasswordReset, signOutUser } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
-import { updateProfile } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { saveUserProfile } from "@/lib/profile-avatar";
+import { ProfileAvatarUploader } from "@/components/profile-avatar-uploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -179,6 +174,7 @@ function SettingsPage() {
 
   // Profile & account form state
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
+  const [photoURL, setPhotoURL] = useState(user?.photoURL ?? "");
   const [savingProfile, setSavingProfile] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -244,7 +240,8 @@ function SettingsPage() {
 
   useEffect(() => {
     if (user?.displayName) setDisplayName(user.displayName);
-  }, [user]);
+    setPhotoURL(user?.photoURL ?? "");
+  }, [user, editProfileOpen]);
 
   useEffect(() => {
     if (editPreferencesOpen) {
@@ -257,10 +254,10 @@ function SettingsPage() {
     const trimmed = displayName.trim();
     setSavingProfile(true);
     try {
-      if (auth?.currentUser) {
-        await updateProfile(auth.currentUser, { displayName: trimmed });
-        await setDoc(doc(db, "users", user.id), { displayName: trimmed }, { merge: true });
-      }
+      await saveUserProfile({
+        displayName: trimmed,
+        photoURL: photoURL.trim() || null,
+      });
       await firebaseData
         .from("profiles")
         .update({ displayName: trimmed, name: trimmed } as never)
@@ -268,8 +265,10 @@ function SettingsPage() {
       await queryClient.invalidateQueries({ queryKey: ["user", user.id] });
       toast.success("Profile updated");
       setEditProfileOpen(false);
-    } catch {
-      toast.error("Could not update profile. Please try again.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not update profile. Please try again.",
+      );
     } finally {
       setSavingProfile(false);
     }
@@ -1200,21 +1199,56 @@ function SettingsPage() {
       <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
         <DialogContent className="rounded-2xl border-border bg-card text-foreground">
           <DialogHeader>
-            <DialogTitle className="font-medium">Edit Profile</DialogTitle>
+            <DialogTitle className="font-medium">Edit Profile &amp; Picture</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Update the display name used across MealMate and Mia.
+              Update your profile picture and display name used across MealMate and Mia.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-2">
-            <Label htmlFor="displayName" className="text-xs font-medium text-muted-foreground">
-              Display Name
-            </Label>
-            <Input
-              id="displayName"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="mt-1.5 h-11 rounded-xl border-border bg-secondary text-foreground"
-            />
+          <div className="space-y-4 py-2">
+            <ProfileAvatarUploader value={photoURL} onChange={setPhotoURL} />
+            <div>
+              <Label htmlFor="displayName" className="text-xs font-medium text-muted-foreground">
+                Display Name
+              </Label>
+              <Input
+                id="displayName"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="mt-1.5 h-11 rounded-xl border-border bg-secondary text-foreground"
+              />
+            </div>
+            <div>
+              <Label
+                htmlFor="settingsPhotoUrl"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Profile Picture URL (optional)
+              </Label>
+              {photoURL.startsWith("data:image/") ? (
+                <div className="mt-1.5 flex items-center justify-between rounded-xl border border-border bg-secondary px-3 py-2.5 text-xs text-muted-foreground">
+                  <span className="truncate font-medium text-foreground">
+                    Custom device photo ready to save
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPhotoURL("")}
+                    className="ml-2 shrink-0 font-medium text-primary hover:underline"
+                  >
+                    Use URL instead
+                  </button>
+                </div>
+              ) : (
+                <Input
+                  id="settingsPhotoUrl"
+                  type="text"
+                  inputMode="url"
+                  value={photoURL}
+                  onChange={(e) => setPhotoURL(e.target.value)}
+                  placeholder="https://example.com/avatar.jpg"
+                  className="mt-1.5 h-11 rounded-xl border-border bg-secondary text-foreground"
+                />
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button

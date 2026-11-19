@@ -33,11 +33,11 @@ function Tab({
       aria-label={label}
       data-tour={label.toLowerCase()}
       className={cn(
-        "group relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[10px] font-semibold transition-colors",
+        "tap-spring group relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[10px] font-semibold transition-colors",
         active ? "text-primary" : "text-muted-foreground hover:text-foreground",
       )}
     >
-      <Icon className="h-5 w-5 transition-transform duration-200 group-active:scale-90" />
+      <Icon className="h-5 w-5 transition-transform duration-200 group-hover:-translate-y-0.5 group-active:scale-90" />
       {active && (
         <span
           className="absolute inset-x-3 -top-0.5 h-0.5 rounded-full bg-primary motion-reveal"
@@ -68,12 +68,17 @@ export function BottomNav() {
           aria-label="Ask the AI chef"
           data-tour="chef"
           className={cn(
-            "group relative mx-auto -mt-6 flex min-h-20 w-16 flex-col items-center justify-end gap-1 pb-2 text-[10px] font-semibold transition-colors",
+            "tap-spring group relative mx-auto -mt-6 flex min-h-20 w-16 flex-col items-center justify-end gap-1 pb-2 text-[10px] font-semibold transition-colors",
             isActive("/chat") ? "text-primary" : "text-muted-foreground hover:text-foreground",
           )}
         >
-          <span className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-card shadow-lg ring-4 ring-background transition-transform group-hover:scale-105 group-active:scale-95">
-            <ChefMascot className="h-12 w-12" />
+          <span
+            className={cn(
+              "flex h-14 w-14 items-center justify-center rounded-full border border-border bg-card shadow-lg ring-4 ring-background transition-transform duration-200 group-hover:scale-110 group-active:scale-95",
+              isActive("/chat") && "ai-floating-glow border-primary/40",
+            )}
+          >
+            <ChefMascot animate className="h-12 w-12" />
           </span>
           {isActive("/chat") && (
             <span

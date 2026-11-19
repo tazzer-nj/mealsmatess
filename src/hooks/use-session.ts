@@ -1,5 +1,11 @@
 import { useSyncExternalStore } from "react";
 import { auth, onAuthStateChanged, signOutUser, type User as FirebaseUser } from "@/lib/firebase";
+import {
+  PROFILE_UPDATED_EVENT,
+  fetchFirestoreProfileOverride,
+  readProfileOverride,
+  type ProfileOverride,
+} from "@/lib/profile-avatar";
 
 const INACTIVITY_LIMIT_MS = 40 * 24 * 60 * 60 * 1000;
 const ACTIVITY_KEY_PREFIX = "mealmate:last-activity:";
@@ -44,14 +50,26 @@ type SessionSnapshot = {
   user: SessionUser | null;
 };
 
-function toSessionUser(fbUser: FirebaseUser | null): SessionUser | null {
+function toSessionUser(
+  fbUser: FirebaseUser | null,
+  override?: ProfileOverride | null,
+): SessionUser | null {
   if (!fbUser) return null;
+  const cachedOverride = override ?? readProfileOverride(fbUser.uid);
   const verifiedAt = fbUser.emailVerified ? new Date().toISOString() : null;
+  const resolvedDisplayName =
+    cachedOverride && "displayName" in cachedOverride
+      ? cachedOverride.displayName
+      : fbUser.displayName;
+  const resolvedPhotoURL =
+    cachedOverride && "photoURL" in cachedOverride
+      ? cachedOverride.photoURL || null
+      : fbUser.photoURL;
   return {
     id: fbUser.uid,
     email: fbUser.email,
-    displayName: fbUser.displayName,
-    photoURL: fbUser.photoURL,
+    displayName: resolvedDisplayName,
+    photoURL: resolvedPhotoURL,
     emailVerified: fbUser.emailVerified,
     email_confirmed_at: verifiedAt,
     confirmed_at: verifiedAt,
@@ -126,6 +144,32 @@ function ensureAuthStoreInitialized() {
       firebaseUser: fbUser,
       loading: false,
       user: toSessionUser(fbUser),
+    };
+    emit();
+
+    if (fbUser) {
+      void fetchFirestoreProfileOverride(fbUser.uid).then((remoteOverride) => {
+        if (!remoteOverride || auth.currentUser?.uid !== fbUser.uid) return;
+        snapshot = {
+          session: fbUser,
+          firebaseUser: fbUser,
+          loading: false,
+          user: toSessionUser(fbUser, remoteOverride),
+        };
+        emit();
+      });
+    }
+  });
+
+  window.addEventListener(PROFILE_UPDATED_EVENT, (event) => {
+    const detail = (event as CustomEvent<{ userId?: string; override?: ProfileOverride }>).detail;
+    const fbUser = auth.currentUser;
+    if (!fbUser || (detail?.userId && detail.userId !== fbUser.uid)) return;
+    snapshot = {
+      session: fbUser,
+      firebaseUser: fbUser,
+      loading: false,
+      user: toSessionUser(fbUser, detail?.override ?? null),
     };
     emit();
   });

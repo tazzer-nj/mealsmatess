@@ -40,6 +40,8 @@ import { firebaseData } from "@/lib/firebase-data";
 import { waitForFirebaseAuth } from "@/lib/firebase";
 import { getContinueCooking } from "@/lib/continue-cooking";
 import { TrendingCard } from "@/components/recipe-card";
+import { ChefMascot } from "@/components/chef-mascot";
+import { MotionReveal, MotionStagger } from "@/components/motion";
 import { MiaLoadingCard } from "@/components/mia-loading-card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { XpChip } from "@/components/xp-chip";
@@ -200,9 +202,10 @@ function Index() {
   return (
     <main className="flex min-h-full flex-col pb-10">
       {/* Greeting header */}
-      <div className="flex items-center justify-between px-4 pt-6">
+      <MotionReveal className="flex items-center justify-between px-4 pt-6">
         <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          <p className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            <span className="live-dot-pulse inline-block h-1.5 w-1.5 rounded-full bg-primary" />
             {greeting()}
           </p>
           <h1 className="font-display text-4xl leading-tight">Hi {firstName}</h1>
@@ -212,13 +215,21 @@ function Index() {
           <ThemeToggle />
           <Link
             to="/profile"
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition-all duration-200 hover:scale-105 hover:bg-secondary/80 active:scale-95"
+            className="tap-spring flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-secondary text-secondary-foreground ring-2 ring-primary/15 transition-all duration-200 hover:scale-105 hover:ring-primary/40"
             aria-label="Profile"
           >
-            <UserIcon className="h-4 w-4" />
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt={user.displayName || "Profile"}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <UserIcon className="h-4 w-4" />
+            )}
           </Link>
         </div>
-      </div>
+      </MotionReveal>
 
       {/* Search */}
       <form onSubmit={handleSearch} className="px-4 pt-6">
@@ -274,10 +285,10 @@ function Index() {
       </section>
 
       {/* Hero cards: AI Kitchen Scan + Surprise Me */}
-      <section className="grid grid-cols-2 gap-3 px-4 pt-6">
+      <MotionReveal delay={40} className="grid grid-cols-2 gap-3 px-4 pt-6">
         <Link
           to="/scan"
-          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-ink p-5 text-background"
+          className="recipe-card-lift tap-spring group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-ink p-5 text-background"
         >
           <div>
             <p className="text-[11px] font-medium uppercase tracking-widest text-background/60">
@@ -288,10 +299,10 @@ function Index() {
             </h2>
           </div>
           <div className="mt-6 flex items-center justify-between">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-background text-foreground transition-transform group-hover:scale-105">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-background text-foreground transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110">
               <Camera className="h-4 w-4" />
             </span>
-            <span className="text-xs font-semibold text-background/80 group-hover:underline">
+            <span className="text-xs font-semibold text-background/80 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:underline">
               Scan items &rarr;
             </span>
           </div>
@@ -301,8 +312,12 @@ function Index() {
           type="button"
           disabled={busy !== null}
           onClick={handleSurpriseMe}
-          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-border bg-card p-5 text-left text-foreground transition-all hover:border-primary/40 hover:shadow-sm"
+          className="recipe-card-lift tap-spring group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-border bg-card p-5 text-left text-foreground transition-all hover:border-primary/40"
         >
+          <ChefMascot
+            animate
+            className="pointer-events-none absolute -bottom-3 -right-3 h-20 w-20 opacity-20 transition-all duration-300 group-hover:scale-110 group-hover:opacity-35"
+          />
           <div>
             <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               Chef Mia
@@ -313,15 +328,15 @@ function Index() {
             {busy === "surprise" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Sparkles className="h-3.5 w-3.5" />
+              <Sparkles className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
             )}
             Surprise me
           </span>
         </button>
-      </section>
+      </MotionReveal>
 
       {/* Quick actions */}
-      <section className="grid grid-cols-4 gap-2 px-4 pt-6">
+      <MotionStagger className="grid grid-cols-4 gap-2 px-4 pt-6">
         {[
           {
             to: "/coach",
@@ -351,16 +366,18 @@ function Index() {
           <Link
             key={a.to}
             to={a.to}
-            className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-2 py-4 text-center transition-colors hover:bg-muted"
+            className="recipe-card-lift tap-spring group flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-2 py-4 text-center transition-colors hover:border-primary/30 hover:bg-muted/70"
           >
-            <a.icon className="h-5 w-5" />
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-foreground transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:scale-110 group-hover:text-primary">
+              <a.icon className="h-4 w-4" />
+            </span>
             <span className="text-xs font-semibold leading-tight">{a.label}</span>
             <span className="hidden text-[10px] leading-tight text-muted-foreground sm:block">
               {a.sub}
             </span>
           </Link>
         ))}
-      </section>
+      </MotionStagger>
 
       {/* Plan status + premium features */}
       <section className="px-4 pt-6">
@@ -455,10 +472,14 @@ function Index() {
                 key={r.id}
                 to="/recipe/$slug"
                 params={{ slug: r.slug }}
-                className="w-24 flex-shrink-0 text-center"
+                className="recipe-card-lift tap-spring group w-24 flex-shrink-0 text-center"
               >
-                <div className="aspect-square w-24 overflow-hidden rounded-2xl bg-muted">
-                  <RecipeImage recipe={r} size="thumb" className="h-full w-full object-cover" />
+                <div className="aspect-square w-24 overflow-hidden rounded-2xl bg-muted shadow-xs">
+                  <RecipeImage
+                    recipe={r}
+                    size="thumb"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
                 </div>
                 <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-tight">{r.name}</p>
               </Link>
@@ -493,20 +514,20 @@ function Index() {
           <Link
             to="/recipe/$slug"
             params={{ slug: continueCooking.slug }}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
+            className="recipe-card-lift tap-spring group flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
           >
             <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-muted">
               <RecipeImage
                 recipe={continueCooking}
                 size="thumb"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </div>
             <div className="flex-1">
               <p className="font-display text-lg leading-tight">{continueCooking.name}</p>
               <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full bg-primary"
+                  className="h-full rounded-full bg-primary transition-all duration-700"
                   style={{ width: `${continueCooking.progress}%` }}
                 />
               </div>
@@ -518,7 +539,7 @@ function Index() {
                 {continueCooking.calories && <span>{continueCooking.calories} cal</span>}
               </div>
             </div>
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-ink text-background">
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-ink text-background transition-transform duration-200 group-hover:scale-110">
               <Play className="h-3.5 w-3.5 fill-current" />
             </span>
           </Link>

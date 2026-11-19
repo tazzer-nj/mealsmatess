@@ -48,7 +48,7 @@ export function TrendingCard({
       <Link
         to="/recipe/$slug"
         params={{ slug: recipe.slug }}
-        className="md3-surface group relative block aspect-square w-40 overflow-hidden rounded-2xl bg-muted"
+        className="md3-surface recipe-card-lift group relative block aspect-square w-40 overflow-hidden rounded-2xl bg-muted"
       >
         <RecipeImage
           recipe={recipe}
@@ -66,9 +66,11 @@ export function TrendingCard({
           }}
           aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
           aria-pressed={isFavorite}
-          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-foreground backdrop-blur transition-transform active:scale-90"
+          className="tap-spring absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-foreground backdrop-blur transition-transform hover:scale-110 active:scale-90"
         >
-          <Heart className={isFavorite ? "h-4 w-4 fill-primary text-primary" : "h-4 w-4"} />
+          <Heart
+            className={isFavorite ? "heart-pop h-4 w-4 fill-primary text-primary" : "h-4 w-4"}
+          />
         </button>
         {(recipe.cooking_time_minutes || recipe.calories) && (
           <div className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-ink/80 px-2.5 py-1 text-[11px] font-medium text-cream backdrop-blur">

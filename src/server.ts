@@ -86,7 +86,7 @@ export default {
         );
       }
 
-      const discoveryResponse = handleAgentDiscoveryRequest(request);
+      const discoveryResponse = await handleAgentDiscoveryRequest(request);
       if (discoveryResponse) {
         return discoveryResponse;
       }

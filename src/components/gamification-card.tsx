@@ -93,10 +93,10 @@ export function GamificationCard() {
         ].map((s) => (
           <div
             key={s.label}
-            className="flex flex-col items-center gap-1 rounded-2xl bg-muted/50 px-2 py-3 text-center"
+            className="recipe-card-lift flex flex-col items-center gap-1 rounded-2xl border border-transparent bg-muted/50 px-2 py-3 text-center hover:border-primary/20 hover:bg-muted/80"
           >
             <s.icon className="h-4 w-4 text-primary" />
-            <span className="font-display text-xl leading-none">{s.value}</span>
+            <span className="motion-number font-display text-xl leading-none">{s.value}</span>
             <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               {s.label}
             </span>
