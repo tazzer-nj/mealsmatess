@@ -1,6 +1,6 @@
 import { HubHome } from "@/components/hub/hub-home";
-import { loadRecipeSearchImages } from "@/lib/recipe-search-images";
 import { RecipeImage } from "@/components/recipe-image";
+import { searchOrGenerateRecipe, toastRecipeGenerationError } from "@/lib/recipe-search";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -27,13 +27,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  trendingRecipesQuery,
-  recipesByCategoryQuery,
-  southAfricanFavoritesQuery,
-  myFavoritesQuery,
-  type RecipeRecord,
-} from "@/lib/queries";
+import { trendingRecipesQuery, southAfricanFavoritesQuery, myFavoritesQuery } from "@/lib/queries";
 import { surpriseMe } from "@/lib/ai.functions";
 import { useSession } from "@/hooks/use-session";
 import { firebaseData } from "@/lib/firebase-data";
@@ -137,19 +131,36 @@ function Index() {
 
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<"search" | "surprise" | null>(null);
+  const [generatingQuery, setGeneratingQuery] = useState<string | null>(null);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const q = query.trim();
-    if (!q) return;
+    if (!q || busy !== null) return;
     setBusy("search");
+    setGeneratingQuery(null);
+    let startedGeneration = false;
     try {
-      const matches = await queryClient.fetchQuery(recipesByCategoryQuery(undefined, q));
-      void loadRecipeSearchImages(matches, queryClient);
-      await navigate({ to: "/recipes", search: { q } });
-    } catch {
+      const result = await searchOrGenerateRecipe({
+        query: q,
+        queryClient,
+        onGenerating: (term) => {
+          startedGeneration = true;
+          setGeneratingQuery(term);
+        },
+      });
+      if (result.kind === "generated") {
+        await navigate({ to: "/recipe/$slug", params: { slug: result.slug } });
+      } else {
+        await navigate({ to: "/recipes", search: { q } });
+      }
+    } catch (err) {
+      if (startedGeneration) {
+        toastRecipeGenerationError(err);
+      }
       await navigate({ to: "/recipes", search: { q } });
     } finally {
+      setGeneratingQuery(null);
       setBusy(null);
     }
   }
@@ -255,6 +266,14 @@ function Index() {
             )}
           </button>
         </div>
+        {generatingQuery && (
+          <div className="mt-3">
+            <MiaLoadingCard
+              delayMs={0}
+              label={`Mia is creating a recipe for "${generatingQuery}"...`}
+            />
+          </div>
+        )}
       </form>
 
       {/* Category chips */}

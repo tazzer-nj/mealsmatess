@@ -109,6 +109,7 @@ function toDbRecipe(r: GeneratedRecipe, userId: string | null) {
     steps: r.steps ?? [],
     fun_fact: r.fun_fact ?? null,
     created_by: userId,
+    created_at: new Date().toISOString(),
   };
 }
 
@@ -173,50 +174,59 @@ export const surpriseMe = createServerFn({ method: "POST" })
 // Search / generate a specific recipe — signed-in users only, rate limited.
 export const generateRecipe = createServerFn({ method: "POST" })
   .middleware([requirePremium])
-  .validator((v: unknown) => z.object({ query: z.string().trim().min(1).max(200) }).parse(v))
+  .validator((v: unknown) =>
+    z
+      .object({
+        query: z.string().trim().min(1).max(200),
+        force: z.boolean().optional(),
+      })
+      .parse(v),
+  )
   .handler(async ({ data, context }) => {
     const requestKey = aiRequestFingerprint(
       context.userId,
       "recipe.generate",
-      data.query.toLowerCase(),
+      `${data.force ? "force:" : ""}${data.query.toLowerCase()}`,
     );
     return deduplicateAiRequest(requestKey, async () => {
       await enforceRateLimit("ai_generate", context.userId, 10);
       const { firebaseAdmin } = await loadFirebaseAdmin();
       const t0 = Date.now();
       try {
-        const { data: exact } = await firebaseAdmin
-          .from("recipes")
-          .select("id,slug,name")
-          .ilike("name", data.query)
-          .limit(1);
-        if (exact && exact.length > 0) {
-          void trackEvent({
-            user_id: context.userId,
-            kind: "ai",
-            name: "ai.generate_recipe",
-            latency_ms: Date.now() - t0,
-            success: true,
-            metadata: { query: data.query, cached: true },
-          });
-          return { slug: exact[0]?.slug ?? "", id: exact[0]?.id ?? null, cached: true };
-        }
+        if (!data.force) {
+          const { data: exact } = await firebaseAdmin
+            .from("recipes")
+            .select("id,slug,name")
+            .ilike("name", data.query)
+            .limit(1);
+          if (exact && exact.length > 0) {
+            void trackEvent({
+              user_id: context.userId,
+              kind: "ai",
+              name: "ai.generate_recipe",
+              latency_ms: Date.now() - t0,
+              success: true,
+              metadata: { query: data.query, cached: true },
+            });
+            return { slug: exact[0]?.slug ?? "", id: exact[0]?.id ?? null, cached: true };
+          }
 
-        const { data: fuzzy } = await firebaseAdmin
-          .from("recipes")
-          .select("id,slug,name")
-          .ilike("name", `%${data.query}%`)
-          .limit(1);
-        if (fuzzy && fuzzy.length > 0) {
-          void trackEvent({
-            user_id: context.userId,
-            kind: "ai",
-            name: "ai.generate_recipe",
-            latency_ms: Date.now() - t0,
-            success: true,
-            metadata: { query: data.query, cached: true },
-          });
-          return { slug: fuzzy[0]?.slug ?? "", id: fuzzy[0]?.id ?? null, cached: true };
+          const { data: fuzzy } = await firebaseAdmin
+            .from("recipes")
+            .select("id,slug,name")
+            .ilike("name", `%${data.query}%`)
+            .limit(1);
+          if (fuzzy && fuzzy.length > 0) {
+            void trackEvent({
+              user_id: context.userId,
+              kind: "ai",
+              name: "ai.generate_recipe",
+              latency_ms: Date.now() - t0,
+              success: true,
+              metadata: { query: data.query, cached: true },
+            });
+            return { slug: fuzzy[0]?.slug ?? "", id: fuzzy[0]?.id ?? null, cached: true };
+          }
         }
 
         await requireAiCredit(context.userId);

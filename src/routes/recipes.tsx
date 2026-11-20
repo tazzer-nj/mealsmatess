@@ -1,10 +1,14 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
-import { loadRecipeSearchImages } from "@/lib/recipe-search-images";
+import {
+  buildRecipeGenerationPrompt,
+  searchOrGenerateRecipe,
+  toastRecipeGenerationError,
+} from "@/lib/recipe-search";
 import { recipesByCategoryQuery } from "@/lib/queries";
 import { generateRecipe, surpriseMe } from "@/lib/ai.functions";
 import { RecipeCard } from "@/components/recipe-card";
@@ -73,46 +77,64 @@ function RecipesPage() {
     setQuery(q ?? "");
   }, [q]);
   const [busy, setBusy] = useState(false);
+  const [generatingFor, setGeneratingFor] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
-    if (!query.trim() || busy) return;
     const term = query.trim();
+    if (!term || busy) return;
     setBusy(true);
+    setGeneratingFor(null);
+    let startedGeneration = false;
     try {
+      const result = await searchOrGenerateRecipe({
+        query: term,
+        category: active,
+        queryClient,
+        onGenerating: (target) => {
+          startedGeneration = true;
+          setGeneratingFor(target);
+        },
+      });
+      if (result.kind === "generated") {
+        await navigate({ to: "/recipe/$slug", params: { slug: result.slug } });
+        return;
+      }
       await navigate({
         to: "/recipes",
         search: { ...(active !== "All" ? { c: active } : {}), q: term },
       });
-      const matches = await queryClient.fetchQuery(
-        recipesByCategoryQuery(active !== "All" ? active : undefined, term),
-      );
-      void loadRecipeSearchImages(matches, queryClient);
-    } catch {
-      toast.error("Couldn't complete the search. Please try again.");
+    } catch (err) {
+      if (startedGeneration) {
+        toastRecipeGenerationError(err);
+        await navigate({
+          to: "/recipes",
+          search: { ...(active !== "All" ? { c: active } : {}), q: term },
+        });
+      } else {
+        toast.error("Couldn't complete the search. Please try again.");
+      }
     } finally {
+      setGeneratingFor(null);
       setBusy(false);
     }
   }
 
-  async function handleAiGenerate() {
-    if (!query.trim() || busy) return;
+  async function handleAiGenerate(overrideTerm?: string) {
+    const raw = (overrideTerm ?? query).trim();
+    if (!raw || busy) return;
     setBusy(true);
+    setGeneratingFor(raw);
     try {
-      const { slug } = await generateRecipe({ data: { query: query.trim() } });
-      navigate({ to: "/recipe/$slug", params: { slug } });
+      const promptQuery = buildRecipeGenerationPrompt(raw, active);
+      const { slug } = await generateRecipe({ data: { query: promptQuery, force: true } });
+      await queryClient.invalidateQueries({ queryKey: ["recipes"] });
+      await navigate({ to: "/recipe/$slug", params: { slug } });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      const authError = /AUTH_REQUIRED|Unauthorized|Invalid user session|No authorization/i.test(
-        message,
-      );
-      toast.error(authError ? "Your session expired" : "Couldn't generate that recipe", {
-        description: authError
-          ? "Please sign in again to cook a recipe."
-          : "The kitchen assistant is unavailable right now. Please try again.",
-      });
+      toastRecipeGenerationError(err);
     } finally {
+      setGeneratingFor(null);
       setBusy(false);
     }
   }
@@ -122,17 +144,10 @@ function RecipesPage() {
     setBusy(true);
     try {
       const { slug } = await surpriseMe();
-      navigate({ to: "/recipe/$slug", params: { slug } });
+      await queryClient.invalidateQueries({ queryKey: ["recipes"] });
+      await navigate({ to: "/recipe/$slug", params: { slug } });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      const authError = /AUTH_REQUIRED|Unauthorized|Invalid user session|No authorization/i.test(
-        message,
-      );
-      toast.error(authError ? "Your session expired" : "The chef is busy", {
-        description: authError
-          ? "Please sign in again to cook a recipe."
-          : "The kitchen assistant is unavailable right now. Please try again.",
-      });
+      toastRecipeGenerationError(err);
     } finally {
       setBusy(false);
     }
@@ -143,7 +158,7 @@ function RecipesPage() {
       <div className="flex flex-col gap-1.5">
         <h1 className="text-3xl font-medium tracking-tight text-foreground">Discover recipes</h1>
         <p className="text-sm text-muted-foreground">
-          Search our library, or ask Mia to create something new.
+          Search our library—if a dish isn&apos;t here yet, Mia will create a recipe for you.
         </p>
       </div>
 
@@ -165,17 +180,24 @@ function RecipesPage() {
           disabled={busy}
           className="h-12 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
         >
-          Search
+          {busy && !generatingFor ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
         </Button>
         <Button
           type="button"
           variant="outline"
           size="lg"
-          disabled={busy}
+          disabled={busy || !query.trim()}
           className="h-12 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
-          onClick={handleAiGenerate}
+          onClick={() => void handleAiGenerate()}
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ask AI chef"}
+          {busy && generatingFor ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <>
+              <Sparkles className="mr-1.5 h-4 w-4 text-primary" />
+              Ask AI chef
+            </>
+          )}
         </Button>
         <Button
           type="button"
@@ -188,6 +210,15 @@ function RecipesPage() {
           Surprise
         </Button>
       </form>
+
+      {generatingFor && (
+        <div className="mt-5">
+          <MiaLoadingCard
+            delayMs={0}
+            label={`Mia is creating a recipe for "${generatingFor}"...`}
+          />
+        </div>
+      )}
 
       <div className="mt-6 flex flex-wrap gap-2">
         {CATEGORIES.map((cat) => (
@@ -228,30 +259,71 @@ function RecipesPage() {
             </Button>
           </div>
         ) : recipes && recipes.length > 0 ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {recipes.map((r, index) => (
-              <RecipeCard key={r.id} recipe={r} priority={index < 2} />
-            ))}
+          <div className="space-y-5">
+            {q && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+                <p className="text-sm text-muted-foreground">
+                  Showing {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"} for{" "}
+                  <span className="font-medium text-foreground">&ldquo;{q}&rdquo;</span>. Want a
+                  fresh custom version?
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void handleAiGenerate(q)}
+                  className="rounded-xl border-border bg-secondary text-foreground hover:bg-muted"
+                >
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                  Generate new &ldquo;{q}&rdquo; recipe
+                </Button>
+              </div>
+            )}
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {recipes.map((r, index) => (
+                <RecipeCard key={r.id} recipe={r} priority={index < 2} />
+              ))}
+            </div>
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
             <p className="text-sm text-muted-foreground">
-              {q || active !== "All"
-                ? "No recipes matched this filter. Try clearing your search or generating a recipe above."
-                : "Nothing here yet. Try generating a recipe above!"}
+              {q
+                ? `No saved recipes matched "${q}" yet. Let Mia create it for you!`
+                : active !== "All"
+                  ? "No recipes matched this filter. Try another category or generate a recipe above."
+                  : "Nothing here yet. Try searching or generating a recipe above!"}
             </p>
-            {(q || active !== "All") && (
-              <Button
-                variant="outline"
-                className="mt-4 rounded-xl border-border bg-secondary text-foreground"
-                onClick={() => {
-                  setQuery("");
-                  void navigate({ to: "/recipes", search: {} });
-                }}
-              >
-                Show all recipes
-              </Button>
-            )}
+            <div className="mt-4 flex flex-wrap justify-center gap-2.5">
+              {q && (
+                <Button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void handleAiGenerate(q)}
+                  className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {busy && generatingFor ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-2 h-4 w-4" />
+                  )}
+                  Generate &ldquo;{q}&rdquo; recipe
+                </Button>
+              )}
+              {(q || active !== "All") && (
+                <Button
+                  variant="outline"
+                  className="rounded-xl border-border bg-secondary text-foreground"
+                  onClick={() => {
+                    setQuery("");
+                    void navigate({ to: "/recipes", search: {} });
+                  }}
+                >
+                  Show all recipes
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </div>
