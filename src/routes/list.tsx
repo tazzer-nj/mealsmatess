@@ -48,24 +48,42 @@ function ListPage() {
   async function addItem(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !user) return;
-    await firebaseData.from("grocery_items").insert({ user_id: user.id, name: name.trim() });
+    const { error } = await firebaseData
+      .from("grocery_items")
+      .insert({ user_id: user.id, name: name.trim() });
+    if (error) {
+      toast.error("Couldn't add item to grocery list");
+      return;
+    }
     setName("");
     refresh();
   }
 
   async function toggle(id: string, checked: boolean) {
-    await firebaseData.from("grocery_items").update({ checked }).eq("id", id);
+    const { error } = await firebaseData.from("grocery_items").update({ checked }).eq("id", id);
+    if (error) {
+      toast.error("Couldn't update grocery item");
+      return;
+    }
     refresh();
   }
 
   async function remove(id: string) {
-    await firebaseData.from("grocery_items").delete().eq("id", id);
+    const { error } = await firebaseData.from("grocery_items").delete().eq("id", id);
+    if (error) {
+      toast.error("Couldn't remove grocery item");
+      return;
+    }
     refresh();
   }
 
   async function clearChecked() {
     const finished = checkedCount;
-    await firebaseData.from("grocery_items").delete().eq("checked", true);
+    const { error } = await firebaseData.from("grocery_items").delete().eq("checked", true);
+    if (error) {
+      toast.error("Couldn't clear checked items");
+      return;
+    }
     refresh();
     if (finished > 0 && user) {
       try {

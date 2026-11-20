@@ -148,7 +148,6 @@ export const myGroceryQuery = () =>
     queryFn: async (): Promise<GroceryRecord[]> =>
       auth.currentUser
         ? ((await list(`users/${auth.currentUser.uid}/grocery`, [
-            orderBy("checked"),
             orderBy("created_at", "desc"),
           ])) as GroceryRecord[])
         : [],

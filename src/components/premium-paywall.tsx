@@ -485,15 +485,7 @@ export function PremiumPaywall() {
                                 </span>
                               )}
                             </div>
-                            {kind === "yearly" || option?.trialDays ? (
-                              <span className="plan-trial">3-day free trial included</span>
-                            ) : (
-                              <span className="text-[11px] text-muted-foreground">
-                                {kind === "monthly"
-                                  ? "Flexible month-to-month"
-                                  : "Shared household pantry & lists"}
-                              </span>
-                            )}
+                            <span className="plan-trial">3-day free trial included</span>
                           </div>
                         </div>
 
@@ -570,11 +562,7 @@ export function PremiumPaywall() {
                       <Loader2 className="animate-spin" size={18} />
                     ) : (
                       <>
-                        <span>
-                          {selected === "yearly" || plan?.trialDays
-                            ? "Start 3-day free trial"
-                            : "Subscribe"}
-                        </span>
+                        <span>Start 3-day free trial</span>
                         <ArrowRight size={15} aria-hidden="true" />
                       </>
                     )}
@@ -583,10 +571,8 @@ export function PremiumPaywall() {
 
                 {plan && (
                   <p className="premium-terms">
-                    {selected === "yearly" || plan.trialDays
-                      ? `3 days free, then ${plan.price} every ${plan.period}.`
-                      : `${plan.price} billed every ${plan.period}.`}{" "}
-                    Cancel anytime before renewal in your store settings.
+                    {`3 days free, then ${plan.price} every ${plan.period}.`} Cancel anytime before
+                    renewal in your store settings.
                   </p>
                 )}
               </div>

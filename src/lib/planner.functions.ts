@@ -188,12 +188,15 @@ export const buildGroceryFromPlan = createServerFn({ method: "POST" })
       }
     }
 
-    const rows = Array.from(map.entries()).map(([name, v]) => ({
-      user_id: context.userId,
-      name,
-      quantity: v.quantity,
-      category: Array.from(v.sources).slice(0, 3).join(", ") || null,
-    }));
+    const rows = Array.from(map.entries()).map(([name, v]) => {
+      const cat = Array.from(v.sources).slice(0, 3).join(", ");
+      return {
+        user_id: context.userId,
+        name,
+        ...(v.quantity ? { quantity: v.quantity } : {}),
+        ...(cat ? { category: cat } : {}),
+      };
+    });
 
     if (rows.length === 0) return { inserted: 0 };
     const { error: insErr } = await firebase.from("grocery_items").insert(rows);
@@ -337,7 +340,6 @@ Days: 1..${data.days}. One entry per meal per day.`;
       plan_date: dates[Math.max(0, Math.min(m.day - 1, dates.length - 1))] ?? fromISO,
       meal_type: m.meal_type,
       custom_name: m.name,
-      recipe_id: null as string | null,
     }));
     if (planRows.length > 0) {
       const { error: pErr } = await firebase.from("meal_plans").insert(planRows);
@@ -380,8 +382,8 @@ Days: 1..${data.days}. One entry per meal per day.`;
       .map(([, v]) => ({
         user_id: userId,
         name: v.name,
-        quantity: v.quantity,
-        category: v.category,
+        ...(v.quantity ? { quantity: v.quantity } : {}),
+        ...(v.category ? { category: v.category } : {}),
       }));
 
     let inserted = 0;

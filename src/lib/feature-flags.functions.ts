@@ -16,13 +16,25 @@ async function assertAdmin(userId: string) {
 
 // Public read (anon + authenticated) — flags drive UI availability
 export const listFeatureFlags = createServerFn({ method: "GET" }).handler(async () => {
-  const { firebaseAdmin } = await loadFirebaseAdmin();
-  const { data, error } = await firebaseAdmin
-    .from("feature_flags")
-    .select("key, enabled, description, rollout_percent")
-    .order("key");
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  try {
+    const { firebaseAdmin } = await loadFirebaseAdmin();
+    const { data, error } = await firebaseAdmin
+      .from("feature_flags")
+      .select("key, enabled, description, rollout_percent")
+      .order("key");
+    if (error) {
+      if (/Firebase Admin is not configured/i.test(error.message)) {
+        return [];
+      }
+      throw new Error(error.message);
+    }
+    return data ?? [];
+  } catch (error) {
+    if (error instanceof Error && /Firebase Admin is not configured/i.test(error.message)) {
+      return [];
+    }
+    throw error;
+  }
 });
 
 export const adminUpsertFeatureFlag = createServerFn({ method: "POST" })

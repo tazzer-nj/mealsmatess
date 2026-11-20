@@ -3,7 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Megaphone, ExternalLink } from "lucide-react";
 import { firebaseData } from "@/lib/firebase-data";
+import { auth } from "@/lib/firebase";
 import { usePremium } from "@/hooks/use-premium";
+import { useSession } from "@/hooks/use-session";
 import { cn } from "@/lib/utils";
 
 export type AdSlotName = "home_feed" | "recipes" | "restaurants" | "planner" | "grocery";
@@ -20,6 +22,7 @@ type Placement = {
   weight: number;
   starts_at: string | null;
   ends_at: string | null;
+  is_active?: boolean;
 };
 
 /** Remotely managed sponsored placements — controlled from the ad_placements table. */
@@ -28,18 +31,19 @@ export function adPlacementsQuery(slot: AdSlotName) {
     queryKey: ["ad-placements", slot],
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<Placement[]> => {
+      if (!auth.currentUser) return [];
       const { data, error } = await firebaseData
         .from("ad_placements")
         .select(
-          "id, slot, title, body, image_url, cta_label, target_url, advertiser, weight, starts_at, ends_at",
+          "id, slot, title, body, image_url, cta_label, target_url, advertiser, weight, starts_at, ends_at, is_active",
         )
         .eq("slot", slot)
-        .eq("is_active", true)
-        .limit(10);
-      if (error) throw error;
+        .limit(20);
+      if (error) return [];
       const now = Date.now();
       return ((data ?? []) as Placement[]).filter(
         (p) =>
+          p.is_active !== false &&
           (!p.starts_at || new Date(p.starts_at).getTime() <= now) &&
           (!p.ends_at || new Date(p.ends_at).getTime() >= now),
       );
@@ -52,8 +56,9 @@ export function adPlacementsQuery(slot: AdSlotName) {
  * while their entitlement is still being checked, or when no placement is live.
  */
 export function AdSlot({ slot, className }: { slot: AdSlotName; className?: string }) {
+  const { user } = useSession();
   const { isPremium, loading } = usePremium();
-  const { data } = useQuery({ ...adPlacementsQuery(slot), enabled: !isPremium });
+  const { data } = useQuery({ ...adPlacementsQuery(slot), enabled: !!user && !isPremium });
 
   const ad = useMemo(() => {
     if (!data?.length) return null;

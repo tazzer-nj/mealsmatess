@@ -399,7 +399,7 @@ export const adminListPromos = createServerFn({ method: "GET" })
   });
 
 const PromoInput = z.object({
-  id: z.string().uuid().optional(),
+  id: z.string().trim().min(1).max(128).optional(),
   code: z.string().min(2).max(40),
   reward_kind: z.enum(["percent_discount", "free_days", "free_month", "free_year", "lifetime"]),
   reward_value: z.number().int().min(0).max(100000).default(0),
@@ -440,7 +440,7 @@ export const adminSavePromo = createServerFn({ method: "POST" })
 
 export const adminDeletePromo = createServerFn({ method: "POST" })
   .middleware([requireFirebaseAuth])
-  .validator((v: unknown) => z.object({ id: z.string().uuid() }).parse(v))
+  .validator((v: unknown) => z.object({ id: z.string().trim().min(1).max(128) }).parse(v))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { firebaseAdmin } = await loadFirebaseAdmin();
@@ -452,7 +452,12 @@ export const adminDeletePromo = createServerFn({ method: "POST" })
 export const adminGrantPremium = createServerFn({ method: "POST" })
   .middleware([requireFirebaseAuth])
   .validator((v: unknown) =>
-    z.object({ userId: z.string().uuid(), days: z.number().int().min(1).max(3650) }).parse(v),
+    z
+      .object({
+        userId: z.string().trim().min(1).max(128),
+        days: z.number().int().min(1).max(3650),
+      })
+      .parse(v),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
@@ -503,7 +508,7 @@ export const adminGrantPremium = createServerFn({ method: "POST" })
 
 export const adminRevokePremium = createServerFn({ method: "POST" })
   .middleware([requireFirebaseAuth])
-  .validator((v: unknown) => z.object({ userId: z.string().uuid() }).parse(v))
+  .validator((v: unknown) => z.object({ userId: z.string().trim().min(1).max(128) }).parse(v))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { firebaseAdmin } = await loadFirebaseAdmin();

@@ -116,12 +116,13 @@ function CookbookPage() {
       const { data, error } = await firebaseData
         .from("recipes")
         .select(
-          "id,slug,name,image_url,image_source,cooking_time_minutes,cuisine,category,servings,ingredients,description,created_by",
+          "id,slug,name,image_url,image_source,cooking_time_minutes,cuisine,category,servings,ingredients,description,created_by,created_at",
         )
-        .eq("created_by", user!.id)
-        .order("created_at", { ascending: false });
+        .eq("created_by", user!.id);
       if (error) throw error;
-      return (data ?? []) as CookbookItem[];
+      return ((data ?? []) as (CookbookItem & { created_at?: string })[]).sort((a, b) =>
+        String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")),
+      ) as CookbookItem[];
     },
   });
 
@@ -180,13 +181,16 @@ function CookbookPage() {
     if (!user) return;
     setBusyId(recipeId);
     try {
-      await firebaseData
+      const { error } = await firebaseData
         .from("favorites")
         .delete()
         .eq("user_id", user.id)
         .eq("recipe_id", recipeId);
+      if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["favorites"] });
       toast.success("Removed from Cookbook");
+    } catch {
+      toast.error("Couldn't update favorites");
     } finally {
       setBusyId(null);
     }
@@ -230,9 +234,8 @@ function CookbookPage() {
     try {
       const rows = ingredients.map((ing) => ({
         user_id: user.id,
-        recipe_id: item.id,
         name: ing.name,
-        quantity: ing.quantity ?? null,
+        ...(ing.quantity?.trim() ? { quantity: ing.quantity.trim() } : {}),
       }));
       const { error } = await firebaseData.from("grocery_items").insert(rows);
       if (error) throw error;

@@ -12,15 +12,22 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isVerifiedAdmin() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['tatendamkhwanazi6@gmail.com', 'ttmine60@gmail.com'];
+    }
+
     // Server-only RevenueCat verification lease; clients cannot mint or extend it.
     // premium_access/{uid}: source, entitlement, valid_until (Timestamp, at most 5 minutes).
     function hasPremium() {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/premium_access/$(request.auth.uid))
-        && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.source == 'revenuecat'
-        && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.entitlement == 'premium'
-        && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.valid_until is timestamp
-        && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.valid_until > request.time;
+      return isVerifiedAdmin()
+        || (isSignedIn()
+          && exists(/databases/$(database)/documents/premium_access/$(request.auth.uid))
+          && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.source == 'revenuecat'
+          && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.entitlement == 'premium'
+          && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.valid_until is timestamp
+          && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.valid_until > request.time);
     }
 
     function isOwner(uid) {
@@ -28,7 +35,7 @@ service cloud.firestore {
     }
 
     function validOptionalString(data, field, maxLength) {
-      return !(field in data) || (data[field] is string && data[field].size() <= maxLength);
+      return !(field in data) || data[field] == null || (data[field] is string && data[field].size() <= maxLength);
     }
 
     function validUserProfile(uid, data) {
@@ -108,8 +115,14 @@ service cloud.firestore {
     }
 
     function safeOwnedItemUpdate(collectionName) {
-      return collectionName == 'grocery'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'checked', 'category', 'quantity']);
+      return (
+        (collectionName == 'grocery'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'checked', 'category', 'quantity']))
+        || (collectionName == 'pantry'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'quantity', 'category', 'expires_at', 'source']))
+        || (collectionName == 'mealPlans'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plan_date', 'meal_type', 'recipe_id', 'custom_name']))
+      );
     }
 
     function isCustomerOrder(orderId) {

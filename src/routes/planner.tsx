@@ -159,7 +159,7 @@ function PlannerPage() {
         plan_date: day,
         meal_type: mealType,
         recipe_id: recipeId,
-        custom_name: fav?.recipes?.name ?? null,
+        ...(fav?.recipes?.name ? { custom_name: fav.recipes.name } : {}),
       });
       if (error) throw error;
       setAddingDay(null);
@@ -173,7 +173,11 @@ function PlannerPage() {
   }
 
   async function removeMeal(id: string) {
-    await firebaseData.from("meal_plans").delete().eq("id", id);
+    const { error } = await firebaseData.from("meal_plans").delete().eq("id", id);
+    if (error) {
+      toast.error("Couldn't remove meal");
+      return;
+    }
     refresh();
   }
 

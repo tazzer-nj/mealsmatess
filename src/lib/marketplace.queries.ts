@@ -4,6 +4,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { queryOptions } from "@tanstack/react-query";
+import { auth } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
 
 export type FeedRestaurant = {
@@ -75,13 +76,15 @@ export const marketplaceFeedQuery = () =>
     queryKey: ["marketplace-feed"],
     staleTime: 60_000,
     queryFn: async (): Promise<MarketplaceFeed> => {
+      if (!auth.currentUser) {
+        return { restaurants: [], promotions: [], dishes: [] };
+      }
       const [restaurantsRes, promotionsRes, dishesRes] = await Promise.all([
         firebaseData
           .from("restaurants")
           .select(RESTAURANT_COLUMNS)
           .eq("approval_status", "approved")
           .eq("is_demo", false)
-          .order("name")
           .limit(60),
         firebaseData
           .from("restaurant_promotions")
@@ -93,12 +96,10 @@ export const marketplaceFeedQuery = () =>
         firebaseData
           .from("menu_items")
           .select(
-            "id,restaurant_id,name,description,image_url,price,category,dietary_tags,is_available",
+            "id,restaurant_id,name,description,image_url,price,category,dietary_tags,is_available,is_hidden,sort_order",
           )
-          .eq("is_available", true)
           .eq("is_hidden", false)
-          .order("sort_order")
-          .limit(80),
+          .limit(120),
       ]);
 
       if (restaurantsRes.error) throw restaurantsRes.error;
@@ -121,28 +122,36 @@ export const marketplaceFeedQuery = () =>
         }) as FeedPromotion[];
 
       return {
-        restaurants: ((restaurantsRes.data ?? []) as any[]).map((row) => ({
-          ...row,
-          delivery_fee: Number(row.delivery_fee ?? 0),
-          delivery_radius_km: Number(row.delivery_radius_km ?? 0),
-          min_order_amount: Number(row.min_order_amount ?? 0),
-          delivery_estimate_minutes: Number(row.delivery_estimate_minutes ?? 30),
-          avg_rating: Number(row.avg_rating ?? 0),
-          rating_count: Number(row.rating_count ?? 0),
-          restaurant_locations: ((row.restaurant_locations ?? []) as any[])
-            .filter((l) => l.is_active !== false)
-            .map((l) => ({
-              latitude: Number(l.latitude),
-              longitude: Number(l.longitude),
-              label: l.label ?? null,
-            })),
-        })) as FeedRestaurant[],
+        restaurants: ((restaurantsRes.data ?? []) as any[])
+          .map((row) => ({
+            ...row,
+            delivery_fee: Number(row.delivery_fee ?? 0),
+            delivery_radius_km: Number(row.delivery_radius_km ?? 0),
+            min_order_amount: Number(row.min_order_amount ?? 0),
+            delivery_estimate_minutes: Number(row.delivery_estimate_minutes ?? 30),
+            avg_rating: Number(row.avg_rating ?? 0),
+            rating_count: Number(row.rating_count ?? 0),
+            restaurant_locations: ((row.restaurant_locations ?? []) as any[])
+              .filter((l) => l.is_active !== false)
+              .map((l) => ({
+                latitude: Number(l.latitude),
+                longitude: Number(l.longitude),
+                label: l.label ?? null,
+              })),
+          }))
+          .sort((a, b) =>
+            String(a.name ?? "").localeCompare(String(b.name ?? "")),
+          ) as FeedRestaurant[],
         promotions,
-        dishes: ((dishesRes.data ?? []) as any[]).map((d) => ({
-          ...d,
-          price: Number(d.price ?? 0),
-          dietary_tags: d.dietary_tags ?? [],
-        })) as FeedDish[],
+        dishes: ((dishesRes.data ?? []) as any[])
+          .filter((d) => d.is_available !== false)
+          .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
+          .slice(0, 80)
+          .map((d) => ({
+            ...d,
+            price: Number(d.price ?? 0),
+            dietary_tags: d.dietary_tags ?? [],
+          })) as FeedDish[],
       };
     },
   });
@@ -153,16 +162,18 @@ export const orderHistoryRestaurantsQuery = (userId: string | undefined) =>
     queryKey: ["order-history-restaurants", userId ?? "anon"],
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<string[]> => {
-      if (!userId) return [];
+      if (!userId || !auth.currentUser) return [];
       const { data, error } = await (firebaseData as any)
         .from("restaurant_orders")
         .select("restaurant_id,placed_at")
         .eq("customer_id", userId)
-        .order("placed_at", { ascending: false })
         .limit(40);
       if (error) throw error;
+      const sorted = [...(data ?? [])].sort((a, b) =>
+        String(b.placed_at ?? "").localeCompare(String(a.placed_at ?? "")),
+      );
       const seen: string[] = [];
-      for (const row of data ?? []) {
+      for (const row of sorted) {
         if (row.restaurant_id && !seen.includes(row.restaurant_id)) seen.push(row.restaurant_id);
       }
       return seen;

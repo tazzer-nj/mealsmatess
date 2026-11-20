@@ -597,9 +597,9 @@ function searchCuratedRecipesForAgent(query: string, limit = 5) {
     ? CURATED_RECIPES.filter(
         (r) =>
           r.name.toLowerCase().includes(term) ||
-          r.cuisine.toLowerCase().includes(term) ||
-          r.category.toLowerCase().includes(term) ||
-          r.description.toLowerCase().includes(term) ||
+          (r.cuisine ?? "").toLowerCase().includes(term) ||
+          (r.category ?? "").toLowerCase().includes(term) ||
+          (r.description ?? "").toLowerCase().includes(term) ||
           r.ingredients.some((i) => i.name.toLowerCase().includes(term)),
       )
     : CURATED_RECIPES;

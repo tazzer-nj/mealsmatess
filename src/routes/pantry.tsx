@@ -79,7 +79,7 @@ function PantryPage() {
       const { error } = await firebaseData.from("pantry_items").insert({
         user_id: user.id,
         name: name.trim(),
-        quantity: quantity.trim() || null,
+        ...(quantity.trim() ? { quantity: quantity.trim() } : {}),
         source: "manual",
       });
       if (error) throw error;

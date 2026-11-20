@@ -73,8 +73,8 @@ export function WebMcpProvider() {
             (r) =>
               !lower ||
               r.name.toLowerCase().includes(lower) ||
-              r.cuisine.toLowerCase().includes(lower) ||
-              r.category.toLowerCase().includes(lower) ||
+              (r.cuisine ?? "").toLowerCase().includes(lower) ||
+              (r.category ?? "").toLowerCase().includes(lower) ||
               r.ingredients.some((i) => i.name.toLowerCase().includes(lower)),
           )
             .slice(0, 8)

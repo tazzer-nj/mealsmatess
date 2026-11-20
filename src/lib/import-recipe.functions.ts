@@ -204,7 +204,7 @@ export const updateRecipeBasics = createServerFn({ method: "POST" })
   .validator((v: unknown) =>
     z
       .object({
-        id: z.string().uuid(),
+        id: z.string().trim().min(1).max(128),
         name: z.string().min(1).max(200),
         description: z.string().max(1000).optional(),
         cooking_time_minutes: z.number().int().nullable().optional(),
@@ -232,7 +232,7 @@ export const updateRecipeBasics = createServerFn({ method: "POST" })
 
 export const deleteImportedRecipe = createServerFn({ method: "POST" })
   .middleware([requirePremium])
-  .validator((v: unknown) => z.object({ id: z.string().uuid() }).parse(v))
+  .validator((v: unknown) => z.object({ id: z.string().trim().min(1).max(128) }).parse(v))
   .handler(async ({ data, context }) => {
     const { firebaseAdmin } = await loadFirebaseAdmin();
     await firebaseAdmin

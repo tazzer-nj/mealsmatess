@@ -43,8 +43,10 @@ async function setNotificationReadStatus(userId: string, id: string, read: boole
   return { ok: true };
 }
 
+const firestoreDocId = z.string().trim().min(1).max(128);
+
 const announcementInput = z.object({
-  id: z.string().uuid().optional(),
+  id: firestoreDocId.optional(),
   title: z.string().trim().min(2).max(120),
   body: z.string().trim().min(2).max(2000),
   imageUrl: z
@@ -65,38 +67,50 @@ const announcementInput = z.object({
 export const listMyNotifications = createServerFn({ method: "GET" })
   .middleware([requireFirebaseAuth])
   .handler(async ({ context }) => {
-    const { getFirebaseAdminFirestore } = await loadFirebaseAdmin();
-    const collection = getFirebaseAdminFirestore()
-      .collection("users")
-      .doc(context.userId)
-      .collection("notifications");
-    const [items, unread] = await Promise.all([
-      collection.orderBy("createdAt", "desc").limit(100).get(),
-      collection.where("readAt", "==", null).count().get(),
-    ]);
-    return {
-      items: items.docs.map((document) => ({ id: document.id, ...document.data() })),
-      unreadCount: unread.data().count,
-    };
+    try {
+      const { getFirebaseAdminFirestore } = await loadFirebaseAdmin();
+      const collection = getFirebaseAdminFirestore()
+        .collection("users")
+        .doc(context.userId)
+        .collection("notifications");
+      const [items, unread] = await Promise.all([
+        collection.orderBy("createdAt", "desc").limit(100).get(),
+        collection.where("readAt", "==", null).count().get(),
+      ]);
+      return {
+        items: items.docs.map((document) => ({ id: document.id, ...document.data() })),
+        unreadCount: unread.data().count,
+      };
+    } catch (error) {
+      if (error instanceof Error && /Firebase Admin is not configured/i.test(error.message)) {
+        return { items: [], unreadCount: 0 };
+      }
+      throw error;
+    }
   });
 
 export const getMyUnreadNotificationCount = createServerFn({ method: "GET" })
   .middleware([requireFirebaseAuth])
   .handler(async ({ context }) => {
-    const { getFirebaseAdminFirestore } = await loadFirebaseAdmin();
-    const collection = getFirebaseAdminFirestore()
-      .collection("users")
-      .doc(context.userId)
-      .collection("notifications");
-    const unread = await collection.where("readAt", "==", null).count().get();
-    return { unreadCount: unread.data().count };
+    try {
+      const { getFirebaseAdminFirestore } = await loadFirebaseAdmin();
+      const collection = getFirebaseAdminFirestore()
+        .collection("users")
+        .doc(context.userId)
+        .collection("notifications");
+      const unread = await collection.where("readAt", "==", null).count().get();
+      return { unreadCount: unread.data().count };
+    } catch (error) {
+      if (error instanceof Error && /Firebase Admin is not configured/i.test(error.message)) {
+        return { unreadCount: 0 };
+      }
+      throw error;
+    }
   });
 
 export const setMyNotificationReadStatus = createServerFn({ method: "POST" })
   .middleware([requireFirebaseAuth])
-  .validator((value: unknown) =>
-    z.object({ id: z.string().uuid(), read: z.boolean() }).parse(value),
-  )
+  .validator((value: unknown) => z.object({ id: firestoreDocId, read: z.boolean() }).parse(value))
   .handler(async ({ data, context }) =>
     setNotificationReadStatus(context.userId, data.id, data.read),
   );
@@ -124,18 +138,25 @@ export const markAllMyNotificationsRead = createServerFn({ method: "POST" })
 export const getMyNotificationPreferences = createServerFn({ method: "GET" })
   .middleware([requireFirebaseAuth])
   .handler(async ({ context }) => {
-    const { getFirebaseAdminFirestore } = await loadFirebaseAdmin();
-    const ref = getFirebaseAdminFirestore()
-      .collection("users")
-      .doc(context.userId)
-      .collection("notification_settings")
-      .doc("preferences");
-    const snapshot = await ref.get();
-    const data = snapshot.data() ?? {};
-    return {
-      productUpdatesEnabled: data["productUpdatesEnabled"] !== false,
-      pushEnabled: data["pushEnabled"] === true,
-    };
+    try {
+      const { getFirebaseAdminFirestore } = await loadFirebaseAdmin();
+      const ref = getFirebaseAdminFirestore()
+        .collection("users")
+        .doc(context.userId)
+        .collection("notification_settings")
+        .doc("preferences");
+      const snapshot = await ref.get();
+      const data = snapshot.data() ?? {};
+      return {
+        productUpdatesEnabled: data["productUpdatesEnabled"] !== false,
+        pushEnabled: data["pushEnabled"] === true,
+      };
+    } catch (error) {
+      if (error instanceof Error && /Firebase Admin is not configured/i.test(error.message)) {
+        return { productUpdatesEnabled: true, pushEnabled: false };
+      }
+      throw error;
+    }
   });
 
 export const saveMyNotificationPreferences = createServerFn({ method: "POST" })
@@ -252,7 +273,7 @@ export const saveAdminAnnouncement = createServerFn({ method: "POST" })
 
 export const publishAdminAnnouncement = createServerFn({ method: "POST" })
   .middleware([requireFirebaseAuth])
-  .validator((value: unknown) => z.object({ id: z.string().uuid() }).parse(value))
+  .validator((value: unknown) => z.object({ id: firestoreDocId }).parse(value))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { processAnnouncementBatch } = await import("@/server/notification-delivery");
@@ -261,7 +282,7 @@ export const publishAdminAnnouncement = createServerFn({ method: "POST" })
 
 export const cancelAdminAnnouncement = createServerFn({ method: "POST" })
   .middleware([requireFirebaseAuth])
-  .validator((value: unknown) => z.object({ id: z.string().uuid() }).parse(value))
+  .validator((value: unknown) => z.object({ id: firestoreDocId }).parse(value))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { cancelScheduledAnnouncement } = await import("@/server/notification-delivery");

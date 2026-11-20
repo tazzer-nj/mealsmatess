@@ -278,9 +278,17 @@ function RecipePage() {
     setSavingFav(true);
     try {
       if (isFav) {
-        await firebaseData.from("favorites").delete().eq("recipe_id", r.id).eq("user_id", user.id);
+        const { error } = await firebaseData
+          .from("favorites")
+          .delete()
+          .eq("recipe_id", r.id)
+          .eq("user_id", user.id);
+        if (error) throw error;
       } else {
-        await firebaseData.from("favorites").insert({ recipe_id: r.id, user_id: user.id });
+        const { error } = await firebaseData
+          .from("favorites")
+          .insert({ recipe_id: r.id, user_id: user.id });
+        if (error) throw error;
       }
       await queryClient.invalidateQueries({ queryKey: ["favorites"] });
     } catch {
@@ -300,9 +308,8 @@ function RecipePage() {
     try {
       const rows = ingredients.map((ing) => ({
         user_id: user.id,
-        recipe_id: r.id,
         name: ing.name,
-        quantity: ing.quantity ?? null,
+        ...(ing.quantity?.trim() ? { quantity: ing.quantity.trim() } : {}),
       }));
       const { error } = await firebaseData.from("grocery_items").insert(rows);
       if (error) throw error;

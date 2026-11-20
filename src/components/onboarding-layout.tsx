@@ -54,6 +54,8 @@ export function OnboardingLayout({
   const currentDish = STEP_DISHES[stepIndex] ?? STEP_DISHES[0];
   const activeLang = normalizeAppLanguage(i18n.resolvedLanguage ?? i18n.language);
   const prevLangRef = useRef<AppLanguageCode>(activeLang);
+  const prevStepRef = useRef<number>(step);
+  const stepDirection = step < prevStepRef.current ? "backward" : "forward";
   const [langFadeCycle, setLangFadeCycle] = useState<"a" | "b" | null>(null);
 
   useEffect(() => {
@@ -64,6 +66,7 @@ export function OnboardingLayout({
   }, [activeLang]);
 
   useEffect(() => {
+    prevStepRef.current = step;
     content.current?.scrollTo?.(0, 0);
   }, [step]);
 
@@ -129,10 +132,16 @@ export function OnboardingLayout({
 
         <div className="onboarding-surface">
           <div className="onboarding-visual-banner" aria-hidden="true">
-            <RecipeImage recipe={{ name: currentDish }} size="hero" priority />
+            <div
+              key={currentDish}
+              className="h-full w-full motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-[1.03] motion-safe:duration-500 motion-safe:ease-out"
+            >
+              <RecipeImage recipe={{ name: currentDish }} size="hero" priority />
+            </div>
             <div className="onboarding-visual-overlay">
               <span
-                className="onboarding-pill onboarding-lang-fade"
+                key={`pill-${step}`}
+                className="onboarding-pill onboarding-lang-fade motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-300 motion-safe:ease-out"
                 data-lang-fade={langFadeCycle ?? undefined}
               >
                 <span>{currentMeta.stepName}</span>
@@ -140,7 +149,15 @@ export function OnboardingLayout({
             </div>
           </div>
 
-          <div key={step} className="onboarding-content onboarding-step-enter" ref={content}>
+          <div
+            key={step}
+            className={`onboarding-content motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300 motion-safe:ease-out ${
+              stepDirection === "backward"
+                ? "motion-safe:slide-in-from-left-4"
+                : "motion-safe:slide-in-from-right-4"
+            }`}
+            ref={content}
+          >
             <div className="onboarding-lang-fade" data-lang-fade={langFadeCycle ?? undefined}>
               <div className="onboarding-text-header">
                 <h1 className="onboarding-title">{currentMeta.title}</h1>

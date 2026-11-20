@@ -267,8 +267,8 @@ function ScanPage() {
         validItems.map((i) => ({
           user_id: user.id,
           name: i.name.trim(),
-          quantity: i.quantity.trim() || null,
-          category: i.category || null,
+          ...(i.quantity.trim() ? { quantity: i.quantity.trim() } : {}),
+          ...(i.category?.trim() ? { category: i.category.trim() } : {}),
           source: "scan",
         })),
       );

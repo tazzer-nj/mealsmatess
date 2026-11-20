@@ -55,6 +55,10 @@ function scopedCollection(table: string) {
   return path ? collection(db, "users", uid, path) : rootCollection(table);
 }
 
+function stripUndefined(values: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined));
+}
+
 function compare(a: unknown, b: unknown) {
   if (a instanceof Date) a = a.getTime();
   if (b instanceof Date) b = b.getTime();
@@ -221,7 +225,11 @@ class BrowserFirestoreQuery implements PromiseLike<Result<any>> {
             throw new Error("Forbidden: profile access must be scoped to the signed-in user.");
           const ref = doc(db, "users", uid);
           if (this.action === "update") {
-            await updateDoc(ref, this.values as Record<string, unknown>);
+            const safeValues = stripUndefined(this.values as Record<string, unknown>);
+            delete safeValues["isAdmin"];
+            delete safeValues["role"];
+            delete safeValues["createdAt"];
+            await setDoc(ref, { id: uid, ...safeValues }, { merge: true });
             return { data: null, error: null };
           }
           const snapshot = await getDoc(ref);
@@ -268,7 +276,7 @@ class BrowserFirestoreQuery implements PromiseLike<Result<any>> {
       if (this.action === "update" || this.action === "delete") {
         if (this.filters.length === 0)
           throw new Error(`Refusing an unfiltered ${this.action} on ${this.table}.`);
-        const updateValues = this.values as Record<string, unknown>;
+        const updateValues = stripUndefined(this.values as Record<string, unknown>);
         if (
           this.action === "update" &&
           updateValues["user_id"] != null &&
@@ -330,14 +338,15 @@ class BrowserFirestoreQuery implements PromiseLike<Result<any>> {
       if (ownerField && input[ownerField] != null && input[ownerField] !== uid)
         throw new Error("Forbidden: cannot create a record for another user.");
       const ref = doc(collectionRef);
+      const cleanedInput = stripUndefined(input);
       const row = {
-        ...input,
+        ...cleanedInput,
         id: ref.id,
         ...(ownerField ? { [ownerField]: uid } : {}),
         ...(PERSONAL_PATHS[this.table]
-          ? { created_at: input["created_at"] ?? new Date().toISOString() }
+          ? { created_at: cleanedInput["created_at"] ?? new Date().toISOString() }
           : {}),
-        ...(this.table === "grocery_items" ? { checked: input["checked"] ?? false } : {}),
+        ...(this.table === "grocery_items" ? { checked: cleanedInput["checked"] ?? false } : {}),
       };
       await setDoc(ref, row);
       created.push(row as Row);

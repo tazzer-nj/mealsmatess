@@ -39,6 +39,7 @@ import { APP_FONTS, type AppFontId } from "@/lib/app-fonts";
 import { createPurchaseSession, verifyMyPremium } from "@/lib/billing.functions";
 import { loadBillingStore } from "@/lib/billing-client";
 import { useCurrency } from "@/lib/currency";
+import { deleteUser } from "firebase/auth";
 import { auth, sendPasswordReset as sendFirebasePasswordReset, signOutUser } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
 import { saveUserProfile } from "@/lib/profile-avatar";
@@ -357,10 +358,45 @@ function SettingsPage() {
     if (!user || deleteConfirmText.trim().toUpperCase() !== "DELETE" || deletingAccount) return;
     setDeletingAccount(true);
     try {
-      await firebaseData.from("profiles").delete().eq("id", user.id);
-      await signOutUser();
+      const collections = [
+        "favorites",
+        "grocery_items",
+        "pantry_items",
+        "meal_plans",
+        "nutrition_logs",
+      ] as const;
+      await Promise.allSettled(
+        collections.map((table) => firebaseData.from(table).delete().eq("user_id", user.id)),
+      );
+      if (typeof window !== "undefined") {
+        for (const key of Object.keys(window.localStorage)) {
+          if (key.startsWith("mealmate")) {
+            window.localStorage.removeItem(key);
+          }
+        }
+      }
+      let requiresReauth = false;
+      if (auth.currentUser) {
+        try {
+          await deleteUser(auth.currentUser);
+        } catch (err) {
+          const code = (err as { code?: string })?.code;
+          if (code === "auth/requires-recent-login") {
+            requiresReauth = true;
+          } else {
+            throw err;
+          }
+        }
+      }
+      if (!auth.currentUser || requiresReauth) {
+        await signOutUser().catch(() => undefined);
+      }
       queryClient.clear();
-      toast.success("Your account data has been removed.");
+      toast.success(
+        requiresReauth
+          ? "Your MealMate data was cleared. Sign back in once more to delete your login credential."
+          : "Your account and personal data have been deleted.",
+      );
       setDeleteAccountOpen(false);
       await navigate({ to: "/auth", replace: true });
     } catch {

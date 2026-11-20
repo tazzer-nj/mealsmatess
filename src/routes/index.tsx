@@ -192,17 +192,21 @@ function Index() {
     const isFav = favoriteIds.has(recipeId);
     try {
       if (isFav) {
-        await firebaseData
+        const { error } = await firebaseData
           .from("favorites")
           .delete()
           .eq("recipe_id", recipeId)
           .eq("user_id", user.id);
+        if (error) throw error;
         toast.success("Removed from favorites");
       } else {
-        await firebaseData.from("favorites").insert({ recipe_id: recipeId, user_id: user.id });
+        const { error } = await firebaseData
+          .from("favorites")
+          .insert({ recipe_id: recipeId, user_id: user.id });
+        if (error) throw error;
         toast.success("Added to favorites");
       }
-      await queryClient.invalidateQueries({ queryKey: ["favorites", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["favorites"] });
     } catch {
       toast.error("Could not update favorites.");
     }
