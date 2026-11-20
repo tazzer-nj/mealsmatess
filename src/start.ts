@@ -3,6 +3,18 @@ import { isHubSurface } from "@/lib/hub-surface";
 
 import { renderErrorPage } from "./lib/error-page";
 import { attachFirebaseAuth } from "@/lib/firebase-auth-attacher";
+import firebaseAppletConfig from "../firebase-applet-config.json";
+
+const authDomains = Array.from(
+  new Set(
+    [
+      process.env["VITE_FIREBASE_AUTH_DOMAIN"]?.trim(),
+      firebaseAppletConfig.authDomain?.trim(),
+      "mealmate-d2e53.firebaseapp.com",
+    ].filter((domain): domain is string => Boolean(domain)),
+  ),
+);
+const firebaseFrameSources = authDomains.map((domain) => `https://${domain}`).join(" ");
 
 function isHtmlDocumentRequest(request: Request) {
   return (
@@ -60,7 +72,7 @@ const securityHeadersMiddleware = createMiddleware().server(async ({ next, reque
         "default-src 'self'",
         ...(consumerVoice ? ["worker-src 'self' blob:"] : []),
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://js.stripe.com https://cdn.paddle.com https://sdk.revenuecat-static.com",
-        "frame-src 'self' https://mealmate-d2e53.firebaseapp.com https://accounts.google.com https://js.stripe.com https://hooks.stripe.com https://*.paddle.com https://*.revenuecat.com",
+        `frame-src 'self' ${firebaseFrameSources} https://accounts.google.com https://js.stripe.com https://hooks.stripe.com https://*.paddle.com https://*.revenuecat.com`,
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com data:",
         "img-src 'self' data: blob: https:",

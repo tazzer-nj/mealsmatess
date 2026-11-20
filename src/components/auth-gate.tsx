@@ -1,9 +1,10 @@
 import { useHubSurface } from "@/components/hub/hub-context";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Loader2, MailWarning } from "lucide-react";
 import { useSession, signOutUnified } from "@/hooks/use-session";
 import { auth } from "@/lib/firebase";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { reload, sendEmailVerification } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -98,15 +99,26 @@ function RedirectToAuth() {
 }
 
 function VerifyEmailPrompt({ email }: { email: string }) {
+  const [busyAction, setBusyAction] = useState<"check" | "resend" | null>(null);
+
   async function confirmVerification() {
     const currentUser = auth.currentUser;
-    if (!currentUser) return;
+    if (!currentUser || busyAction) return;
+    setBusyAction("check");
     try {
       await reload(currentUser);
-      if (currentUser.emailVerified) window.location.reload();
-      else toast.info("Your email is not verified yet. Check the link in your inbox.");
+      if (currentUser.emailVerified) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("mealmate:session-refreshed"));
+        }
+        toast.success("Email verified! Welcome to MealMate.");
+      } else {
+        toast.info("Your email is not verified yet. Check the link in your inbox.");
+      }
     } catch {
       toast.error("Could not refresh your verification status. Please try again.");
+    } finally {
+      setBusyAction(null);
     }
   }
 
@@ -116,18 +128,22 @@ function VerifyEmailPrompt({ email }: { email: string }) {
       toast.error("Sign in again before requesting a verification email.");
       return;
     }
+    if (busyAction) return;
+    setBusyAction("resend");
     try {
       await sendEmailVerification(currentUser);
       toast.success("Verification email sent. Check your inbox.");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not send the verification email.",
-      );
+      toast.error(getAuthErrorMessage(error, "signin"));
+    } finally {
+      setBusyAction(null);
     }
   }
+
   async function signOut() {
     await signOutUnified();
   }
+
   return (
     <main className="flex flex-1 items-center justify-center bg-background px-4 py-16 text-foreground">
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
@@ -143,20 +159,31 @@ function VerifyEmailPrompt({ email }: { email: string }) {
         <div className="mt-6 flex flex-col gap-2.5">
           <Button
             className="h-11 w-full rounded-xl bg-foreground text-background hover:opacity-90"
+            disabled={busyAction !== null}
             onClick={() => void confirmVerification()}
           >
-            I verified my email
+            {busyAction === "check" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "I verified my email"
+            )}
           </Button>
           <Button
             variant="outline"
             className="h-11 w-full rounded-xl border-border bg-secondary text-foreground hover:bg-muted"
+            disabled={busyAction !== null}
             onClick={() => void resend()}
           >
-            Resend verification email
+            {busyAction === "resend" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Resend verification email"
+            )}
           </Button>
           <Button
             variant="ghost"
             className="h-11 w-full rounded-xl text-muted-foreground hover:text-foreground"
+            disabled={busyAction !== null}
             onClick={() => void signOut()}
           >
             Use a different account

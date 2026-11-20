@@ -21,6 +21,11 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { sendEmailVerification } from "firebase/auth";
 import { isHardcodedAdminEmail } from "@/lib/admin-emails";
 import { adminIsAdmin } from "@/lib/premium.functions";
+import {
+  extractAuthErrorMessage,
+  getAuthErrorMessage,
+  getFirebaseErrorCode,
+} from "@/lib/auth-errors";
 
 async function resolvePostAuthRoute(email?: string | null): Promise<"/" | "/onboarding"> {
   if (isHardcodedAdminEmail(email)) return "/";
@@ -42,39 +47,62 @@ async function ensureUserProfile(user: {
   photoURL: string | null;
 }) {
   const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
-  if (snap.exists()) {
-    const existing = snap.data() as Record<string, unknown>;
-    // Never overwrite user-edited onboarding goal/displayName or server-managed preference docs.
-    if ("preferences" in existing || existing["goal"] || existing["displayName"]) {
+  const path = `users/${user.uid}`;
+  const safeEmail = (user.email ?? "").slice(0, 254);
+  const safeDisplayName = (user.displayName || user.email?.split("@")[0] || "Chef").slice(0, 100);
+  const safePhotoUrl = user.photoURL && user.photoURL.length <= 2048 ? user.photoURL : "";
+
+  try {
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      const existing = snap.data() as Record<string, unknown>;
+      // Never overwrite user-edited onboarding goal/displayName or server-managed preference docs.
+      if ("preferences" in existing || existing["goal"] || existing["displayName"]) {
+        return;
+      }
+      await setDoc(
+        userRef,
+        {
+          id: user.uid,
+          email: safeEmail,
+          displayName: safeDisplayName,
+          photoURL: safePhotoUrl,
+          goal: "healthy_cooking",
+        },
+        { merge: true },
+      );
       return;
     }
+
     await setDoc(
       userRef,
       {
         id: user.uid,
-        email: user.email ?? "",
-        displayName: user.displayName || user.email?.split("@")[0] || "Chef",
-        photoURL: user.photoURL ?? "",
+        email: safeEmail,
+        displayName: safeDisplayName,
+        photoURL: safePhotoUrl,
         goal: "healthy_cooking",
+        createdAt: new Date().toISOString(),
       },
       { merge: true },
     );
-    return;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("Missing or insufficient permissions")) {
+      const errInfo = {
+        error: message,
+        operationType: "write",
+        path,
+        authInfo: {
+          userId: auth.currentUser?.uid ?? null,
+          email: auth.currentUser?.email ?? null,
+          emailVerified: auth.currentUser?.emailVerified ?? null,
+        },
+      };
+      console.error("Firestore Error: ", JSON.stringify(errInfo));
+    }
+    throw error;
   }
-
-  await setDoc(
-    userRef,
-    {
-      id: user.uid,
-      email: user.email ?? "",
-      displayName: user.displayName || user.email?.split("@")[0] || "Chef",
-      photoURL: user.photoURL ?? "",
-      goal: "healthy_cooking",
-      createdAt: new Date().toISOString(),
-    },
-    { merge: true },
-  );
 }
 
 export const Route = createFileRoute("/auth")({
@@ -91,33 +119,6 @@ export const Route = createFileRoute("/auth")({
     s["mode"] === "signup" ? { mode: "signup" } : s["mode"] === "signin" ? { mode: "signin" } : {},
   component: AuthLayout,
 });
-
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (!err) return fallback;
-  if (typeof err === "string") return err;
-  if (err instanceof Error && err.message) return err.message;
-  if (typeof err === "object" && typeof (err as { message?: unknown }).message === "string") {
-    return (err as { message: string }).message;
-  }
-  return fallback;
-}
-
-function getGoogleSignInErrorMessage(error: unknown): string {
-  const code =
-    error && typeof error === "object" && "code" in error
-      ? (error as { code?: unknown }).code
-      : undefined;
-
-  if (code === "auth/popup-closed-by-user") return "";
-  if (code === "auth/unauthorized-domain" || code === "auth/internal-error") {
-    return "Google sign-in is currently unavailable in this browser session. Please continue with your email and password.";
-  }
-
-  return extractErrorMessage(
-    error,
-    "Google sign-in is unavailable right now. Please continue with your email and password.",
-  );
-}
 
 export function AuthLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -169,8 +170,8 @@ function AuthPage() {
   const [heroFailed, setHeroFailed] = useState(false);
 
   useEffect(() => {
-    if (search.mode && search.mode !== view) {
-      setView(search.mode);
+    if (search.mode) {
+      setView((prev) => (search.mode && search.mode !== prev ? search.mode : prev));
     }
   }, [search.mode]);
 
@@ -190,9 +191,10 @@ function AuthPage() {
         }
       })
       .catch((error) => {
-        if (error?.code === "auth/popup-closed-by-user") return;
+        const msg = getAuthErrorMessage(error, "google");
+        if (!msg) return;
         console.error("[Auth] Google redirect error:", error);
-        toast.error(extractErrorMessage(error, "Google sign-in is unavailable."));
+        toast.error(extractAuthErrorMessage(error, msg));
       });
     return () => {
       active = false;
@@ -244,15 +246,11 @@ function AuthPage() {
         return;
       }
     } catch (error) {
-      if (error instanceof Error && "code" in error && error.code === "auth/popup-closed-by-user") {
-        return;
-      }
+      const errMsg = getAuthErrorMessage(error, "google");
+      if (!errMsg) return;
       console.error("[Auth] Google sign-in error:", error);
-      const errMsg = getGoogleSignInErrorMessage(error);
-      if (errMsg) {
-        setFormError(errMsg);
-        toast.error(errMsg);
-      }
+      setFormError(errMsg);
+      toast.error(errMsg);
     } finally {
       setBusy(false);
     }
@@ -273,8 +271,8 @@ function AuthPage() {
       await sendFirebasePasswordReset(normalizedEmail);
       setResetSent(true);
       toast.success("Password reset email sent. Check your inbox.");
-    } catch {
-      const msg = "Could not send the reset email. Please verify your email address and try again.";
+    } catch (error) {
+      const msg = getAuthErrorMessage(error, "reset");
       setFormError(msg);
       toast.error(msg);
     } finally {
@@ -330,10 +328,7 @@ function AuthPage() {
             return;
           }
         } catch (fbErr: unknown) {
-          const code =
-            fbErr && typeof fbErr === "object" && "code" in fbErr
-              ? (fbErr as { code?: string }).code
-              : undefined;
+          const code = getFirebaseErrorCode(fbErr);
           if (code === "auth/email-already-in-use") {
             toast.error("An account with this email already exists. Sign in instead.");
             setView("signin");
@@ -345,49 +340,26 @@ function AuthPage() {
         }
         toast.success("Welcome to MealMate!");
       } else {
-        try {
-          const cred = await signInWithFirebaseEmail(normalizedEmail, password);
-          if (cred?.user) {
-            toast.success("Welcome back!");
-            const dest = await resolvePostAuthRoute(cred.user.email);
-            navigate({ to: dest, replace: true });
-            return;
+        const cred = await signInWithFirebaseEmail(normalizedEmail, password);
+        if (cred?.user) {
+          try {
+            await ensureUserProfile(cred.user);
+          } catch (fsErr) {
+            console.warn("[Auth] Could not verify firestore user profile:", fsErr);
           }
-        } catch (fbErr: unknown) {
-          const code =
-            fbErr && typeof fbErr === "object" && "code" in fbErr
-              ? (fbErr as { code?: string }).code
-              : undefined;
-          if (
-            code === "auth/user-not-found" ||
-            code === "auth/invalid-credential" ||
-            code === "auth/wrong-password"
-          ) {
-            throw new Error("Invalid email or password.");
-          }
-          throw fbErr;
+          toast.success("Welcome back!");
+          const dest = await resolvePostAuthRoute(cred.user.email);
+          navigate({ to: dest, replace: true });
+          return;
         }
       }
     } catch (err) {
       console.error("[Auth] submit error:", err);
-      const message = extractErrorMessage(err, "Authentication failed").toLowerCase();
-      const friendly =
-        message.includes("invalid login credentials") ||
-        message.includes("invalid email or password") ||
-        message.includes("auth/wrong-password") ||
-        message.includes("auth/user-not-found")
-          ? "Invalid email or password."
-          : message.includes("email not confirmed")
-            ? "Please verify your email before signing in."
-            : message.includes("already registered") || message.includes("already exists")
-              ? "An account with this email already exists. Sign in instead."
-              : message.includes("pwned") || message.includes("weak")
-                ? "That password is too weak. Choose a stronger password."
-                : message.includes("rate limit") || message.includes("too-many-requests")
-                  ? "Too many attempts. Please wait a minute and try again."
-                  : "Unable to sign in right now. Please check your details and try again.";
-      setFormError(friendly);
-      toast.error(friendly);
+      const friendly = getAuthErrorMessage(err, view === "signup" ? "signup" : "signin");
+      if (friendly) {
+        setFormError(friendly);
+        toast.error(friendly);
+      }
     } finally {
       setBusy(false);
     }

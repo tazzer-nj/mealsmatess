@@ -15,33 +15,26 @@ import {
 } from "firebase/auth";
 import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import firebaseAppletConfig from "../../firebase-applet-config.json";
 
-const requiredFirebaseEnv = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "test-api-key",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "mealmate-d2e53.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "mealmate-d2e53",
-  storageBucket:
-    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET?.trim() || "mealmate-d2e53.appspot.com",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "1234567890",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:1234567890:web:test",
-};
-
-if (!import.meta.env.VITE_FIREBASE_API_KEY) {
-  console.warn(
-    "[MealMate] VITE_FIREBASE_API_KEY not found in environment; using preview fallback configuration.",
-  );
-}
-
-if (requiredFirebaseEnv.projectId !== "mealmate-d2e53") {
-  console.warn(
-    `Firebase project mismatch: expected mealmate-d2e53, received ${requiredFirebaseEnv.projectId}`,
-  );
-}
+const envApiKey = import.meta.env.VITE_FIREBASE_API_KEY?.trim();
+const envAuthDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN?.trim();
+const envProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID?.trim();
+const envStorageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET?.trim();
+const envMessagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID?.trim();
+const envAppId = import.meta.env.VITE_FIREBASE_APP_ID?.trim();
+const envMeasurementId = import.meta.env.FIREBASE_MEASUREMENT_ID?.trim();
+const envDatabaseId = import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID?.trim();
 
 const firebaseConfig = {
-  ...requiredFirebaseEnv,
-  ...(import.meta.env.FIREBASE_MEASUREMENT_ID
-    ? { measurementId: import.meta.env.FIREBASE_MEASUREMENT_ID }
+  apiKey: envApiKey || firebaseAppletConfig.apiKey,
+  authDomain: envAuthDomain || firebaseAppletConfig.authDomain,
+  projectId: envProjectId || firebaseAppletConfig.projectId,
+  storageBucket: envStorageBucket || firebaseAppletConfig.storageBucket,
+  messagingSenderId: envMessagingSenderId || firebaseAppletConfig.messagingSenderId,
+  appId: envAppId || firebaseAppletConfig.appId,
+  ...(envMeasurementId || firebaseAppletConfig.measurementId
+    ? { measurementId: envMeasurementId || firebaseAppletConfig.measurementId }
     : {}),
 } as {
   apiKey: string;
@@ -53,6 +46,9 @@ const firebaseConfig = {
   measurementId?: string;
 };
 
+const configuredDatabaseId =
+  envDatabaseId || firebaseAppletConfig.firestoreDatabaseId?.trim() || "";
+
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const analytics =
   import.meta.env.SSR || !firebaseConfig.measurementId
@@ -60,13 +56,14 @@ export const analytics =
     : import("firebase/analytics").then(async ({ getAnalytics, isSupported }) =>
         (await isSupported()) ? getAnalytics(app) : null,
       );
-export const db = getFirestore(
-  app,
-  import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "default",
-);
+export const db =
+  configuredDatabaseId && configuredDatabaseId !== "(default)"
+    ? getFirestore(app, configuredDatabaseId)
+    : getFirestore(app);
 export const storage = getStorage(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
 
 let authStateReady: Promise<void> | null = null;
 
@@ -150,12 +147,25 @@ export async function testFirestoreConnection() {
   }
 }
 
+if (typeof window !== "undefined" && !import.meta.env.SSR && !import.meta.env.VITEST) {
+  void testFirestoreConnection();
+}
+
+function isRunningInIframe() {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+}
+
 export async function signInWithGoogle() {
   try {
     return await signInWithPopup(auth, googleProvider);
   } catch (error) {
     const code = (error as { code?: string }).code;
-    if (code === "auth/popup-blocked") {
+    if (code === "auth/popup-blocked" && !isRunningInIframe()) {
       await signInWithRedirect(auth, googleProvider);
       return null;
     }

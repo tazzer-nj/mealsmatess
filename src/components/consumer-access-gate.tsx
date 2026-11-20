@@ -134,7 +134,7 @@ export function ConsumerAccessGate({ children }: { children: ReactNode }) {
     user &&
     !isAdmin &&
     pathname === "/onboarding" &&
-    (state === "onboarding_required" || state === "loading")
+    (state === "onboarding_required" || state === "loading" || Boolean(access.error))
   ) {
     return <>{children}</>;
   }
@@ -142,7 +142,7 @@ export function ConsumerAccessGate({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  if (user && access.error) {
+  if (user && access.error && state !== "onboarding_required") {
     return (
       <main className="premium-gate">
         <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

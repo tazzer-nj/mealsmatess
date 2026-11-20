@@ -1,9 +1,24 @@
 import { defineConfig } from "vite";
+import fs from "node:fs";
+import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 import { VitePWA } from "vite-plugin-pwa";
+
+function resolveFirebaseAuthDomain() {
+  const fromEnv = process.env["VITE_FIREBASE_AUTH_DOMAIN"]?.trim();
+  if (fromEnv) return fromEnv;
+  try {
+    const raw = fs.readFileSync(path.resolve(process.cwd(), "firebase-applet-config.json"), "utf8");
+    const parsed = JSON.parse(raw) as { authDomain?: string };
+    if (parsed.authDomain?.trim()) return parsed.authDomain.trim();
+  } catch {
+    // Fall back to default domain if config file is unavailable.
+  }
+  return "mealmate-d2e53.firebaseapp.com";
+}
 
 export default defineConfig(({ command }) => ({
   // Expose only explicitly allowlisted public Firebase Web App settings.
@@ -214,7 +229,7 @@ export default defineConfig(({ command }) => ({
             // custom authDomain; redirects cannot replace this transparent proxy.
             routeRules: {
               "/__/auth/**": {
-                proxy: "https://mealmate-d2e53.firebaseapp.com/__/auth/**",
+                proxy: `https://${resolveFirebaseAuthDomain()}/__/auth/**`,
                 headers: { "cache-control": "no-store" },
               },
             },

@@ -9,6 +9,7 @@ import {
 
 const INACTIVITY_LIMIT_MS = 40 * 24 * 60 * 60 * 1000;
 const ACTIVITY_KEY_PREFIX = "mealmate:last-activity:";
+export const SESSION_REFRESHED_EVENT = "mealmate:session-refreshed";
 
 export interface SessionUser {
   id: string;
@@ -174,6 +175,17 @@ function ensureAuthStoreInitialized() {
     emit();
   });
 
+  window.addEventListener(SESSION_REFRESHED_EVENT, () => {
+    const fbUser = auth.currentUser;
+    snapshot = {
+      session: fbUser,
+      firebaseUser: fbUser,
+      loading: false,
+      user: toSessionUser(fbUser),
+    };
+    emit();
+  });
+
   window.addEventListener("pointerdown", recordActivity, { passive: true });
   window.addEventListener("keydown", recordActivity, { passive: true });
   window.addEventListener("visibilitychange", recordActivity);
@@ -198,6 +210,21 @@ function getServerSnapshot() {
 
 export function useSession() {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+export async function refreshSessionUser() {
+  const fbUser = auth.currentUser;
+  if (!fbUser) return null;
+  await fbUser.reload();
+  const refreshed = auth.currentUser ?? fbUser;
+  snapshot = {
+    session: refreshed,
+    firebaseUser: refreshed,
+    loading: false,
+    user: toSessionUser(refreshed),
+  };
+  emit();
+  return refreshed;
 }
 
 export async function signOutUnified() {

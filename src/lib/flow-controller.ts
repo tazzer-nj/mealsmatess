@@ -5,6 +5,8 @@ import { getMyPreferences } from "@/lib/preferences.functions";
 import { getIntroCompletion } from "@/lib/billing.functions";
 import { adminIsAdmin } from "@/lib/premium.functions";
 import { isHardcodedAdminEmail } from "@/lib/admin-emails";
+import { readClientProfilePreferences } from "@/lib/client-profile-prefs";
+import { hasSeenTour } from "@/lib/preferences";
 
 export type FlowState =
   | "loading"
@@ -35,8 +37,8 @@ export function useFlowController() {
     queryFn: async () => {
       if (!userId) return null;
       const [remotePrefs, introCompleted] = await Promise.all([
-        getMyPreferences().catch(() => null),
-        getIntroCompletion().catch(() => false),
+        getMyPreferences().catch(() => readClientProfilePreferences(userId)),
+        getIntroCompletion().catch(() => hasSeenTour()),
       ]);
       return {
         onboardingCompleted: Boolean(remotePrefs?.onboarding_completed),

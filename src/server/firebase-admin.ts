@@ -10,6 +10,7 @@ import {
 import { getDownloadURL, getStorage } from "firebase-admin/storage";
 import { getMessaging } from "firebase-admin/messaging";
 import { randomBytes, randomUUID } from "node:crypto";
+import firebaseAppletConfig from "../../firebase-applet-config.json";
 
 type Filter = { field: string; operator: string; value: unknown };
 type DbResult<T = unknown> = { data: T; error: Error | null; count?: number | null };
@@ -23,6 +24,39 @@ let initialized:
       bucket: ReturnType<ReturnType<typeof getStorage>["bucket"]>;
     }
   | undefined;
+
+let tokenVerifierAuth: ReturnType<typeof getAuth> | undefined;
+
+function resolvedProjectId(fallback?: string) {
+  return (
+    process.env["FIREBASE_PROJECT_ID"]?.trim() ||
+    process.env["VITE_FIREBASE_PROJECT_ID"]?.trim() ||
+    fallback ||
+    firebaseAppletConfig.projectId?.trim() ||
+    ""
+  );
+}
+
+function resolvedDatabaseId() {
+  return (
+    process.env["FIREBASE_FIRESTORE_DATABASE_ID"]?.trim() ||
+    process.env["VITE_FIREBASE_FIRESTORE_DATABASE_ID"]?.trim() ||
+    firebaseAppletConfig.firestoreDatabaseId?.trim() ||
+    "default"
+  );
+}
+
+function getTokenVerifierAuth() {
+  if (tokenVerifierAuth) return tokenVerifierAuth;
+  const projectId = resolvedProjectId();
+  if (!projectId || projectId === "remixed-project-id") {
+    throw new Error("Firebase projectId is not configured.");
+  }
+  const existingApp = getApps().find((app) => app.name === "mealmate-token-verifier");
+  const app = existingApp ?? initializeApp({ projectId }, "mealmate-token-verifier");
+  tokenVerifierAuth = getAuth(app);
+  return tokenVerifierAuth;
+}
 
 function getServices() {
   if (initialized) return initialized;
@@ -45,17 +79,17 @@ function getServices() {
     );
   }
 
-  const projectId =
-    process.env["FIREBASE_PROJECT_ID"] ||
-    process.env["VITE_FIREBASE_PROJECT_ID"] ||
-    serviceAccount.project_id;
-  if (projectId !== "mealmate-d2e53" || serviceAccount.project_id !== projectId) {
-    throw new Error("Firebase Admin project must be mealmate-d2e53 and match the service account.");
+  const projectId = resolvedProjectId(serviceAccount.project_id);
+  if (!projectId || serviceAccount.project_id !== projectId) {
+    throw new Error(
+      `Firebase Admin project mismatch: expected ${projectId}, received ${serviceAccount.project_id}.`,
+    );
   }
 
   const bucketName = (
     process.env["FIREBASE_STORAGE_BUCKET"] ||
     process.env["VITE_FIREBASE_STORAGE_BUCKET"] ||
+    firebaseAppletConfig.storageBucket ||
     `${projectId}.appspot.com`
   ).trim();
 
@@ -74,14 +108,11 @@ function getServices() {
       },
       "mealmate-admin",
     );
+  const databaseId = resolvedDatabaseId();
   initialized = {
     app,
-    db: getFirestore(
-      app,
-      process.env["FIREBASE_FIRESTORE_DATABASE_ID"] ||
-        process.env["VITE_FIREBASE_FIRESTORE_DATABASE_ID"] ||
-        "default",
-    ),
+    db:
+      databaseId && databaseId !== "(default)" ? getFirestore(app, databaseId) : getFirestore(app),
     auth: getAuth(app),
     bucket: getStorage(app).bucket(bucketName),
   };
@@ -867,7 +898,10 @@ export async function getOrCreateFirebaseUser(email: string, displayName: string
 }
 
 export async function verifyFirebaseIdToken(token: string) {
-  return getServices().auth.verifyIdToken(token, true);
+  if (process.env["FIREBASE_SERVICE_ACCOUNT_JSON"]?.trim()) {
+    return getServices().auth.verifyIdToken(token, true);
+  }
+  return getTokenVerifierAuth().verifyIdToken(token);
 }
 
 export async function firebaseAuthUserExists(uid: string) {

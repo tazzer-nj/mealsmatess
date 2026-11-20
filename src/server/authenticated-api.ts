@@ -7,15 +7,6 @@ export async function authenticateApiRequest(request: Request) {
     } as const;
   }
 
-  if (!process.env["FIREBASE_SERVICE_ACCOUNT_JSON"]?.trim()) {
-    return {
-      response: Response.json(
-        { error: "Authentication is temporarily unavailable." },
-        { status: 503 },
-      ),
-    } as const;
-  }
-
   try {
     const { firebaseUserDb, verifyFirebaseIdToken } = await import("@/server/firebase-admin");
     const decoded = await verifyFirebaseIdToken(match[1]);

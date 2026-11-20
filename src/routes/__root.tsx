@@ -355,32 +355,32 @@ function RootComponent() {
                     </AuthGate>
                   </HubShell>
                 ) : (
-                  <ConsumerAccessGate>
-                    <MiaProvider>
-                      <div className="theme-backdrop h-dvh w-full overflow-hidden bg-background">
-                        {showAppHeader && <AppHeader />}
-                        <div
-                          id="app-scroll"
-                          className={`h-full overflow-x-hidden overflow-y-auto overscroll-y-none ${hideConsumerChrome ? "" : "pb-[calc(var(--app-nav-h)+14px)] pt-[var(--app-header-h)]"}`}
-                        >
+                  <AuthGate>
+                    <ConsumerAccessGate>
+                      <MiaProvider>
+                        <div className="theme-backdrop h-dvh w-full overflow-hidden bg-background">
+                          {showAppHeader && <AppHeader />}
                           <div
-                            className={`mx-auto flex min-h-full w-full min-w-0 flex-col ${hideConsumerChrome ? "" : pathname === "/admin" ? "max-w-6xl" : "max-w-3xl"}`}
+                            id="app-scroll"
+                            className={`h-full overflow-x-hidden overflow-y-auto overscroll-y-none ${hideConsumerChrome ? "" : "pb-[calc(var(--app-nav-h)+14px)] pt-[var(--app-header-h)]"}`}
                           >
-                            <AuthGate>
+                            <div
+                              className={`mx-auto flex min-h-full w-full min-w-0 flex-col ${hideConsumerChrome ? "" : pathname === "/admin" ? "max-w-6xl" : "max-w-3xl"}`}
+                            >
                               <div
                                 key={pathname}
                                 className="page-enter motion-reveal flex flex-1 flex-col"
                               >
                                 <Outlet />
                               </div>
-                            </AuthGate>
+                            </div>
                           </div>
+                          {hideConsumerChrome ? null : <BottomNav />}
+                          <GlobalLoadingCompanion />
                         </div>
-                        {hideConsumerChrome ? null : <BottomNav />}
-                        <GlobalLoadingCompanion />
-                      </div>
-                    </MiaProvider>
-                  </ConsumerAccessGate>
+                      </MiaProvider>
+                    </ConsumerAccessGate>
+                  </AuthGate>
                 )}
               </HubContext.Provider>
               <WebMcpProvider />

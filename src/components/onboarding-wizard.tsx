@@ -17,6 +17,10 @@ import {
 } from "@/lib/onboarding-progress";
 import { EMPTY_PREFERENCES, writeLocalPreferences, type FoodPreferences } from "@/lib/preferences";
 import { getMyPreferences, saveMyPreferences } from "@/lib/preferences.functions";
+import {
+  readClientProfilePreferences,
+  writeClientProfilePreferences,
+} from "@/lib/client-profile-prefs";
 
 export const DEFAULT_ONBOARDING_STEPS = 6;
 const DEFAULT_HOUSEHOLD_SIZE = "2 people (couple)";
@@ -132,10 +136,16 @@ export function OnboardingWizard({
         },
       });
     } catch {
-      // Mark dirty again so the next interaction or step transition retries Firestore sync.
-      dirtyRef.current = true;
+      const savedDirect = await writeClientProfilePreferences(userId, {
+        ...payload,
+        onboarding_completed: false,
+      }).catch(() => false);
+      if (!savedDirect) {
+        // Mark dirty again so the next interaction or step transition retries Firestore sync.
+        dirtyRef.current = true;
+      }
     }
-  }, [buildPayload, clearAutoSaveTimer]);
+  }, [userId, buildPayload, clearAutoSaveTimer]);
 
   const scheduleAutoSave = useCallback(() => {
     dirtyRef.current = true;
@@ -152,7 +162,7 @@ export function OnboardingWizard({
     void (async () => {
       const draft = readOnboardingDraft(userId);
       try {
-        const remote = await getMyPreferences();
+        const remote = await getMyPreferences().catch(() => readClientProfilePreferences(userId));
         if (!active) return;
 
         if (remote?.onboarding_completed) {
@@ -296,13 +306,19 @@ export function OnboardingWizard({
     });
 
     try {
-      await saveMyPreferences({
-        data: {
-          ...nextPrefs,
-          ...(trimmedName ? { preferred_name: trimmedName } : {}),
-          onboarding_completed: completed,
-        },
-      });
+      const dataPayload: FoodPreferences = {
+        ...nextPrefs,
+        ...(trimmedName ? { preferred_name: trimmedName } : {}),
+        onboarding_completed: completed,
+      };
+      try {
+        await saveMyPreferences({ data: dataPayload });
+      } catch (serverErr) {
+        const savedDirect = await writeClientProfilePreferences(userId, dataPayload).catch(
+          () => false,
+        );
+        if (!savedDirect) throw serverErr;
+      }
 
       if (trimmedName && auth?.currentUser) {
         try {
