@@ -18,13 +18,16 @@ import {
 import {
   LEGACY_APPEARANCE_STORAGE_KEY,
   LEGACY_MASCOT_STORAGE_KEY,
+  THEME_POLARITY_STORAGE_KEY,
   THEME_V2_STORAGE_KEY,
   applyMealMateThemeToDom,
   getMealMateTheme,
+  getThemeTokensForScheme,
   isMealMateThemeId,
   normalizeThemeId,
   type MealMateTheme,
   type MealMateThemeId,
+  type ThemeColorScheme,
 } from "@/lib/themes";
 import { getMyTheme, saveMyTheme } from "@/lib/preferences.functions";
 import { useSession } from "@/hooks/use-session";
@@ -56,7 +59,9 @@ type ThemeContextValue = {
   // Legacy appearance & font compatibility API
   mode: ThemeMode;
   resolved: ResolvedTheme;
+  colorScheme: ThemeColorScheme;
   setMode: (m: ThemeMode) => void;
+  setColorScheme: (scheme: ThemeColorScheme) => void;
   font: AppFontId;
   setFont: (f: AppFontId) => void;
 };
@@ -105,19 +110,51 @@ function readStoredThemeId(): MealMateThemeId {
   return systemPref() === "dark" ? "midnight-black" : "classic-light";
 }
 
-function writeLocalThemeStorage(themeId: MealMateThemeId, explicitMode?: ThemeMode) {
+function readStoredPolarity(): ThemeColorScheme | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const p = window.localStorage.getItem(THEME_POLARITY_STORAGE_KEY);
+    if (p === "light" || p === "dark") return p;
+  } catch {
+    /* storage unavailable */
+  }
+  return null;
+}
+
+function writeStoredPolarity(polarity: ThemeColorScheme | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (polarity) {
+      window.localStorage.setItem(THEME_POLARITY_STORAGE_KEY, polarity);
+    } else {
+      window.localStorage.removeItem(THEME_POLARITY_STORAGE_KEY);
+    }
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function writeLocalThemeStorage(
+  themeId: MealMateThemeId,
+  explicitMode?: ThemeMode,
+  polarity?: ThemeColorScheme | null,
+) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(THEME_V2_STORAGE_KEY, themeId);
     window.localStorage.setItem(LEGACY_MASCOT_STORAGE_KEY, themeId);
+    if (polarity !== undefined) {
+      writeStoredPolarity(polarity);
+    }
     if (explicitMode) {
       window.localStorage.setItem(LEGACY_APPEARANCE_STORAGE_KEY, explicitMode);
     } else {
       const theme = getMealMateTheme(themeId);
+      const effectiveScheme = polarity ?? theme.colorScheme;
       const mappedMode: ThemeMode =
-        themeId === "midnight-pro"
+        themeId === "midnight-pro" && effectiveScheme === "dark"
           ? "dark-premium"
-          : theme.colorScheme === "dark"
+          : effectiveScheme === "dark"
             ? "dark"
             : "light";
       window.localStorage.setItem(LEGACY_APPEARANCE_STORAGE_KEY, mappedMode);
@@ -127,16 +164,24 @@ function writeLocalThemeStorage(themeId: MealMateThemeId, explicitMode?: ThemeMo
   }
 }
 
-function deriveResolvedFromTheme(themeId: MealMateThemeId): ResolvedTheme {
+function deriveResolvedFromTheme(
+  themeId: MealMateThemeId,
+  polarity?: ThemeColorScheme | null,
+): ResolvedTheme {
   const theme = getMealMateTheme(themeId);
-  if (theme.id === "midnight-pro") return "dark-premium";
-  return theme.colorScheme === "dark" ? "dark" : "light";
+  const effectiveScheme = getThemeTokensForScheme(theme, polarity).colorScheme;
+  if (theme.id === "midnight-pro" && effectiveScheme === "dark") return "dark-premium";
+  return effectiveScheme === "dark" ? "dark" : "light";
 }
 
-function deriveModeFromTheme(themeId: MealMateThemeId): ThemeMode {
-  if (themeId === "midnight-pro") return "dark-premium";
+function deriveModeFromTheme(
+  themeId: MealMateThemeId,
+  polarity?: ThemeColorScheme | null,
+): ThemeMode {
   const theme = getMealMateTheme(themeId);
-  return theme.colorScheme === "dark" ? "dark" : "light";
+  const effectiveScheme = getThemeTokensForScheme(theme, polarity).colorScheme;
+  if (themeId === "midnight-pro" && effectiveScheme === "dark") return "dark-premium";
+  return effectiveScheme === "dark" ? "dark" : "light";
 }
 
 function formatThemeSaveError(err: unknown): string {
@@ -159,6 +204,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const { user, loading: sessionLoading } = useSession();
   const [activeThemeId, setActiveThemeId] = useState<MealMateThemeId>(() => readStoredThemeId());
   const [previewThemeId, setPreviewThemeId] = useState<MealMateThemeId | null>(null);
+  const [colorSchemeOverride, setColorSchemeOverride] = useState<ThemeColorScheme | null>(() =>
+    readStoredPolarity(),
+  );
   const [mode, setModeState] = useState<ThemeMode>(() => readStoredAppearanceMode());
   const [font, setFontState] = useState<AppFontId>(DEFAULT_APP_FONT);
   const [accountLoaded, setAccountLoaded] = useState(false);
@@ -173,17 +221,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const displayThemeId = previewThemeId ?? activeThemeId;
   const activeTheme = useMemo(() => getMealMateTheme(activeThemeId), [activeThemeId]);
   const displayTheme = useMemo(() => getMealMateTheme(displayThemeId), [displayThemeId]);
-  const resolved = useMemo(() => deriveResolvedFromTheme(displayThemeId), [displayThemeId]);
+  const effectiveColorScheme = useMemo(
+    () => getThemeTokensForScheme(displayTheme, colorSchemeOverride).colorScheme,
+    [displayTheme, colorSchemeOverride],
+  );
+  const resolved = useMemo(
+    () => deriveResolvedFromTheme(displayThemeId, colorSchemeOverride),
+    [displayThemeId, colorSchemeOverride],
+  );
 
   // Synchronize initial mount font + DOM theme without flashing.
   useEffect(() => {
     const storedMode = readStoredAppearanceMode();
     const initialId = readStoredThemeId();
+    const storedPolarity = readStoredPolarity();
     setModeState(storedMode);
     setActiveThemeId(initialId);
+    setColorSchemeOverride(storedPolarity);
     applyMealMateThemeToDom(initialId, {
+      colorSchemeOverride: storedPolarity,
       legacyDatasetTheme:
-        storedMode === "system" ? systemPref() : deriveResolvedFromTheme(initialId),
+        storedMode === "system" ? systemPref() : deriveResolvedFromTheme(initialId, storedPolarity),
     });
 
     try {
@@ -196,26 +254,40 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Re-apply DOM CSS variables whenever displayed theme changes.
+  // Re-apply DOM CSS variables whenever displayed theme or polarity changes.
   useEffect(() => {
     applyMealMateThemeToDom(displayThemeId, {
+      colorSchemeOverride,
       legacyDatasetTheme:
-        mode === "system" ? systemPref() : deriveResolvedFromTheme(displayThemeId),
+        mode === "system"
+          ? systemPref()
+          : deriveResolvedFromTheme(displayThemeId, colorSchemeOverride),
     });
-  }, [displayThemeId, mode]);
+  }, [displayThemeId, mode, colorSchemeOverride]);
 
   // Follow OS dark/light preference only while mode === "system".
   useEffect(() => {
     if (mode !== "system" || typeof window === "undefined") return;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => {
-      const nextId: MealMateThemeId = mq.matches ? "midnight-black" : "classic-light";
-      setActiveThemeId(nextId);
-      applyMealMateThemeToDom(nextId, { legacyDatasetTheme: mq.matches ? "dark" : "light" });
+      const nextScheme: ThemeColorScheme = mq.matches ? "dark" : "light";
+      const currentTheme = getMealMateTheme(activeThemeId);
+      if (currentTheme.premium) {
+        setColorSchemeOverride(nextScheme);
+        applyMealMateThemeToDom(activeThemeId, {
+          colorSchemeOverride: nextScheme,
+          legacyDatasetTheme: nextScheme,
+        });
+      } else {
+        const nextId: MealMateThemeId = mq.matches ? "midnight-black" : "classic-light";
+        setActiveThemeId(nextId);
+        setColorSchemeOverride(null);
+        applyMealMateThemeToDom(nextId, { legacyDatasetTheme: nextScheme });
+      }
     };
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
-  }, [mode]);
+  }, [mode, activeThemeId]);
 
   // Sync saved theme from authenticated account & keep synced across devices on window focus.
   useEffect(() => {
@@ -280,12 +352,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const previewTheme = useCallback((id: MealMateThemeId) => {
     const normalized = normalizeThemeId(id);
     setPreviewThemeId(normalized);
-    applyMealMateThemeToDom(normalized, { animate: true });
+    setColorSchemeOverride(null);
+    applyMealMateThemeToDom(normalized, { animate: true, colorSchemeOverride: null });
   }, []);
 
   const cancelPreview = useCallback(() => {
     setPreviewThemeId(null);
-    applyMealMateThemeToDom(activeThemeId, { animate: true });
+    const storedPolarity = readStoredPolarity();
+    setColorSchemeOverride(storedPolarity);
+    applyMealMateThemeToDom(activeThemeId, {
+      animate: true,
+      colorSchemeOverride: storedPolarity,
+    });
   }, [activeThemeId]);
 
   const persistToAccount = useCallback(
@@ -308,9 +386,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         userHasEditedRef.current = true;
         setActiveThemeId(theme.id);
         setPreviewThemeId(null);
-        setModeState(deriveModeFromTheme(theme.id));
-        writeLocalThemeStorage(theme.id);
-        applyMealMateThemeToDom(theme.id, { animate: true });
+        setColorSchemeOverride(null);
+        setModeState(deriveModeFromTheme(theme.id, null));
+        writeLocalThemeStorage(theme.id, undefined, null);
+        applyMealMateThemeToDom(theme.id, { animate: true, colorSchemeOverride: null });
         setSaveStatus("saved");
         setSaveError(null);
         setPendingThemeId(null);
@@ -343,9 +422,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         }
         setActiveThemeId(targetId);
         setPreviewThemeId(null);
-        setModeState(deriveModeFromTheme(targetId));
-        writeLocalThemeStorage(targetId);
-        applyMealMateThemeToDom(targetId, { animate: true });
+        setColorSchemeOverride(null);
+        setModeState(deriveModeFromTheme(targetId, null));
+        writeLocalThemeStorage(targetId, undefined, null);
+        applyMealMateThemeToDom(targetId, { animate: true, colorSchemeOverride: null });
         const msg =
           "Applied on this device. Sign in to save this theme to your MealMate account across devices.";
         setSaveStatus("unauthenticated");
@@ -358,7 +438,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
       // Keep the chosen theme visible while saving; only commit active state on server confirmation.
       setPreviewThemeId(targetId);
-      applyMealMateThemeToDom(targetId, { animate: true });
+      setColorSchemeOverride(null);
+      applyMealMateThemeToDom(targetId, { animate: true, colorSchemeOverride: null });
 
       const result = await persistToAccount(targetId);
       if (result.ok) {
@@ -393,11 +474,67 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setPendingThemeId(null);
   }, []);
 
+  const setColorScheme = useCallback(
+    (scheme: ThemeColorScheme) => {
+      userHasEditedRef.current = true;
+      const targetId = previewThemeId ?? activeThemeId;
+      const theme = getMealMateTheme(targetId);
+      if (theme.premium && theme.altTokens) {
+        const nextOverride = scheme === theme.colorScheme ? null : scheme;
+        setColorSchemeOverride(nextOverride);
+        setModeState(scheme);
+        writeLocalThemeStorage(targetId, scheme, nextOverride);
+        applyMealMateThemeToDom(targetId, {
+          animate: true,
+          colorSchemeOverride: nextOverride,
+          legacyDatasetTheme:
+            targetId === "midnight-pro" && scheme === "dark" ? "dark-premium" : scheme,
+        });
+      } else {
+        const nextId: MealMateThemeId = scheme === "dark" ? "midnight-black" : "classic-light";
+        setActiveThemeId(nextId);
+        setPreviewThemeId(null);
+        setColorSchemeOverride(null);
+        setModeState(scheme);
+        writeLocalThemeStorage(nextId, scheme, null);
+        applyMealMateThemeToDom(nextId, { animate: true, legacyDatasetTheme: scheme });
+        if (user) {
+          void persistToAccount(nextId);
+        }
+      }
+    },
+    [activeThemeId, previewThemeId, user, persistToAccount],
+  );
+
   const setMode = useCallback(
     (m: ThemeMode) => {
       userHasEditedRef.current = true;
+      const currentTheme = getMealMateTheme(activeThemeId);
+
+      // Preserve chosen premium colorway when toggling Light / Dark / System
+      // (unless transitioning out of legacy "dark-premium" mode).
+      if (m !== "dark-premium" && currentTheme.premium && mode !== "dark-premium") {
+        const targetScheme: ThemeColorScheme =
+          m === "system" ? systemPref() : m === "dark" ? "dark" : "light";
+        const nextOverride = targetScheme === currentTheme.colorScheme ? null : targetScheme;
+        setModeState(m);
+        setPreviewThemeId(null);
+        setColorSchemeOverride(nextOverride);
+        writeLocalThemeStorage(activeThemeId, m, nextOverride);
+        applyMealMateThemeToDom(activeThemeId, {
+          animate: true,
+          colorSchemeOverride: nextOverride,
+          legacyDatasetTheme:
+            activeThemeId === "midnight-pro" && targetScheme === "dark"
+              ? "dark-premium"
+              : targetScheme,
+        });
+        return;
+      }
+
       setModeState(m);
       setPreviewThemeId(null);
+      setColorSchemeOverride(null);
 
       const nextThemeId: MealMateThemeId =
         m === "dark-premium"
@@ -411,7 +548,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
                 : "classic-light";
 
       setActiveThemeId(nextThemeId);
-      writeLocalThemeStorage(nextThemeId, m);
+      writeLocalThemeStorage(nextThemeId, m, null);
       applyMealMateThemeToDom(nextThemeId, {
         animate: true,
         legacyDatasetTheme: m === "system" ? systemPref() : m,
@@ -421,7 +558,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         void persistToAccount(nextThemeId);
       }
     },
-    [user, persistToAccount],
+    [activeThemeId, mode, user, persistToAccount],
   );
 
   const setFont = useCallback((nextFont: AppFontId) => {
@@ -455,7 +592,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       clearSaveStatus,
       mode,
       resolved,
+      colorScheme: effectiveColorScheme,
       setMode,
+      setColorScheme,
       font,
       setFont,
     }),
@@ -478,7 +617,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       clearSaveStatus,
       mode,
       resolved,
+      effectiveColorScheme,
       setMode,
+      setColorScheme,
       font,
       setFont,
     ],

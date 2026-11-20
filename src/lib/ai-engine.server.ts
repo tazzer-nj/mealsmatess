@@ -315,8 +315,8 @@ export async function generateAiText(options: AiRequestOptions): Promise<string>
 
 function parseJsonObject(text: string): unknown {
   const cleaned = text
-    .replace(/^```(?:json)?/i, "")
-    .replace(/```$/i, "")
+    .replace(/```(?:json)?/gi, "")
+    .replace(/```/g, "")
     .trim();
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");

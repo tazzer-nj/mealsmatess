@@ -12,7 +12,9 @@ import {
   generatePersonalizedPlan,
   buildGroceryFromPlan,
   aiPlanAndShop,
+  swapMealWithMia,
 } from "@/lib/planner.functions";
+import { mealTagPillClass } from "@/lib/tag-styles";
 import { useFeatureFlag } from "@/hooks/use-feature-flag";
 import {
   Select,
@@ -85,7 +87,44 @@ function PlannerPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [autoGroc, setAutoGroc] = useState(false);
   const [planShop, setPlanShop] = useState(false);
+  const [swappingId, setSwappingId] = useState<string | null>(null);
   const aiPlannerEnabled = useFeatureFlag("personalized_planner", true);
+
+  async function handleSwapWithMia(planItem: {
+    id: string;
+    plan_date: string;
+    meal_type: string;
+    custom_name: string | null;
+    recipes?: { name?: string | null } | null;
+  }) {
+    if (!user || swappingId) return;
+    const currentName = planItem.recipes?.name ?? planItem.custom_name ?? "";
+    setSwappingId(planItem.id);
+    try {
+      const res = await swapMealWithMia({
+        data: {
+          planId: planItem.id,
+          planDate: planItem.plan_date,
+          mealType: planItem.meal_type,
+          currentName,
+        },
+      });
+      await refresh();
+      toast.success(`Mia swapped in ${res.name}`, {
+        description: res.reason || undefined,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Couldn't swap meal right now";
+      if (/PREMIUM_REQUIRED/i.test(msg)) {
+        toast.error("Start your 3-day free trial to swap meals with Mia.");
+        void navigate({ to: "/premium" });
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setSwappingId(null);
+    }
+  }
 
   async function planAndShop() {
     if (!user) return;
@@ -195,7 +234,12 @@ function PlannerPage() {
         </div>
         <div className="col-span-2 flex flex-wrap gap-2 sm:col-auto">
           {aiPlannerEnabled && (
-            <Button size="sm" onClick={planAndShop} disabled={planShop}>
+            <Button
+              size="sm"
+              className="mia-ai-pill rounded-full px-3.5 font-semibold"
+              onClick={planAndShop}
+              disabled={planShop}
+            >
               {planShop ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -279,33 +323,61 @@ function PlannerPage() {
 
               {dayPlans.length > 0 && (
                 <ul className="mt-3 space-y-2">
-                  {dayPlans.map((p) => (
-                    <li
-                      key={p.id}
-                      className="flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2 text-sm"
-                    >
-                      <span>
-                        <span className="font-medium">{p.meal_type}:</span>{" "}
-                        {p.recipes?.slug ? (
-                          <Link
-                            to="/recipe/$slug"
-                            params={{ slug: p.recipes.slug ?? p.recipe_id ?? "" }}
-                            className="hover:underline"
-                          >
-                            {p.recipes?.name ?? p.custom_name}
-                          </Link>
-                        ) : (
-                          p.custom_name
-                        )}
-                      </span>
-                      <button
-                        onClick={() => removeMeal(p.id)}
-                        className="text-muted-foreground hover:text-destructive"
+                  {dayPlans.map((p) => {
+                    const isSwapping = swappingId === p.id;
+                    return (
+                      <li
+                        key={p.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/70 px-3 py-2 text-sm"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </li>
-                  ))}
+                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                          <span
+                            className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${mealTagPillClass(p.meal_type)}`}
+                          >
+                            {p.meal_type}
+                          </span>
+                          <span className="truncate font-medium">
+                            {p.recipes?.slug ? (
+                              <Link
+                                to="/recipe/$slug"
+                                params={{ slug: p.recipes.slug ?? p.recipe_id ?? "" }}
+                                className="hover:underline"
+                              >
+                                {p.recipes?.name ?? p.custom_name}
+                              </Link>
+                            ) : (
+                              p.custom_name
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {aiPlannerEnabled && (
+                            <button
+                              type="button"
+                              disabled={Boolean(swappingId)}
+                              onClick={() => void handleSwapWithMia(p)}
+                              className="mia-ai-pill inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                            >
+                              {isSwapping ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Sparkles className="h-3 w-3" />
+                              )}
+                              {isSwapping ? "Swapping…" : "Swap with Mia"}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            aria-label={`Remove ${p.recipes?.name ?? p.custom_name ?? p.meal_type}`}
+                            onClick={() => removeMeal(p.id)}
+                            className="rounded-lg p-1 text-muted-foreground transition-colors hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
 

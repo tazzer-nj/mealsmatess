@@ -478,3 +478,79 @@ export const suggestSubstitutions = createServerFn({ method: "POST" })
       throw err;
     }
   });
+
+const SwapMealInput = z.object({
+  planId: z.string().min(1).max(120),
+  planDate: z.string().min(1).max(40),
+  mealType: z.string().trim().min(1).max(50),
+  currentName: z.string().trim().max(160).default(""),
+});
+
+export const swapMealWithMia = createServerFn({ method: "POST" })
+  .middleware([requirePremium])
+  .validator((v: unknown) => SwapMealInput.parse(v))
+  .handler(async ({ data, context }) => {
+    await requireAiCredit(context.userId);
+    await enforceRateLimit("ai_planner", context.userId, 15);
+    const { firebase, userId } = context;
+    const t0 = Date.now();
+
+    try {
+      const { data: savedProfile } = await firebase
+        .from("profiles")
+        .select("goal,allergies,dietary_preferences,preferences")
+        .eq("id", userId)
+        .maybeSingle();
+      const profile = aiProfile(savedProfile);
+      const allergies = (profile?.allergies ?? []) as string[];
+      const dietaryPreferences = (profile?.dietary_preferences ?? []) as string[];
+
+      const parsed = await generateAiObject({
+        feature: "planner.swap_meal",
+        timeoutMs: 25_000,
+        instructions:
+          "You are Mia, MealMate's culinary assistant. Suggest ONE fresh, delicious replacement meal that fits the requested meal slot and strictly obeys all allergies and dietary preferences.",
+        prompt: [
+          `Swap out "${data.currentName || "current meal"}" for a different ${data.mealType} option on ${data.planDate}.`,
+          `Do NOT suggest "${data.currentName}" or a close variation of it.`,
+          `Goal: ${profile?.goal ?? "general wellness"}.`,
+          `Saved preferences: ${profile ? preferenceSummary(profile.preferences) : "none specified"}.`,
+          `Dietary preferences: ${dietaryPreferences.join(", ") || "none"}.`,
+          `Allergies (MUST avoid): ${allergies.join(", ") || "none"}.`,
+          `Reply ONLY as JSON: {"name":"...","short_reason":"..."}`,
+        ].join("\n"),
+        schema: z.object({
+          name: z.string().trim().min(2).max(160),
+          short_reason: z.string().max(200).default(""),
+        }),
+      });
+
+      const { error } = await firebase
+        .from("meal_plans")
+        .update({ custom_name: parsed.name, recipe_id: null } as never)
+        .eq("id", data.planId)
+        .eq("user_id", userId);
+      if (error) throw new Error(error.message);
+
+      void trackEvent({
+        user_id: userId,
+        kind: "planner",
+        name: "ai.swap_meal",
+        latency_ms: Date.now() - t0,
+        success: true,
+        metadata: { mealType: data.mealType, from: data.currentName, to: parsed.name },
+      });
+
+      return { id: data.planId, name: parsed.name, reason: parsed.short_reason };
+    } catch (err) {
+      void trackEvent({
+        user_id: userId,
+        kind: "planner",
+        name: "ai.swap_meal",
+        latency_ms: Date.now() - t0,
+        success: false,
+        error: err instanceof Error ? err.message.slice(0, 500) : String(err),
+      });
+      throw err;
+    }
+  });

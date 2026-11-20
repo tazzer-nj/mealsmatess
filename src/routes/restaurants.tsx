@@ -16,8 +16,10 @@ import {
   Search,
   ShoppingBag,
   SlidersHorizontal,
+  Sparkles,
   Star,
   Store,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -145,6 +147,11 @@ function RestaurantsPage() {
   const [slide, setSlide] = useState(0);
   const [locationLabel, setLocationLabel] = useState("Choose delivery location");
   const [manualLocation, setManualLocation] = useState("");
+  const [miaPick, setMiaPick] = useState<{
+    row: RestaurantRow;
+    dish: FeedDish | null;
+    reason: string;
+  } | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
   const restaurants = useMemo(() => data?.restaurants ?? [], [data?.restaurants]);
@@ -269,6 +276,48 @@ function RestaurantsPage() {
       ...(replaced ? { description: "Your previous restaurant cart was cleared." } : {}),
     });
   };
+
+  function handlePickForMe() {
+    if (rows.length === 0) {
+      toast.message("Try clearing a filter so Mia has kitchens to pick from.");
+      return;
+    }
+    const openRows = rows.filter(
+      ({ restaurant }) =>
+        restaurant.is_accepting_orders && isOpenNow(restaurant.opening_hours) !== false,
+    );
+    const pool = openRows.length > 0 ? openRows : rows;
+    const personalizedPool = personalize(hasPreferences ? preferences : null, pool, (row) => [
+      row.restaurant.name,
+      row.restaurant.cuisine,
+      row.restaurant.description,
+    ]);
+    const candidates =
+      personalizedPool.length > 1 && miaPick
+        ? personalizedPool.filter((r) => r.restaurant.id !== miaPick.row.restaurant.id)
+        : personalizedPool;
+    const chosen =
+      candidates[Math.floor(Math.random() * Math.min(candidates.length, 4))] ?? pool[0];
+    if (!chosen) return;
+    const topDish = dishes.find((d) => d.restaurant_id === chosen.restaurant.id) ?? null;
+    const reasons: string[] = [];
+    if (Number(chosen.restaurant.avg_rating) >= 4.2) {
+      reasons.push(`${Number(chosen.restaurant.avg_rating).toFixed(1)}★ top rated`);
+    }
+    if (chosen.restaurant.delivery_estimate_minutes <= 35) {
+      reasons.push(`${chosen.restaurant.delivery_estimate_minutes} min fast delivery`);
+    }
+    if (chosen.hasDeal) reasons.push("active deal");
+    if (chosen.restaurant.cuisine) reasons.push(chosen.restaurant.cuisine);
+    const reason =
+      reasons.length > 0
+        ? `Mia picked ${chosen.restaurant.name} (${reasons.slice(0, 2).join(" · ")})`
+        : `Mia picked ${chosen.restaurant.name} for tonight`;
+    setMiaPick({ row: chosen, dish: topDish, reason });
+    toast.success(`Mia suggests ${chosen.restaurant.name}`, {
+      description: topDish ? `Try ordering ${topDish.name}` : reason,
+    });
+  }
 
   return (
     <div className="marketplace-dark min-h-screen overflow-x-hidden bg-background pb-36 text-foreground">
@@ -405,8 +454,16 @@ function RestaurantsPage() {
 
         <section
           aria-label="Restaurant filters"
-          className="no-scrollbar flex gap-2 overflow-x-auto px-4"
+          className="no-scrollbar flex items-center gap-2 overflow-x-auto px-4"
         >
+          <button
+            type="button"
+            onClick={handlePickForMe}
+            className="mia-ai-pill inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-xs font-semibold"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Pick for me
+          </button>
           {FILTERS.map((item) => (
             <Button
               key={item.key}
@@ -420,6 +477,55 @@ function RestaurantsPage() {
             </Button>
           ))}
         </section>
+
+        {miaPick && (
+          <section
+            aria-label="Mia's dining recommendation"
+            className="mx-4 rounded-2xl border border-[#8b5cf6]/35 bg-card p-4 shadow-sm"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#8b5cf6]">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Mia&apos;s Pick
+                </p>
+                <h2 className="mt-1 truncate font-sans text-lg font-extrabold text-foreground">
+                  {miaPick.row.restaurant.name}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {miaPick.reason}
+                  {miaPick.dish ? ` · Signature dish: ${miaPick.dish.name}` : ""}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Dismiss Mia's pick"
+                onClick={() => setMiaPick(null)}
+                className="rounded-lg p-1 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button asChild size="sm" className="mia-ai-pill rounded-full px-4 font-semibold">
+                <Link to="/restaurant/$slug" params={{ slug: miaPick.row.restaurant.slug }}>
+                  Open menu
+                  <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                </Link>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                onClick={handlePickForMe}
+              >
+                <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                Pick another
+              </Button>
+            </div>
+          </section>
+        )}
 
         {isLoading ? (
           <MarketplaceSkeleton />

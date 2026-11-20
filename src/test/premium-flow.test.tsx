@@ -219,7 +219,7 @@ describe("onboarding and mandatory paywall", () => {
           kind: "monthly",
           price: "R189.00",
           period: "month",
-          trialDays: 0,
+          trialDays: 3,
           purchase: mocks.purchase,
         },
         {
@@ -227,7 +227,7 @@ describe("onboarding and mandatory paywall", () => {
           kind: "family",
           price: "R249.00",
           period: "month",
-          trialDays: 0,
+          trialDays: 3,
           purchase: mocks.purchase,
         },
       ],

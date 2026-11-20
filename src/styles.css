@@ -1151,6 +1151,34 @@ html[data-mascot]:not([data-mascot="classic"]):not([data-mascot="classic-light"]
   }
 }
 
+/* Vibrant Violet-to-Orange glow strictly for Mia AI action buttons */
+.mia-ai-pill {
+  background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 42%, #ff5a1f 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 6px 18px -6px rgba(139, 92, 246, 0.55),
+    0 4px 12px -4px rgba(255, 90, 31, 0.45);
+  transition:
+    transform 160ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
+}
+.mia-ai-pill:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow:
+    0 10px 24px -6px rgba(139, 92, 246, 0.65),
+    0 6px 16px -4px rgba(255, 90, 31, 0.55);
+}
+.mia-ai-pill:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.mia-ai-pill:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 @import "./styles-onboarding-override.css";
 @import "./styles-paywall-override.css";
 @import "./styles-auth-override.css";

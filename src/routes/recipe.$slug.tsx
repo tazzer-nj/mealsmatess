@@ -16,6 +16,8 @@ import {
   Share2,
   MessageCircleQuestion,
   Expand,
+  Sparkles,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { recipeBySlugQuery, myFavoritesQuery } from "@/lib/queries";
@@ -24,7 +26,8 @@ import { waitForFirebaseAuth } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
 import { usePremium } from "@/hooks/use-premium";
-import { regenerateRecipeImage } from "@/lib/ai.functions";
+import { generateRecipe, regenerateRecipeImage } from "@/lib/ai.functions";
+import { mealTagPillClass } from "@/lib/tag-styles";
 import { postAuthenticatedAi } from "@/lib/ai-api";
 import { trackRecipeView } from "@/lib/engagement.functions";
 import { setContinueCooking } from "@/lib/continue-cooking";
@@ -112,11 +115,74 @@ function RecipePage() {
   const [savingFav, setSavingFav] = useState(false);
   const [addingList, setAddingList] = useState(false);
   const [regen, setRegen] = useState(false);
+  const [remixBusy, setRemixBusy] = useState<string | null>(null);
   const [cookingOpen, setCookingOpen] = useState(false);
   const cookingModeEnabled = useFeatureFlag("cooking_mode", true);
   const [makingImage, setMakingImage] = useState(false);
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(() => new Set());
+
+  const MIA_REMIX_OPTIONS = [
+    {
+      id: "cheaper",
+      label: "Make it cheaper",
+      twist: "Make it budget-friendly with affordable pantry staples",
+    },
+    {
+      id: "air-fryer",
+      label: "Air-fryer",
+      twist: "Adapt cleanly for an air-fryer with crisp texture and quick timing",
+    },
+    {
+      id: "high-protein",
+      label: "High-protein",
+      twist: "Boost protein content per serving while keeping great flavor",
+    },
+    {
+      id: "regenerate",
+      label: "Regenerate recipe",
+      twist: "Create a fresh distinct culinary variation of this dish",
+    },
+  ] as const;
+
+  async function handleRemixWithMia(optionId: string, twist: string) {
+    if (!r || remixBusy) return;
+    if (!user) {
+      navigate({ to: "/auth" });
+      return;
+    }
+    if (!isPremium) {
+      toast.message("Start your 3-day free trial to remix recipes with Mia.");
+      navigate({ to: "/premium" });
+      return;
+    }
+    setRemixBusy(optionId);
+    try {
+      const res = await generateRecipe({
+        data: {
+          query: r.name,
+          forceNew: true,
+          excludeNames: [r.name],
+          twist,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["recipes"] });
+      toast.success("Mia crafted a fresh recipe variation!");
+      await navigate({ to: "/recipe/$slug", params: { slug: res.slug } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Couldn't remix right now";
+      if (/PREMIUM_REQUIRED/i.test(msg)) {
+        toast.message("Start your 3-day free trial to remix recipes with Mia.");
+        void navigate({ to: "/premium" });
+      } else {
+        toast.error("Couldn't regenerate this recipe", {
+          description: "Mia hit a quick snag. Please try again.",
+        });
+      }
+    } finally {
+      setRemixBusy(null);
+    }
+  }
 
   const requestRecipeImage = useCallback(async () => {
     if (!r?.id || !user) return;
@@ -392,7 +458,7 @@ function RecipePage() {
                 {r.diet_tags.map((t: string) => (
                   <span
                     key={t}
-                    className="rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                    className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${mealTagPillClass(t)}`}
                   >
                     {t}
                   </span>
@@ -452,11 +518,7 @@ function RecipePage() {
                 )}
                 Add to list
               </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="rounded-xl border-border bg-card text-foreground hover:bg-secondary"
-              >
+              <Button asChild className="mia-ai-pill rounded-xl px-4 font-semibold">
                 <Link to="/chat" search={{ q: `Help me cook ${r.name}` }}>
                   <MessageCircleQuestion className="mr-2 h-4 w-4" />
                   Ask Mia
@@ -475,6 +537,36 @@ function RecipePage() {
                 )}
                 {isPremium ? "Regenerate image" : "AI image"}
               </Button>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-border bg-card/70 p-3">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <Sparkles className="h-3.5 w-3.5 text-[#8b5cf6]" />
+                Remix with Mia
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {MIA_REMIX_OPTIONS.map((opt) => {
+                  const busyThis = remixBusy === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      disabled={Boolean(remixBusy)}
+                      onClick={() => void handleRemixWithMia(opt.id, opt.twist)}
+                      className="mia-ai-pill inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+                    >
+                      {busyThis ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : opt.id === "regenerate" ? (
+                        <RefreshCw className="h-3 w-3" />
+                      ) : (
+                        <Sparkles className="h-3 w-3" />
+                      )}
+                      {busyThis ? "Crafting…" : opt.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

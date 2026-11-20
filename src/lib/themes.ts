@@ -50,9 +50,11 @@ export type MealMateTheme = {
   premium: boolean;
   mascotImage: string;
   tokens: MealMateThemeTokens;
+  altTokens?: MealMateThemeTokens;
 };
 
 export const THEME_V2_STORAGE_KEY = "mealmate-theme-v2";
+export const THEME_POLARITY_STORAGE_KEY = "mealmate-theme-polarity";
 export const LEGACY_APPEARANCE_STORAGE_KEY = "mealmate-theme";
 export const LEGACY_MASCOT_STORAGE_KEY = "mealmate.theme.v1";
 
@@ -176,6 +178,37 @@ export const MEALMATE_THEMES: MealMateTheme[] = [
       ember: "oklch(0.72 0.16 55)",
       leaf: "oklch(0.61 0.16 139)",
     },
+    altTokens: {
+      background: "oklch(0.14 0.03 145)",
+      foreground: "oklch(0.96 0.015 135)",
+      card: "oklch(0.19 0.038 145)",
+      cardForeground: "oklch(0.96 0.015 135)",
+      popover: "oklch(0.21 0.038 145)",
+      popoverForeground: "oklch(0.96 0.015 135)",
+      primary: "oklch(0.72 0.16 140)",
+      primaryForeground: "oklch(0.14 0.03 145)",
+      secondary: "oklch(0.24 0.04 145)",
+      secondaryForeground: "oklch(0.96 0.015 135)",
+      muted: "oklch(0.23 0.035 145)",
+      mutedForeground: "oklch(0.74 0.03 140)",
+      accent: "oklch(0.28 0.05 142)",
+      accentForeground: "oklch(0.96 0.015 135)",
+      periwinkle: "oklch(0.72 0.16 140)",
+      periwinkleSoft: "oklch(0.72 0.16 140 / 16%)",
+      border: "oklch(0.3 0.04 145)",
+      input: "oklch(0.34 0.04 145)",
+      ring: "oklch(0.72 0.16 140)",
+      positive: "oklch(0.72 0.16 140)",
+      negative: "#fb7185",
+      destructive: "#ef4444",
+      destructiveForeground: "#ffffff",
+      navBackground: "rgba(13, 22, 16, 0.92)",
+      headerBackground: "rgba(13, 22, 16, 0.92)",
+      themeColor: "#0d1610",
+      ink: "oklch(0.93 0.02 135)",
+      ember: "oklch(0.75 0.15 55)",
+      leaf: "oklch(0.72 0.16 140)",
+    },
   },
   {
     id: "sunset",
@@ -215,6 +248,37 @@ export const MEALMATE_THEMES: MealMateTheme[] = [
       ember: "oklch(0.68 0.17 55)",
       leaf: "oklch(0.61 0.16 139)",
     },
+    altTokens: {
+      background: "oklch(0.17 0.03 40)",
+      foreground: "oklch(0.97 0.015 65)",
+      card: "oklch(0.22 0.04 40)",
+      cardForeground: "oklch(0.97 0.015 65)",
+      popover: "oklch(0.24 0.04 40)",
+      popoverForeground: "oklch(0.97 0.015 65)",
+      primary: "oklch(0.76 0.16 58)",
+      primaryForeground: "oklch(0.16 0.03 40)",
+      secondary: "oklch(0.27 0.05 45)",
+      secondaryForeground: "oklch(0.97 0.015 65)",
+      muted: "oklch(0.26 0.04 45)",
+      mutedForeground: "oklch(0.78 0.04 55)",
+      accent: "oklch(0.31 0.06 50)",
+      accentForeground: "oklch(0.97 0.015 65)",
+      periwinkle: "oklch(0.76 0.16 58)",
+      periwinkleSoft: "oklch(0.76 0.16 58 / 18%)",
+      border: "oklch(0.33 0.05 45)",
+      input: "oklch(0.37 0.05 45)",
+      ring: "oklch(0.76 0.16 58)",
+      positive: "#4ade80",
+      negative: "#fb7185",
+      destructive: "#ef4444",
+      destructiveForeground: "#ffffff",
+      navBackground: "rgba(28, 20, 15, 0.92)",
+      headerBackground: "rgba(28, 20, 15, 0.92)",
+      themeColor: "#1c140f",
+      ink: "oklch(0.94 0.03 60)",
+      ember: "oklch(0.76 0.16 58)",
+      leaf: "#4ade80",
+    },
   },
   {
     id: "midnight-pro",
@@ -244,7 +308,7 @@ export const MEALMATE_THEMES: MealMateTheme[] = [
       input: "oklch(0.34 0.06 275)",
       ring: "oklch(0.7 0.15 275)",
       positive: "#4ade80",
-      negative: "#f87171",
+      negative: "#f87185",
       destructive: "#ef4444",
       destructiveForeground: "#ffffff",
       navBackground: "rgba(13, 17, 38, 0.92)",
@@ -253,6 +317,37 @@ export const MEALMATE_THEMES: MealMateTheme[] = [
       ink: "oklch(0.92 0.02 275)",
       ember: "oklch(0.7 0.15 275)",
       leaf: "#4ade80",
+    },
+    altTokens: {
+      background: "oklch(0.96 0.02 275)",
+      foreground: "oklch(0.18 0.04 275)",
+      card: "oklch(0.985 0.015 275)",
+      cardForeground: "oklch(0.18 0.04 275)",
+      popover: "oklch(0.99 0.01 275)",
+      popoverForeground: "oklch(0.18 0.04 275)",
+      primary: "oklch(0.5 0.18 275)",
+      primaryForeground: "oklch(0.99 0 0)",
+      secondary: "oklch(0.92 0.04 275)",
+      secondaryForeground: "oklch(0.18 0.04 275)",
+      muted: "oklch(0.93 0.03 275)",
+      mutedForeground: "oklch(0.45 0.04 275)",
+      accent: "oklch(0.91 0.05 275)",
+      accentForeground: "oklch(0.18 0.04 275)",
+      periwinkle: "oklch(0.5 0.18 275)",
+      periwinkleSoft: "oklch(0.5 0.18 275 / 14%)",
+      border: "oklch(0.87 0.04 275)",
+      input: "oklch(0.83 0.04 275)",
+      ring: "oklch(0.5 0.18 275)",
+      positive: "oklch(0.61 0.16 139)",
+      negative: "#d93424",
+      destructive: "#d93424",
+      destructiveForeground: "#ffffff",
+      navBackground: "rgba(241, 242, 252, 0.92)",
+      headerBackground: "rgba(241, 242, 252, 0.92)",
+      themeColor: "#f1f2fc",
+      ink: "oklch(0.28 0.06 275)",
+      ember: "oklch(0.5 0.18 275)",
+      leaf: "oklch(0.61 0.16 139)",
     },
   },
   {
@@ -293,6 +388,37 @@ export const MEALMATE_THEMES: MealMateTheme[] = [
       ember: "oklch(0.6 0.14 230)",
       leaf: "oklch(0.61 0.16 139)",
     },
+    altTokens: {
+      background: "oklch(0.16 0.04 240)",
+      foreground: "oklch(0.96 0.015 225)",
+      card: "oklch(0.21 0.05 238)",
+      cardForeground: "oklch(0.96 0.015 225)",
+      popover: "oklch(0.23 0.05 238)",
+      popoverForeground: "oklch(0.96 0.015 225)",
+      primary: "oklch(0.74 0.13 225)",
+      primaryForeground: "oklch(0.15 0.03 235)",
+      secondary: "oklch(0.26 0.05 235)",
+      secondaryForeground: "oklch(0.96 0.015 225)",
+      muted: "oklch(0.25 0.04 235)",
+      mutedForeground: "oklch(0.75 0.04 230)",
+      accent: "oklch(0.3 0.06 230)",
+      accentForeground: "oklch(0.96 0.015 225)",
+      periwinkle: "oklch(0.74 0.13 225)",
+      periwinkleSoft: "oklch(0.74 0.13 225 / 18%)",
+      border: "oklch(0.32 0.05 235)",
+      input: "oklch(0.36 0.05 235)",
+      ring: "oklch(0.74 0.13 225)",
+      positive: "#4ade80",
+      negative: "#fb7185",
+      destructive: "#ef4444",
+      destructiveForeground: "#ffffff",
+      navBackground: "rgba(14, 24, 38, 0.92)",
+      headerBackground: "rgba(14, 24, 38, 0.92)",
+      themeColor: "#0e1826",
+      ink: "oklch(0.93 0.02 225)",
+      ember: "oklch(0.74 0.13 225)",
+      leaf: "#4ade80",
+    },
   },
   {
     id: "aurora",
@@ -332,6 +458,37 @@ export const MEALMATE_THEMES: MealMateTheme[] = [
       ember: "oklch(0.74 0.13 138)",
       leaf: "oklch(0.74 0.13 138)",
     },
+    altTokens: {
+      background: "oklch(0.97 0.025 135)",
+      foreground: "oklch(0.18 0.04 142)",
+      card: "oklch(0.985 0.018 135)",
+      cardForeground: "oklch(0.18 0.04 142)",
+      popover: "oklch(0.99 0.015 135)",
+      popoverForeground: "oklch(0.18 0.04 142)",
+      primary: "oklch(0.52 0.13 138)",
+      primaryForeground: "oklch(0.99 0 0)",
+      secondary: "oklch(0.93 0.045 135)",
+      secondaryForeground: "oklch(0.18 0.04 142)",
+      muted: "oklch(0.94 0.03 135)",
+      mutedForeground: "oklch(0.45 0.04 140)",
+      accent: "oklch(0.92 0.05 138)",
+      accentForeground: "oklch(0.18 0.04 142)",
+      periwinkle: "oklch(0.52 0.13 138)",
+      periwinkleSoft: "oklch(0.52 0.13 138 / 14%)",
+      border: "oklch(0.88 0.04 135)",
+      input: "oklch(0.84 0.04 135)",
+      ring: "oklch(0.52 0.13 138)",
+      positive: "oklch(0.52 0.13 138)",
+      negative: "#d93424",
+      destructive: "#d93424",
+      destructiveForeground: "#ffffff",
+      navBackground: "rgba(242, 249, 239, 0.92)",
+      headerBackground: "rgba(242, 249, 239, 0.92)",
+      themeColor: "#f2f9ef",
+      ink: "oklch(0.28 0.06 142)",
+      ember: "oklch(0.52 0.13 138)",
+      leaf: "oklch(0.52 0.13 138)",
+    },
   },
   {
     id: "obsidian",
@@ -370,6 +527,37 @@ export const MEALMATE_THEMES: MealMateTheme[] = [
       ink: "oklch(0.94 0.02 10)",
       ember: "oklch(0.7 0.17 12)",
       leaf: "#4ade80",
+    },
+    altTokens: {
+      background: "oklch(0.97 0.02 10)",
+      foreground: "oklch(0.2 0.04 12)",
+      card: "oklch(0.985 0.015 10)",
+      cardForeground: "oklch(0.2 0.04 12)",
+      popover: "oklch(0.99 0.012 10)",
+      popoverForeground: "oklch(0.2 0.04 12)",
+      primary: "oklch(0.56 0.2 12)",
+      primaryForeground: "oklch(0.99 0 0)",
+      secondary: "oklch(0.93 0.04 10)",
+      secondaryForeground: "oklch(0.2 0.04 12)",
+      muted: "oklch(0.94 0.03 10)",
+      mutedForeground: "oklch(0.46 0.04 12)",
+      accent: "oklch(0.92 0.05 12)",
+      accentForeground: "oklch(0.2 0.04 12)",
+      periwinkle: "oklch(0.56 0.2 12)",
+      periwinkleSoft: "oklch(0.56 0.2 12 / 14%)",
+      border: "oklch(0.88 0.04 10)",
+      input: "oklch(0.84 0.04 10)",
+      ring: "oklch(0.56 0.2 12)",
+      positive: "oklch(0.61 0.16 139)",
+      negative: "#d93424",
+      destructive: "#d93424",
+      destructiveForeground: "#ffffff",
+      navBackground: "rgba(252, 242, 244, 0.92)",
+      headerBackground: "rgba(252, 242, 244, 0.92)",
+      themeColor: "#fcf2f4",
+      ink: "oklch(0.28 0.06 12)",
+      ember: "oklch(0.56 0.2 12)",
+      leaf: "oklch(0.61 0.16 139)",
     },
   },
 ];
@@ -421,18 +609,33 @@ export function getMealMateTheme(id: string | null | undefined): MealMateTheme {
   return MEALMATE_THEMES.find((t) => t.id === normalized) ?? MEALMATE_THEMES[0]!;
 }
 
+export function getThemeTokensForScheme(
+  theme: MealMateTheme,
+  scheme?: ThemeColorScheme | null,
+): { colorScheme: ThemeColorScheme; tokens: MealMateThemeTokens } {
+  const targetScheme = scheme ?? theme.colorScheme;
+  if (targetScheme !== theme.colorScheme && theme.altTokens) {
+    return { colorScheme: targetScheme, tokens: theme.altTokens };
+  }
+  return { colorScheme: theme.colorScheme, tokens: theme.tokens };
+}
+
 /**
  * Applies all theme CSS custom properties, classes, data attributes, and Android
  * status bar (`meta[name="theme-color"]`) onto documentElement synchronously.
  */
 export function applyMealMateThemeToDom(
   themeId: MealMateThemeId,
-  options?: { animate?: boolean; legacyDatasetTheme?: string },
+  options?: {
+    animate?: boolean;
+    legacyDatasetTheme?: string;
+    colorSchemeOverride?: ThemeColorScheme | null;
+  },
 ) {
   if (typeof document === "undefined") return;
   const theme = getMealMateTheme(themeId);
   const root = document.documentElement;
-  const t = theme.tokens;
+  const { colorScheme, tokens: t } = getThemeTokensForScheme(theme, options?.colorSchemeOverride);
 
   if (
     options?.animate &&
@@ -443,15 +646,15 @@ export function applyMealMateThemeToDom(
     window.setTimeout(() => root.classList.remove("theme-transition"), 320);
   }
 
-  const isDark = theme.colorScheme === "dark";
+  const isDark = colorScheme === "dark";
   root.classList.toggle("dark", isDark);
-  root.classList.toggle("dark-premium", theme.id === "midnight-pro");
-  root.style.colorScheme = theme.colorScheme;
+  root.classList.toggle("dark-premium", theme.id === "midnight-pro" && isDark);
+  root.style.colorScheme = colorScheme;
   root.dataset["appTheme"] = theme.id;
   root.dataset["mascot"] = MASCOT_ALIAS_MAP[theme.id] ?? "classic";
   root.dataset["theme"] =
     options?.legacyDatasetTheme ??
-    (theme.id === "midnight-pro" ? "dark-premium" : isDark ? "dark" : "light");
+    (theme.id === "midnight-pro" && isDark ? "dark-premium" : isDark ? "dark" : "light");
 
   const vars: Record<string, string> = {
     "--background": t.background,
@@ -514,41 +717,49 @@ export function applyMealMateThemeToDom(
   }
 }
 
+function serializeTokens(colorScheme: ThemeColorScheme, t: MealMateThemeTokens) {
+  return [
+    colorScheme,
+    t.background,
+    t.foreground,
+    t.card,
+    t.cardForeground,
+    t.popover,
+    t.popoverForeground,
+    t.primary,
+    t.primaryForeground,
+    t.secondary,
+    t.secondaryForeground,
+    t.muted,
+    t.mutedForeground,
+    t.accent,
+    t.accentForeground,
+    t.periwinkle,
+    t.periwinkleSoft,
+    t.border,
+    t.input,
+    t.ring,
+    t.positive,
+    t.negative,
+    t.destructive,
+    t.destructiveForeground,
+    t.navBackground,
+    t.headerBackground,
+    t.themeColor,
+    t.ink,
+    t.ember,
+    t.leaf,
+  ];
+}
+
 const BOOT_MAP = Object.fromEntries(
-  MEALMATE_THEMES.map((theme) => [
+  MEALMATE_THEMES.map((theme) => [theme.id, serializeTokens(theme.colorScheme, theme.tokens)]),
+);
+
+const BOOT_ALT_MAP = Object.fromEntries(
+  MEALMATE_THEMES.filter((t) => Boolean(t.altTokens)).map((theme) => [
     theme.id,
-    [
-      theme.colorScheme,
-      theme.tokens.background,
-      theme.tokens.foreground,
-      theme.tokens.card,
-      theme.tokens.cardForeground,
-      theme.tokens.popover,
-      theme.tokens.popoverForeground,
-      theme.tokens.primary,
-      theme.tokens.primaryForeground,
-      theme.tokens.secondary,
-      theme.tokens.secondaryForeground,
-      theme.tokens.muted,
-      theme.tokens.mutedForeground,
-      theme.tokens.accent,
-      theme.tokens.accentForeground,
-      theme.tokens.periwinkle,
-      theme.tokens.periwinkleSoft,
-      theme.tokens.border,
-      theme.tokens.input,
-      theme.tokens.ring,
-      theme.tokens.positive,
-      theme.tokens.negative,
-      theme.tokens.destructive,
-      theme.tokens.destructiveForeground,
-      theme.tokens.navBackground,
-      theme.tokens.headerBackground,
-      theme.tokens.themeColor,
-      theme.tokens.ink,
-      theme.tokens.ember,
-      theme.tokens.leaf,
-    ],
+    serializeTokens(theme.colorScheme === "dark" ? "light" : "dark", theme.altTokens!),
   ]),
 );
 
@@ -586,12 +797,16 @@ const BOOT_KEYS = [
  */
 export const THEME_BOOT_SCRIPT = `(function(){try{var m=${JSON.stringify(
   BOOT_MAP,
-)};var lg=${JSON.stringify(LEGACY_THEME_MAP)};var ma=${JSON.stringify(
-  MASCOT_ALIAS_MAP,
-)};var ks=${JSON.stringify(BOOT_KEYS)};var k2=localStorage.getItem(${JSON.stringify(
+)};var am=${JSON.stringify(BOOT_ALT_MAP)};var lg=${JSON.stringify(
+  LEGACY_THEME_MAP,
+)};var ma=${JSON.stringify(MASCOT_ALIAS_MAP)};var ks=${JSON.stringify(
+  BOOT_KEYS,
+)};var k2=localStorage.getItem(${JSON.stringify(
   THEME_V2_STORAGE_KEY,
+)});var pol=localStorage.getItem(${JSON.stringify(
+  THEME_POLARITY_STORAGE_KEY,
 )});var ap=localStorage.getItem(${JSON.stringify(
   LEGACY_APPEARANCE_STORAGE_KEY,
 )});var ms=localStorage.getItem(${JSON.stringify(
   LEGACY_MASCOT_STORAGE_KEY,
-)});var pick=k2&&m[k2]?k2:(k2&&lg[k2]?lg[k2]:null);if(!pick){var sysDark=window.matchMedia("(prefers-color-scheme: dark)").matches;if(ap==="dark-premium")pick="midnight-pro";else if(ap==="dark")pick="midnight-black";else if(ap==="light")pick="classic-light";else if(ms&&lg[ms])pick=lg[ms];else if(ms&&m[ms])pick=ms;else pick=sysDark?"midnight-black":"classic-light";}var d=m[pick]||m["classic-light"];var r=document.documentElement;var dark=d[0]==="dark";r.classList.toggle("dark",dark);r.classList.toggle("dark-premium",pick==="midnight-pro");r.style.colorScheme=d[0];r.dataset.appTheme=pick;r.dataset.mascot=ma[pick]||"classic";r.dataset.theme=pick==="midnight-pro"?"dark-premium":(dark?"dark":"light");for(var i=0;i<ks.length;i++){r.style.setProperty(ks[i],d[i+1]);}r.style.setProperty("--cream",d[3]);r.style.setProperty("--ink",d[27]);r.style.setProperty("--ember",d[28]);r.style.setProperty("--leaf",d[29]);r.style.setProperty("--market-hero","oklch(0.98 0.01 120)");r.style.setProperty("--brand",d[7]);r.style.setProperty("--brand-dark",d[7]);r.style.setProperty("--brand-foreground",d[8]);var mt=document.querySelector('meta[name="theme-color"]');if(mt)mt.setAttribute("content",d[26]);var f=localStorage.getItem("mealmate-font");r.dataset.font=(f==="editorial"||f==="jakarta"||f==="outfit"||f==="dm"||f==="fraunces")?f:"editorial";}catch(e){}})();`;
+)});var pick=k2&&m[k2]?k2:(k2&&lg[k2]?lg[k2]:null);if(!pick){var sysDark=window.matchMedia("(prefers-color-scheme: dark)").matches;if(ap==="dark-premium")pick="midnight-pro";else if(ap==="dark")pick="midnight-black";else if(ap==="light")pick="classic-light";else if(ms&&lg[ms])pick=lg[ms];else if(ms&&m[ms])pick=ms;else pick=sysDark?"midnight-black":"classic-light";}var d=m[pick]||m["classic-light"];if((pol==="light"||pol==="dark")&&d[0]!==pol&&am[pick]){d=am[pick];}var r=document.documentElement;var dark=d[0]==="dark";r.classList.toggle("dark",dark);r.classList.toggle("dark-premium",pick==="midnight-pro"&&dark);r.style.colorScheme=d[0];r.dataset.appTheme=pick;r.dataset.mascot=ma[pick]||"classic";r.dataset.theme=pick==="midnight-pro"&&dark?"dark-premium":(dark?"dark":"light");for(var i=0;i<ks.length;i++){r.style.setProperty(ks[i],d[i+1]);}r.style.setProperty("--cream",d[3]);r.style.setProperty("--ink",d[27]);r.style.setProperty("--ember",d[28]);r.style.setProperty("--leaf",d[29]);r.style.setProperty("--market-hero","oklch(0.98 0.01 120)");r.style.setProperty("--brand",d[7]);r.style.setProperty("--brand-dark",d[7]);r.style.setProperty("--brand-foreground",d[8]);var mt=document.querySelector('meta[name="theme-color"]');if(mt)mt.setAttribute("content",d[26]);var f=localStorage.getItem("mealmate-font");r.dataset.font=(f==="editorial"||f==="jakarta"||f==="outfit"||f==="dm"||f==="fraunces")?f:"editorial";}catch(e){}})();`;

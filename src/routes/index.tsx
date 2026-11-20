@@ -75,14 +75,54 @@ function HomeSurface() {
 }
 
 const CATEGORY_PILLS = [
-  { label: "Breakfast", icon: Coffee, search: { c: "Breakfast" } },
-  { label: "Lunch", icon: Utensils, search: { c: "Lunch" } },
-  { label: "Dinner", icon: Flame, search: { c: "Dinner" } },
-  { label: "Dessert", icon: Cake, search: { c: "Dessert" } },
-  { label: "Snacks", icon: Cookie, search: { c: "Snacks" } },
-  { label: "South African", icon: Compass, search: { c: "South African Favorites" } },
-  { label: "Healthy", icon: Salad, search: { c: "Healthy Meals" } },
-  { label: "Vegan", icon: Leaf, search: { c: "Vegan" } },
+  {
+    label: "Breakfast",
+    icon: Coffee,
+    search: { c: "Breakfast" },
+    badge: "bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300",
+  },
+  {
+    label: "Lunch",
+    icon: Utensils,
+    search: { c: "Lunch" },
+    badge: "bg-orange-100 text-orange-700 dark:bg-orange-950/70 dark:text-orange-300",
+  },
+  {
+    label: "Dinner",
+    icon: Flame,
+    search: { c: "Dinner" },
+    badge: "bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300",
+  },
+  {
+    label: "Dessert",
+    icon: Cake,
+    search: { c: "Dessert" },
+    badge: "bg-violet-100 text-violet-700 dark:bg-violet-950/70 dark:text-violet-300",
+  },
+  {
+    label: "Snacks",
+    icon: Cookie,
+    search: { c: "Snacks" },
+    badge: "bg-pink-100 text-pink-700 dark:bg-pink-950/70 dark:text-pink-300",
+  },
+  {
+    label: "South African",
+    icon: Compass,
+    search: { c: "South African Favorites" },
+    badge: "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300",
+  },
+  {
+    label: "Healthy",
+    icon: Salad,
+    search: { c: "Healthy Meals" },
+    badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300",
+  },
+  {
+    label: "Vegan",
+    icon: Leaf,
+    search: { c: "Vegan" },
+    badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300",
+  },
 ] as const;
 
 function greeting() {
@@ -290,9 +330,13 @@ function Index() {
                 key={c.label}
                 to="/recipes"
                 search={c.search}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted hover:shadow-sm active:scale-95"
+                className="inline-flex items-center gap-2 rounded-full border border-border bg-card py-1.5 pl-2 pr-3.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted hover:shadow-sm active:scale-95"
               >
-                <Icon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+                <span
+                  className={`flex h-6 w-6 items-center justify-center rounded-full ${c.badge}`}
+                >
+                  <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                </span>
                 {c.label}
               </Link>
             );
@@ -347,7 +391,7 @@ function Index() {
             </p>
             <h2 className="mt-2 font-display text-2xl leading-tight">Surprise me with a recipe</h2>
           </div>
-          <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+          <span className="mia-ai-pill mt-6 inline-flex w-fit items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold">
             {busy === "surprise" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Clock, Flame, Heart } from "lucide-react";
 import { RecipeImage } from "@/components/recipe-image";
+import { mealTagPillClass } from "@/lib/tag-styles";
 
 export interface RecipeCardData {
   slug: string;
@@ -90,21 +91,30 @@ export function TrendingCard({
         )}
       </Link>
       <h3 className="mt-2 line-clamp-2 font-display text-base leading-tight">{recipe.name}</h3>
-      {recipe.difficulty && (
-        <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
-          {recipe.difficulty}
-          <span className="flex items-center gap-0.5">
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className={`h-1.5 w-1.5 rounded-full ${
-                  i < dots ? "bg-primary" : "bg-muted-foreground/30"
-                }`}
-              />
-            ))}
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        {recipe.category && (
+          <span
+            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${mealTagPillClass(recipe.category)}`}
+          >
+            {recipe.category}
           </span>
-        </div>
-      )}
+        )}
+        {recipe.difficulty && (
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
+            {recipe.difficulty}
+            <span className="flex items-center gap-0.5">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    i < dots ? "bg-primary" : "bg-muted-foreground/30"
+                  }`}
+                />
+              ))}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -132,7 +142,14 @@ export function RecipeCard({
         />
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {recipe.category && (
+            <span
+              className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${mealTagPillClass(recipe.category)}`}
+            >
+              {recipe.category}
+            </span>
+          )}
           {recipe.cuisine && <span>{recipe.cuisine}</span>}
           {recipe.cooking_time_minutes ? (
             <span className="inline-flex items-center gap-1">
@@ -143,11 +160,11 @@ export function RecipeCard({
         </div>
         <h3 className="font-display text-xl leading-tight">{recipe.name}</h3>
         {recipe.diet_tags && recipe.diet_tags.length > 0 && (
-          <div className="mt-auto flex flex-wrap gap-1 pt-1">
+          <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
             {recipe.diet_tags.slice(0, 3).map((t) => (
               <span
                 key={t}
-                className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground"
+                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${mealTagPillClass(t)}`}
               >
                 {t}
               </span>
