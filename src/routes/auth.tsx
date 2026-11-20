@@ -191,6 +191,8 @@ function AuthPage() {
         }
       })
       .catch((error) => {
+        const code = getFirebaseErrorCode(error);
+        if (code === "auth/no-auth-event" || code === "auth/missing-initial-state") return;
         const msg = getAuthErrorMessage(error, "google");
         if (!msg) return;
         console.error("[Auth] Google redirect error:", error);

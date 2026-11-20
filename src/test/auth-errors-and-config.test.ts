@@ -31,6 +31,37 @@ describe("Firebase Auth error mapping", () => {
     expect(getAuthErrorMessage({ code: "auth/user-not-found" }, "reset")).toBe(
       "No account found with that email address.",
     );
+    expect(getAuthErrorMessage({ code: "auth/missing-initial-state" }, "google")).toMatch(
+      /session storage|pop-ups/i,
+    );
+    expect(
+      getAuthErrorMessage(
+        new Error("Unable to process request due to missing initial state."),
+        "google",
+      ),
+    ).toMatch(/session storage|pop-ups/i);
+  });
+
+  it("uses signInWithPopup without falling back to signInWithRedirect when popups are blocked", async () => {
+    vi.resetModules();
+    const signInWithPopupMock = vi.fn().mockRejectedValue({ code: "auth/popup-blocked" });
+    const signInWithRedirectMock = vi.fn();
+
+    vi.doMock("firebase/auth", async () => {
+      const actual = await vi.importActual<typeof import("firebase/auth")>("firebase/auth");
+      return {
+        ...actual,
+        signInWithPopup: signInWithPopupMock,
+        signInWithRedirect: signInWithRedirectMock,
+      };
+    });
+
+    const { signInWithGoogle } = await import("@/lib/firebase");
+    await expect(signInWithGoogle()).rejects.toMatchObject({ code: "auth/popup-blocked" });
+    expect(signInWithPopupMock).toHaveBeenCalledTimes(1);
+    expect(signInWithRedirectMock).not.toHaveBeenCalled();
+
+    vi.doUnmock("firebase/auth");
   });
 });
 

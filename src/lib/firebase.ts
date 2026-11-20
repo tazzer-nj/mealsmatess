@@ -4,7 +4,6 @@ import {
   GoogleAuthProvider,
   getRedirectResult,
   signInWithPopup,
-  signInWithRedirect,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -151,26 +150,8 @@ if (typeof window !== "undefined" && !import.meta.env.SSR && !import.meta.env.VI
   void testFirestoreConnection();
 }
 
-function isRunningInIframe() {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.self !== window.top;
-  } catch {
-    return true;
-  }
-}
-
 export async function signInWithGoogle() {
-  try {
-    return await signInWithPopup(auth, googleProvider);
-  } catch (error) {
-    const code = (error as { code?: string }).code;
-    if (code === "auth/popup-blocked" && !isRunningInIframe()) {
-      await signInWithRedirect(auth, googleProvider);
-      return null;
-    }
-    throw error;
-  }
+  return signInWithPopup(auth, googleProvider);
 }
 
 export async function signInWithEmail(email: string, pass: string) {

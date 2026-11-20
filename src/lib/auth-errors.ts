@@ -32,7 +32,15 @@ export function getAuthErrorMessage(error: unknown, context: AuthErrorContext): 
   }
 
   if (code === "auth/popup-blocked") {
-    return "Your browser blocked the Google sign-in pop-up. Allow pop-ups for this site and try again.";
+    return "Your browser blocked the Google sign-in pop-up. Allow pop-ups for this site and click Continue with Google again.";
+  }
+
+  if (
+    code === "auth/missing-initial-state" ||
+    code === "auth/web-storage-unsupported" ||
+    extractAuthErrorMessage(error, "").toLowerCase().includes("missing initial state")
+  ) {
+    return "Google sign-in couldn't access browser session storage in this embedded or partitioned view. Enable pop-ups and site storage, or open the app in a separate tab and try again.";
   }
 
   if (code === "auth/operation-not-allowed" || code === "auth/admin-restricted-operation") {
