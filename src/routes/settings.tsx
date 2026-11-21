@@ -64,6 +64,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { FoodPreferences } from "@/lib/preferences";
+import { FEEDBACK_CATEGORIES, type FeedbackCategory } from "@/lib/feedback";
+import { submitFeedbackReport } from "@/lib/feedback.functions";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -127,6 +129,18 @@ const PREF_GOALS = [
 ];
 
 const PREF_SKILLS = ["Beginner", "Intermediate", "Experienced"];
+const PREF_INTOLERANCES = ["Lactose", "Gluten", "Fructose", "Histamine", "Sulfites"];
+const PREF_LIFESTYLES = [
+  "Home cook",
+  "Busy weeknights",
+  "Meal prepper",
+  "Family cooking",
+  "Fitness focused",
+];
+const PREF_MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks", "Dessert"];
+const PREF_BUDGETS = ["Budget friendly", "Moderate", "Flexible"];
+const PREF_COOK_TIMES = ["Under 20 mins", "20 to 35 mins", "35 to 50 mins", "No rush"];
+const PREF_HOUSEHOLD = ["1 person", "2 people", "3 to 4 people (family)", "5+ people"];
 
 function formatInitials(name?: string | null, email?: string | null): string {
   const source = (name || email || "Chef").trim();
@@ -185,8 +199,10 @@ function SettingsPage() {
   const [restoring, setRestoring] = useState(false);
 
   // Report state
+  const [reportCategory, setReportCategory] = useState<FeedbackCategory>("Bug");
   const [reportText, setReportText] = useState("");
   const [reporting, setReporting] = useState(false);
+  const [dislikedDraft, setDislikedDraft] = useState("");
 
   // Mia speech & mic permission state
   const [voiceResponses, setVoiceResponses] = useState(true);
@@ -296,15 +312,35 @@ function SettingsPage() {
   }
 
   function toggleDraftList(
-    field: "dietary_restrictions" | "allergies" | "favorite_foods",
+    field:
+      | "dietary_restrictions"
+      | "allergies"
+      | "intolerances"
+      | "favorite_foods"
+      | "preferred_cuisines"
+      | "lifestyles"
+      | "preferred_meal_types",
     value: string,
   ) {
+    setDraftPrefs((prev) => {
+      const current = prev[field] ?? [];
+      return {
+        ...prev,
+        [field]: current.includes(value) ? current.filter((v) => v !== value) : [...current, value],
+      };
+    });
+  }
+
+  function addDislikedIngredient() {
+    const clean = dislikedDraft.trim();
+    if (!clean) return;
     setDraftPrefs((prev) => ({
       ...prev,
-      [field]: prev[field].includes(value)
-        ? prev[field].filter((v) => v !== value)
-        : [...prev[field], value],
+      disliked_foods: prev.disliked_foods.includes(clean)
+        ? prev.disliked_foods
+        : [...prev.disliked_foods, clean],
     }));
+    setDislikedDraft("");
   }
 
   async function handlePasswordReset() {
@@ -519,14 +555,33 @@ function SettingsPage() {
   }
 
   async function handleReportProblem() {
-    if (!reportText.trim()) return;
+    const clean = reportText.trim();
+    if (clean.length < 5) {
+      toast.error("Please include a short description (at least 5 characters).");
+      return;
+    }
     setReporting(true);
-    setTimeout(() => {
-      setReporting(false);
+    try {
+      const report = await submitFeedbackReport({
+        data: {
+          category: reportCategory,
+          title: `${reportCategory}: ${clean.slice(0, 80)}`,
+          description: clean,
+          routeContext: "/settings",
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["feedback-reports"] });
       setReportProblemOpen(false);
       setReportText("");
-      toast.success("Thank you. Your feedback has been received.");
-    }, 500);
+      toast.success(`Report logged (${report.reference_id})`, {
+        description: "Track status anytime in Help Centre.",
+        action: { label: "View", onClick: () => navigate({ to: "/support" }) },
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not submit your report right now.");
+    } finally {
+      setReporting(false);
+    }
   }
 
   const renewalDate = formatDate(entitlement?.periodEnd);
@@ -1392,17 +1447,45 @@ function SettingsPage() {
             </div>
 
             <div>
+              <Label className="text-xs font-medium text-muted-foreground">Intolerances</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PREF_INTOLERANCES.map((item) => {
+                  const active = (draftPrefs.intolerances ?? []).includes(item);
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => toggleDraftList("intolerances", item)}
+                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                        active
+                          ? "border-amber-600 bg-amber-600 text-white"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
               <Label className="text-xs font-medium text-muted-foreground">
-                Favourite flavours
+                Favourite cuisines &amp; flavours
               </Label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {PREF_CUISINES.map((cuisine) => {
-                  const active = draftPrefs.favorite_foods.includes(cuisine);
+                  const active =
+                    draftPrefs.favorite_foods.includes(cuisine) ||
+                    (draftPrefs.preferred_cuisines ?? []).includes(cuisine);
                   return (
                     <button
                       key={cuisine}
                       type="button"
-                      onClick={() => toggleDraftList("favorite_foods", cuisine)}
+                      onClick={() => {
+                        toggleDraftList("favorite_foods", cuisine);
+                        toggleDraftList("preferred_cuisines", cuisine);
+                      }}
                       className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
                         active
                           ? "border-foreground bg-foreground text-background"
@@ -1410,6 +1493,104 @@ function SettingsPage() {
                       }`}
                     >
                       {cuisine}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Disliked ingredients
+              </Label>
+              <div className="mt-2 flex gap-2">
+                <Input
+                  value={dislikedDraft}
+                  onChange={(e) => setDislikedDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addDislikedIngredient();
+                    }
+                  }}
+                  placeholder="e.g. cilantro, olives, liver"
+                  className="h-10 flex-1 rounded-xl border-border bg-secondary text-xs text-foreground"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addDislikedIngredient}
+                  className="h-10 rounded-xl border-border text-xs"
+                >
+                  Add
+                </Button>
+              </div>
+              {draftPrefs.disliked_foods.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {draftPrefs.disliked_foods.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() =>
+                        setDraftPrefs((p) => ({
+                          ...p,
+                          disliked_foods: p.disliked_foods.filter((x) => x !== item),
+                        }))
+                      }
+                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-secondary px-2.5 py-1 text-xs text-foreground hover:border-destructive/40"
+                    >
+                      {item} ×
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Dietary lifestyle &amp; routine
+              </Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PREF_LIFESTYLES.map((style) => {
+                  const active = (draftPrefs.lifestyles ?? []).includes(style);
+                  return (
+                    <button
+                      key={style}
+                      type="button"
+                      onClick={() => toggleDraftList("lifestyles", style)}
+                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                        active
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {style}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Preferred meal types
+              </Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PREF_MEAL_TYPES.map((meal) => {
+                  const active = (draftPrefs.preferred_meal_types ?? []).includes(meal);
+                  return (
+                    <button
+                      key={meal}
+                      type="button"
+                      onClick={() => toggleDraftList("preferred_meal_types", meal)}
+                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                        active
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {meal}
                     </button>
                   );
                 })}
@@ -1435,6 +1616,87 @@ function SettingsPage() {
                       }`}
                     >
                       {level}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">Household size</Label>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {PREF_HOUSEHOLD.map((size) => {
+                    const active = draftPrefs.household_size === size;
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() =>
+                          setDraftPrefs((p) => ({
+                            ...p,
+                            household_size: size,
+                            meals_per_day: size,
+                          }))
+                        }
+                        className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                          active
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Budget preference
+                </Label>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {PREF_BUDGETS.map((budget) => {
+                    const active = draftPrefs.food_budget === budget;
+                    return (
+                      <button
+                        key={budget}
+                        type="button"
+                        onClick={() => setDraftPrefs((p) => ({ ...p, food_budget: budget }))}
+                        className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                          active
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {budget}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Typical cooking time
+              </Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PREF_COOK_TIMES.map((time) => {
+                  const active = draftPrefs.cooking_time === time;
+                  return (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => setDraftPrefs((p) => ({ ...p, cooking_time: time }))}
+                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                        active
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {time}
                     </button>
                   );
                 })}
@@ -1556,12 +1818,30 @@ function SettingsPage() {
               Describe what went wrong and our team will look into it.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-2">
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Category</Label>
+              <Select
+                value={reportCategory}
+                onValueChange={(v) => setReportCategory(v as FeedbackCategory)}
+              >
+                <SelectTrigger className="mt-1.5 h-10 rounded-xl border-border bg-secondary text-xs text-foreground">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FEEDBACK_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <textarea
               rows={4}
               value={reportText}
               onChange={(e) => setReportText(e.target.value)}
-              placeholder="What happened? Which screen were you using?"
+              placeholder="What happened? Which screen or recipe were you using?"
               className="w-full rounded-xl border border-border bg-secondary p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-[var(--periwinkle)] focus:outline-none"
             />
           </div>
@@ -1575,7 +1855,7 @@ function SettingsPage() {
             </Button>
             <Button
               onClick={handleReportProblem}
-              disabled={reporting || !reportText.trim()}
+              disabled={reporting || reportText.trim().length < 5}
               className="rounded-xl bg-foreground text-background hover:opacity-90"
             >
               {reporting ? <Loader2 className="animate-spin" size={16} /> : "Submit report"}

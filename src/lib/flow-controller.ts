@@ -5,8 +5,7 @@ import { getMyPreferences } from "@/lib/preferences.functions";
 import { getIntroCompletion } from "@/lib/billing.functions";
 import { adminIsAdmin } from "@/lib/premium.functions";
 import { isHardcodedAdminEmail } from "@/lib/admin-emails";
-import { readClientProfilePreferences } from "@/lib/client-profile-prefs";
-import { hasSeenTour } from "@/lib/preferences";
+import { readLocalFreeMode } from "@/lib/freemium";
 
 export type FlowState =
   | "loading"
@@ -37,12 +36,16 @@ export function useFlowController() {
     queryFn: async () => {
       if (!userId) return null;
       const [remotePrefs, introCompleted] = await Promise.all([
-        getMyPreferences().catch(() => readClientProfilePreferences(userId)),
-        getIntroCompletion().catch(() => hasSeenTour()),
+        getMyPreferences().catch(() => null),
+        getIntroCompletion().catch(() => false),
       ]);
+      const freeModeEntered =
+        Boolean((remotePrefs as { free_mode_entered?: boolean } | null)?.free_mode_entered) ||
+        readLocalFreeMode(userId);
       return {
         onboardingCompleted: Boolean(remotePrefs?.onboarding_completed),
         tourCompleted: Boolean(introCompleted),
+        freeModeEntered,
       };
     },
     enabled: !!userId && !isAdmin,
@@ -51,7 +54,14 @@ export function useFlowController() {
   });
 
   if (sessionLoading) {
-    return { state: "loading" as FlowState, user, access, progress: null, isAdmin: false };
+    return {
+      state: "loading" as FlowState,
+      user,
+      access,
+      progress: null,
+      isAdmin: false,
+      isFreeTier: false,
+    };
   }
 
   if (!user) {
@@ -61,6 +71,7 @@ export function useFlowController() {
       access,
       progress: null,
       isAdmin: false,
+      isFreeTier: false,
     };
   }
 
@@ -69,25 +80,40 @@ export function useFlowController() {
       state: "application_ready" as FlowState,
       user,
       access: { ...access, isPremium: true, loading: false, error: null },
-      progress: { onboardingCompleted: true, tourCompleted: true, isPremium: true },
+      progress: {
+        onboardingCompleted: true,
+        tourCompleted: true,
+        isPremium: true,
+        freeModeEntered: false,
+      },
       isAdmin: true,
+      isFreeTier: false,
     };
   }
 
   if (adminQuery.isPending || userProgress.isPending || access.loading) {
-    return { state: "loading" as FlowState, user, access, progress: null, isAdmin: false };
+    return {
+      state: "loading" as FlowState,
+      user,
+      access,
+      progress: null,
+      isAdmin: false,
+      isFreeTier: false,
+    };
   }
 
   const onboardingCompleted = Boolean(userProgress.data?.onboardingCompleted);
   const tourCompleted = Boolean(userProgress.data?.tourCompleted);
+  const freeModeEntered = Boolean(userProgress.data?.freeModeEntered) || readLocalFreeMode(userId);
   const isPremium = Boolean(access.isPremium);
+  const isFreeTier = !isPremium && freeModeEntered;
 
   let state: FlowState;
   if (!onboardingCompleted) {
     state = "onboarding_required";
-  } else if (!isPremium) {
+  } else if (!isPremium && !freeModeEntered) {
     state = "paywall_required";
-  } else if (!tourCompleted) {
+  } else if (isPremium && !tourCompleted) {
     state = "app_tour_required";
   } else {
     state = "application_ready";
@@ -97,7 +123,8 @@ export function useFlowController() {
     state,
     user,
     access,
-    progress: { onboardingCompleted, tourCompleted, isPremium },
+    progress: { onboardingCompleted, tourCompleted, isPremium, freeModeEntered },
     isAdmin: false,
+    isFreeTier,
   };
 }

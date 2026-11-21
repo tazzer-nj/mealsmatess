@@ -14,8 +14,9 @@ import {
 import {
   FREE_THEMES,
   PREMIUM_THEMES,
-  getThemeTokensForScheme,
+  getMealMateThemeTokens,
   type MealMateTheme,
+  type ThemeColorScheme,
 } from "@/lib/themes";
 import { useTheme } from "@/components/theme-provider";
 import { usePremium } from "@/hooks/use-premium";
@@ -25,21 +26,19 @@ import { cn } from "@/lib/utils";
 
 function ThemeMiniPreview({
   theme,
+  schemeOverride,
   active,
   previewing,
   locked,
-  effectiveScheme,
 }: {
   theme: MealMateTheme;
+  schemeOverride?: ThemeColorScheme;
   active: boolean;
   previewing: boolean;
   locked: boolean;
-  effectiveScheme?: "light" | "dark";
 }) {
-  const { tokens: t, colorScheme } = getThemeTokensForScheme(
-    theme,
-    active || previewing ? effectiveScheme : undefined,
-  );
+  const effectiveScheme = schemeOverride ?? theme.colorScheme;
+  const t = getMealMateThemeTokens(theme, effectiveScheme);
   return (
     <div
       className="relative aspect-[16/11] w-full overflow-hidden rounded-xl border transition-transform duration-200"
@@ -149,7 +148,7 @@ function ThemeMiniPreview({
           className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-md shadow-sm"
           style={{
             backgroundColor: t.periwinkle,
-            color: colorScheme === "dark" ? t.background : "#ffffff",
+            color: theme.colorScheme === "dark" ? t.background : "#ffffff",
           }}
         >
           <Check className="h-3 w-3 stroke-[2.5]" />
@@ -160,7 +159,7 @@ function ThemeMiniPreview({
           className="absolute right-1.5 top-1.5 rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
           style={{
             backgroundColor: t.periwinkle,
-            color: colorScheme === "dark" ? t.background : "#ffffff",
+            color: theme.colorScheme === "dark" ? t.background : "#ffffff",
           }}
         >
           Preview
@@ -177,17 +176,17 @@ function ThemeMiniPreview({
 
 function ThemeCard({
   theme,
+  schemeOverride,
   active,
   previewing,
   locked,
-  effectiveScheme,
   onSelect,
 }: {
   theme: MealMateTheme;
+  schemeOverride?: ThemeColorScheme;
   active: boolean;
   previewing: boolean;
   locked: boolean;
-  effectiveScheme?: "light" | "dark";
   onSelect: (theme: MealMateTheme) => void;
 }) {
   return (
@@ -208,10 +207,10 @@ function ThemeCard({
     >
       <ThemeMiniPreview
         theme={theme}
+        schemeOverride={schemeOverride}
         active={active}
         previewing={previewing}
         locked={locked}
-        effectiveScheme={effectiveScheme}
       />
 
       <div className="mt-2 flex min-w-0 items-center justify-between gap-2 px-0.5">
@@ -248,8 +247,8 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
     activeThemeId,
     previewThemeId,
     displayTheme,
-    isPreviewing,
     colorScheme,
+    isPreviewing,
     loadingAccount,
     saveStatus,
     saveError,
@@ -257,8 +256,8 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
     previewTheme,
     cancelPreview,
     applyTheme,
-    setColorScheme,
     retrySave,
+    setMode,
   } = useTheme();
 
   const { isPremium } = usePremium();
@@ -302,41 +301,40 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <div
-              role="group"
-              aria-label="Theme brightness"
-              className="inline-flex items-center rounded-xl border border-border bg-secondary p-0.5"
-            >
-              <button
-                type="button"
-                onClick={() => setColorScheme("light")}
-                aria-pressed={colorScheme === "light"}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors",
-                  colorScheme === "light"
-                    ? "bg-card text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+            {activeTheme.premium && !isPreviewing && (
+              <div
+                className="inline-flex rounded-xl border border-border bg-secondary p-0.5"
+                role="group"
+                aria-label="Theme tone"
               >
-                <Sun className="h-3 w-3" />
-                Light
-              </button>
-              <button
-                type="button"
-                onClick={() => setColorScheme("dark")}
-                aria-pressed={colorScheme === "dark"}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors",
-                  colorScheme === "dark"
-                    ? "bg-card text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Moon className="h-3 w-3" />
-                Dark
-              </button>
-            </div>
-
+                <button
+                  type="button"
+                  onClick={() => setMode("light")}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    colorScheme === "light"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Sun className="h-3 w-3" />
+                  Light
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("dark")}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    colorScheme === "dark"
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Moon className="h-3 w-3" />
+                  Dark
+                </button>
+              </div>
+            )}
             {saveStatus === "saving" && (
               <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-[var(--periwinkle)]">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -498,7 +496,6 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
               active={activeThemeId === theme.id}
               previewing={previewThemeId === theme.id && previewThemeId !== activeThemeId}
               locked={false}
-              effectiveScheme={colorScheme}
               onSelect={handleSelectTheme}
             />
           ))}
@@ -539,10 +536,10 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
             <ThemeCard
               key={theme.id}
               theme={theme}
+              schemeOverride={displayTheme.id === theme.id ? colorScheme : undefined}
               active={activeThemeId === theme.id}
               previewing={previewThemeId === theme.id && previewThemeId !== activeThemeId}
               locked={!isPremium}
-              effectiveScheme={colorScheme}
               onSelect={handleSelectTheme}
             />
           ))}

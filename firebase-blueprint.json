@@ -36,6 +36,50 @@
         "createdAt": { "type": "string" }
       },
       "required": ["userId", "name"]
+    },
+    "MiaConversation": {
+      "title": "MiaConversation",
+      "description": "Persistent conversation history between user and Mia AI assistant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "title": { "type": "string" },
+        "turns": { "type": "array" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "title", "turns"]
+    },
+    "PlannerTemplate": {
+      "title": "PlannerTemplate",
+      "description": "Reusable weekly meal plan templates",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "name": { "type": "string" },
+        "slots": { "type": "array" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "name", "slots"]
+    },
+    "FeedbackReport": {
+      "title": "FeedbackReport",
+      "description": "Customer problem reports and product feedback",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "reference_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "category": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "category", "title", "description", "status"]
     }
   },
   "firestore": {
@@ -50,6 +94,18 @@
     "/users/{userId}/pantry/{pantryId}": {
       "schema": "PantryItem",
       "description": "User pantry items"
+    },
+    "/users/{userId}/conversations/{conversationId}": {
+      "schema": "MiaConversation",
+      "description": "Persistent Mia conversation threads"
+    },
+    "/users/{userId}/plannerTemplates/{templateId}": {
+      "schema": "PlannerTemplate",
+      "description": "Saved reusable weekly meal plan templates"
+    },
+    "/feedback_reports/{reportId}": {
+      "schema": "FeedbackReport",
+      "description": "Customer feedback and issue reports with lifecycle status"
     }
   }
 }

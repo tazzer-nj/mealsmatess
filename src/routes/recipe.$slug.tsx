@@ -16,18 +16,25 @@ import {
   Share2,
   MessageCircleQuestion,
   Expand,
-  Sparkles,
-  RefreshCw,
+  AlertTriangle,
+  ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
-import { recipeBySlugQuery, myFavoritesQuery } from "@/lib/queries";
+import { recipeBySlugQuery, myFavoritesQuery, myGroceryQuery } from "@/lib/queries";
 import { curatedRecipeImageUrl } from "@/lib/recipe-image";
 import { waitForFirebaseAuth } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
 import { usePremium } from "@/hooks/use-premium";
-import { generateRecipe, regenerateRecipeImage } from "@/lib/ai.functions";
-import { mealTagPillClass } from "@/lib/tag-styles";
+import { usePreferences } from "@/hooks/use-preferences";
+import { evaluateRecipeAllergens } from "@/lib/preferences";
+import {
+  categorizeGroceryItem,
+  combineQuantities,
+  consolidateIngredients,
+  normalizeItemKey,
+} from "@/lib/grocery-categorizer";
+import { regenerateRecipeImage } from "@/lib/ai.functions";
 import { postAuthenticatedAi } from "@/lib/ai-api";
 import { trackRecipeView } from "@/lib/engagement.functions";
 import { setContinueCooking } from "@/lib/continue-cooking";
@@ -109,80 +116,19 @@ function RecipePage() {
   });
   const r = data ?? recipe;
   const { isPremium } = usePremium();
+  const { preferences } = usePreferences();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: favorites } = useQuery({ ...myFavoritesQuery(), enabled: !!user });
+  const { data: favorites } = useQuery({ ...myFavoritesQuery(), enabled: !!user && isPremium });
+  const { data: groceryItems } = useQuery({ ...myGroceryQuery(), enabled: !!user && isPremium });
   const [savingFav, setSavingFav] = useState(false);
   const [addingList, setAddingList] = useState(false);
   const [regen, setRegen] = useState(false);
-  const [remixBusy, setRemixBusy] = useState<string | null>(null);
   const [cookingOpen, setCookingOpen] = useState(false);
   const cookingModeEnabled = useFeatureFlag("cooking_mode", true);
   const [makingImage, setMakingImage] = useState(false);
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(() => new Set());
-
-  const MIA_REMIX_OPTIONS = [
-    {
-      id: "cheaper",
-      label: "Make it cheaper",
-      twist: "Make it budget-friendly with affordable pantry staples",
-    },
-    {
-      id: "air-fryer",
-      label: "Air-fryer",
-      twist: "Adapt cleanly for an air-fryer with crisp texture and quick timing",
-    },
-    {
-      id: "high-protein",
-      label: "High-protein",
-      twist: "Boost protein content per serving while keeping great flavor",
-    },
-    {
-      id: "regenerate",
-      label: "Regenerate recipe",
-      twist: "Create a fresh distinct culinary variation of this dish",
-    },
-  ] as const;
-
-  async function handleRemixWithMia(optionId: string, twist: string) {
-    if (!r || remixBusy) return;
-    if (!user) {
-      navigate({ to: "/auth" });
-      return;
-    }
-    if (!isPremium) {
-      toast.message("Start your 3-day free trial to remix recipes with Mia.");
-      navigate({ to: "/premium" });
-      return;
-    }
-    setRemixBusy(optionId);
-    try {
-      const res = await generateRecipe({
-        data: {
-          query: r.name,
-          forceNew: true,
-          excludeNames: [r.name],
-          twist,
-        },
-      });
-      await queryClient.invalidateQueries({ queryKey: ["recipes"] });
-      toast.success("Mia crafted a fresh recipe variation!");
-      await navigate({ to: "/recipe/$slug", params: { slug: res.slug } });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Couldn't remix right now";
-      if (/PREMIUM_REQUIRED/i.test(msg)) {
-        toast.message("Start your 3-day free trial to remix recipes with Mia.");
-        void navigate({ to: "/premium" });
-      } else {
-        toast.error("Couldn't regenerate this recipe", {
-          description: "Mia hit a quick snag. Please try again.",
-        });
-      }
-    } finally {
-      setRemixBusy(null);
-    }
-  }
 
   const requestRecipeImage = useCallback(async () => {
     if (!r?.id || !user) return;
@@ -212,9 +158,9 @@ function RecipePage() {
   }, [queryClient, r?.id, r?.slug, user]);
 
   useEffect(() => {
-    if (!user || !r?.id || r.image_url || curatedRecipeImageUrl(r)) return;
+    if (!user || !isPremium || !r?.id || r.image_url || curatedRecipeImageUrl(r)) return;
     void requestRecipeImage();
-  }, [user, r, requestRecipeImage]);
+  }, [user, isPremium, r, requestRecipeImage]);
 
   async function regenerateImage() {
     if (!user || !r) {
@@ -299,6 +245,11 @@ function RecipePage() {
   const ingredients = (Array.isArray(r.ingredients) ? r.ingredients : []) as Ingredient[];
   const steps = (Array.isArray(r.steps) ? r.steps : []) as string[];
   const isFav = favorites?.some((f) => f.recipe_id === r.id) ?? false;
+  const allergenCheck = evaluateRecipeAllergens(preferences, {
+    name: r.name,
+    description: r.description,
+    ingredients,
+  });
 
   const stats = [
     r.cooking_time_minutes && { icon: Clock, label: `${r.cooking_time_minutes} min` },
@@ -341,20 +292,17 @@ function RecipePage() {
       navigate({ to: "/auth" });
       return;
     }
+    if (!isPremium) {
+      toast.message("Start your 3-day free trial to save favorite recipes.");
+      navigate({ to: "/premium" });
+      return;
+    }
     setSavingFav(true);
     try {
       if (isFav) {
-        const { error } = await firebaseData
-          .from("favorites")
-          .delete()
-          .eq("recipe_id", r.id)
-          .eq("user_id", user.id);
-        if (error) throw error;
+        await firebaseData.from("favorites").delete().eq("recipe_id", r.id).eq("user_id", user.id);
       } else {
-        const { error } = await firebaseData
-          .from("favorites")
-          .insert({ recipe_id: r.id, user_id: user.id });
-        if (error) throw error;
+        await firebaseData.from("favorites").insert({ recipe_id: r.id, user_id: user.id });
       }
       await queryClient.invalidateQueries({ queryKey: ["favorites"] });
     } catch {
@@ -369,16 +317,52 @@ function RecipePage() {
       navigate({ to: "/auth" });
       return;
     }
+    if (!isPremium) {
+      toast.message("Start your 3-day free trial to build consolidated grocery lists.");
+      navigate({ to: "/premium" });
+      return;
+    }
     if (ingredients.length === 0) return;
     setAddingList(true);
     try {
-      const rows = ingredients.map((ing) => ({
-        user_id: user.id,
-        name: ing.name,
-        ...(ing.quantity?.trim() ? { quantity: ing.quantity.trim() } : {}),
-      }));
-      const { error } = await firebaseData.from("grocery_items").insert(rows);
-      if (error) throw error;
+      const overrides = preferences.shopping?.category_overrides ?? {};
+      const consolidated = consolidateIngredients(ingredients, { overrides });
+      const existingUnchecked = (groceryItems ?? []).filter((g) => !g.checked);
+      const toInsert: {
+        user_id: string;
+        recipe_id: string;
+        name: string;
+        quantity: string | null;
+        category: string;
+      }[] = [];
+
+      for (const ing of consolidated) {
+        const key = normalizeItemKey(ing.name).replace(/s$/, "");
+        const match = existingUnchecked.find(
+          (g) => normalizeItemKey(g.name).replace(/s$/, "") === key,
+        );
+        const category = categorizeGroceryItem(ing.name, { overrides });
+        if (match) {
+          const mergedQty = combineQuantities(match.quantity, ing.quantity);
+          await firebaseData
+            .from("grocery_items")
+            .update({ quantity: mergedQty, category })
+            .eq("id", match.id);
+        } else {
+          toInsert.push({
+            user_id: user.id,
+            recipe_id: r.id,
+            name: ing.name,
+            quantity: ing.quantity,
+            category,
+          });
+        }
+      }
+
+      if (toInsert.length > 0) {
+        const { error } = await firebaseData.from("grocery_items").insert(toInsert);
+        if (error) throw error;
+      }
       await queryClient.invalidateQueries({ queryKey: ["grocery"] });
       toast.success("Added to your grocery list", {
         action: { label: "View", onClick: () => navigate({ to: "/list" }) },
@@ -454,15 +438,29 @@ function RecipePage() {
             )}
 
             {r.diet_tags && r.diet_tags.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {r.diet_tags.map((t: string) => (
-                  <span
-                    key={t}
-                    className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${mealTagPillClass(t)}`}
-                  >
-                    {t}
-                  </span>
-                ))}
+              <p className="mt-3 text-xs text-muted-foreground">{r.diet_tags.join(" · ")}</p>
+            )}
+
+            {allergenCheck.warningSummary && (
+              <div
+                role="alert"
+                className={`mt-4 flex items-start gap-2.5 rounded-xl border p-3.5 text-xs ${
+                  !allergenCheck.safe
+                    ? "border-destructive/50 bg-destructive/10 text-destructive"
+                    : "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                }`}
+              >
+                {!allergenCheck.safe ? (
+                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                ) : (
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                )}
+                <div>
+                  <p className="font-semibold">
+                    {!allergenCheck.safe ? "Allergy warning" : "Ingredient verification notice"}
+                  </p>
+                  <p className="mt-0.5 leading-relaxed">{allergenCheck.warningSummary}</p>
+                </div>
               </div>
             )}
 
@@ -518,7 +516,11 @@ function RecipePage() {
                 )}
                 Add to list
               </Button>
-              <Button asChild className="mia-ai-pill rounded-xl px-4 font-semibold">
+              <Button
+                asChild
+                variant="outline"
+                className="rounded-xl border-border bg-card text-foreground hover:bg-secondary"
+              >
                 <Link to="/chat" search={{ q: `Help me cook ${r.name}` }}>
                   <MessageCircleQuestion className="mr-2 h-4 w-4" />
                   Ask Mia
@@ -537,36 +539,6 @@ function RecipePage() {
                 )}
                 {isPremium ? "Regenerate image" : "AI image"}
               </Button>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-border bg-card/70 p-3">
-              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                <Sparkles className="h-3.5 w-3.5 text-[#8b5cf6]" />
-                Remix with Mia
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {MIA_REMIX_OPTIONS.map((opt) => {
-                  const busyThis = remixBusy === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      disabled={Boolean(remixBusy)}
-                      onClick={() => void handleRemixWithMia(opt.id, opt.twist)}
-                      className="mia-ai-pill inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
-                    >
-                      {busyThis ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : opt.id === "regenerate" ? (
-                        <RefreshCw className="h-3 w-3" />
-                      ) : (
-                        <Sparkles className="h-3 w-3" />
-                      )}
-                      {busyThis ? "Crafting…" : opt.label}
-                    </button>
-                  );
-                })}
-              </div>
             </div>
           </div>
         </div>

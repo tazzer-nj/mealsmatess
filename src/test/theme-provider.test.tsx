@@ -5,7 +5,6 @@ import {
   MEALMATE_THEMES,
   PREMIUM_THEMES,
   THEME_BOOT_SCRIPT,
-  THEME_POLARITY_STORAGE_KEY,
   THEME_V2_STORAGE_KEY,
 } from "@/lib/themes";
 
@@ -367,13 +366,21 @@ describe("Theme registry & global ThemeProvider", () => {
     expect(screen.getByTestId("preview-id")).toHaveTextContent("none");
   });
 
-  it("switches a premium theme between its light and dark variants without resetting to default black/white", async () => {
+  it("keeps the chosen premium theme when pressing Dark or Light and switches to its dark or light variant", async () => {
     mockUseSession.mockReturnValue({
-      user: { id: "user-12", email: "ocean@example.com", displayName: "Ocean" },
+      user: { id: "user-77", email: "sam@mealmate.app", displayName: "Sam" },
       loading: false,
       firebaseUser: null,
     });
-    mockGetMyTheme.mockResolvedValue({ themeId: "ocean-blue", updatedAt: null });
+    mockGetMyTheme.mockResolvedValue({ themeId: "classic-light", scheme: null, updatedAt: null });
+    mockSaveMyTheme.mockImplementation(
+      async ({ data }: { data: { themeId: string; scheme?: "light" | "dark" } }) => ({
+        ok: true,
+        themeId: data.themeId,
+        scheme: data.scheme ?? "light",
+        updatedAt: "2026-02-02T00:00:00.000Z",
+      }),
+    );
 
     render(
       <ThemeProvider>
@@ -381,38 +388,39 @@ describe("Theme registry & global ThemeProvider", () => {
       </ThemeProvider>,
     );
 
-    await waitFor(() => expect(screen.getByTestId("active-id")).toHaveTextContent("ocean-blue"));
-    const ocean = MEALMATE_THEMES.find((t) => t.id === "ocean-blue")!;
-    expect(document.documentElement.classList.contains("dark")).toBe(false);
-    expect(document.documentElement.style.getPropertyValue("--background")).toBe(
-      ocean.tokens.background,
-    );
+    await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalledTimes(1));
 
+    // Pick Ocean (light premium theme) then press Dark -> should apply Ocean Dark, not Default Black
+    fireEvent.click(screen.getByRole("button", { name: "Preview Ocean" }));
+    await act(async () => {
+      await waitFor(() => expect(screen.getByTestId("display-id")).toHaveTextContent("ocean-blue"));
+    });
     fireEvent.click(screen.getByRole("button", { name: "Dark" }));
-    expect(screen.getByTestId("active-id")).toHaveTextContent("ocean-blue");
+    expect(screen.getByTestId("display-id")).toHaveTextContent("ocean-blue");
     expect(document.documentElement.dataset["appTheme"]).toBe("ocean-blue");
     expect(document.documentElement.classList.contains("dark")).toBe(true);
-    expect(document.documentElement.style.getPropertyValue("--background")).toBe(
-      ocean.altTokens?.background,
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(
+      "#0c1622",
     );
-    expect(localStorage.getItem(THEME_POLARITY_STORAGE_KEY)).toBe("dark");
 
-    // Verify THEME_BOOT_SCRIPT restores the dark variant of ocean-blue at frame 0.
-    document.documentElement.className = "";
-    document.documentElement.style.cssText = "";
-    window.eval(THEME_BOOT_SCRIPT);
-    expect(document.documentElement.dataset["appTheme"]).toBe("ocean-blue");
+    // Apply Aurora (dark premium theme) then press Light -> should keep Aurora and switch to Aurora Light
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Apply Aurora" }));
+    });
+    await waitFor(() => expect(screen.getByTestId("active-id")).toHaveTextContent("aurora"));
     expect(document.documentElement.classList.contains("dark")).toBe(true);
-    expect(document.documentElement.style.getPropertyValue("--background")).toBe(
-      ocean.altTokens?.background,
-    );
 
-    fireEvent.click(screen.getByRole("button", { name: "Light" }));
-    expect(screen.getByTestId("active-id")).toHaveTextContent("ocean-blue");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Light" }));
+    });
+    expect(screen.getByTestId("active-id")).toHaveTextContent("aurora");
+    expect(document.documentElement.dataset["appTheme"]).toBe("aurora");
     expect(document.documentElement.classList.contains("dark")).toBe(false);
-    expect(document.documentElement.style.getPropertyValue("--background")).toBe(
-      ocean.tokens.background,
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(
+      "#f4f9f1",
     );
-    expect(localStorage.getItem(THEME_POLARITY_STORAGE_KEY)).toBeNull();
+    expect(mockSaveMyTheme).toHaveBeenLastCalledWith({
+      data: { themeId: "aurora", scheme: "light" },
+    });
   });
 });

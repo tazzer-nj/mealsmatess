@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Loader2, Send, HeartPulse, ChevronRight } from "lucide-react";
 import { nutritionCoach, getCoachContext } from "@/lib/coach.functions";
 import { useSession } from "@/hooks/use-session";
+import { usePremium } from "@/hooks/use-premium";
+import { PremiumFeatureLock } from "@/components/premium-feature-lock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,10 +44,11 @@ const STARTERS = [
 
 function CoachPage() {
   const { user, loading } = useSession();
+  const { isPremium, loading: premiumLoading } = usePremium();
   const { data: ctx, isLoading: ctxLoading } = useQuery({
     queryKey: ["coach-context"],
     queryFn: () => getCoachContext(),
-    enabled: !!user,
+    enabled: !!user && isPremium,
   });
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
@@ -105,6 +108,16 @@ function CoachPage() {
           Sign in
         </Link>
       </main>
+    );
+  }
+
+  if (!premiumLoading && !isPremium) {
+    return (
+      <PremiumFeatureLock
+        featureLabel="AI Nutrition Coach"
+        title="Personalised nutrition coaching"
+        description="Get daily guidance tuned to your allergies, fitness goals, and household budget with a 3-day free trial."
+      />
     );
   }
 

@@ -1,66 +1,210 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
-  CalendarCheck,
+  Bell,
+  CalendarDays,
   Camera,
   Check,
+  ChefHat,
+  Crown,
   Loader2,
   Lock,
-  Mic,
+  Palette,
+  RefreshCw,
   Refrigerator,
-  Star,
+  Search,
+  ShieldCheck,
+  ShoppingCart,
+  Sparkles,
+  UtensilsCrossed,
+  X,
 } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
 import {
   createPurchaseSession,
+  getIntroCompletion,
   verifyCheckout,
   verifyMyPremium,
-  getIntroCompletion,
 } from "@/lib/billing.functions";
 import {
+  calculateAnnualSavingsPercent,
+  formatZeroToday,
   loadBillingStore,
   purchaseIsPending,
   purchaseWasCancelled,
+  type BillingPlan,
   type BillingStore,
   type PlanKind,
 } from "@/lib/billing-client";
 import { useCurrency } from "@/lib/currency";
+import { RECIPE_PHOTOS } from "@/assets/recipes/manifest";
 import { MealMateLogo } from "@/components/mealmate-logo";
-import { ChefMascot } from "@/components/chef-mascot";
 import { SuccessAnimation } from "@/components/success-animation";
+import {
+  getTrialReminderPreference,
+  saveTrialReminderPreference,
+} from "@/lib/notifications.functions";
+import { enterFreeMode } from "@/lib/preferences.functions";
+import { writeLocalFreeMode } from "@/lib/freemium";
 
-const MIA_TIPS = [
-  "Snap your fridge and I’ll build a complete recipe in 10 seconds.",
-  "Hands messy? Talk to me hands-free for step-by-step guidance.",
-  "Use expiring items first and save ~R1,800/mo on wasted food.",
-  "Try everything free with your 3-day trial. Day 2 reminder before billing.",
+const TRIAL_REMINDER_STORAGE_KEY = "mealmate.trial_reminder.v1";
+
+type CollageTile = {
+  slug: keyof typeof RECIPE_PHOTOS;
+  title: string;
+  caption: string;
+};
+
+const COLLAGE_TILES: CollageTile[] = [
+  { slug: "cape-malay-bobotie", title: "Cape Malay Bobotie", caption: "South African" },
+  { slug: "rainbow-buddha-bowl", title: "Rainbow Buddha Bowl", caption: "Healthy" },
+  { slug: "fluffy-buttermilk-pancakes", title: "Buttermilk Pancakes", caption: "Breakfast" },
+  { slug: "beef-potjiekos", title: "Beef Potjiekos", caption: "Dinner" },
+  { slug: "greek-chicken-salad", title: "Greek Chicken Salad", caption: "Fresh" },
+  { slug: "creamy-chicken-alfredo", title: "Creamy Chicken Alfredo", caption: "Plated" },
+];
+
+const PREMIUM_BENEFITS = [
+  {
+    icon: Sparkles,
+    title: "Personalised recipe discovery",
+    description:
+      "Recipes tailored to your saved allergies, dietary needs, cuisines and cooking level.",
+  },
+  {
+    icon: CalendarDays,
+    title: "Smart meal planning",
+    description: "Weekly Breakfast, Lunch, Dinner and Snack plans with reusable weekly templates.",
+  },
+  {
+    icon: Refrigerator,
+    title: "Advanced pantry management",
+    description:
+      "Track ingredients on hand, spot items expiring soon and cut household food waste.",
+  },
+  {
+    icon: ChefHat,
+    title: "Mia AI cooking assistant",
+    description:
+      "Persistent conversation history, smart substitutions and hands-free cooking steps.",
+  },
+  {
+    icon: Search,
+    title: "Ingredient-based recipe discovery",
+    description:
+      "Find dishes you can cook right now using what is already in your fridge or pantry.",
+  },
+  {
+    icon: Camera,
+    title: "Kitchen photo & fridge scanning",
+    description: "Scan ingredients on your counter to match recipes or add pantry items quickly.",
+  },
+  {
+    icon: ShoppingCart,
+    title: "Smart shopping lists",
+    description:
+      "Consolidated ingredient quantities across 10 grocery aisles with custom aisle order.",
+  },
+  {
+    icon: Palette,
+    title: "Premium themes & ad-free cooking",
+    description: "Customise MealMate with Obsidian, Aurora and Midnight Pro dark or light themes.",
+  },
 ] as const;
 
-const COMPACT_BENEFITS = [
-  { icon: Camera, title: "Fridge Photo Scan", detail: "10s recipe match" },
-  { icon: Mic, title: "Voice Cook Mode", detail: "100% hands-free" },
-  { icon: Refrigerator, title: "Smart Pantry", detail: "Zero food waste" },
-  { icon: CalendarCheck, title: "Aisle Meal Planner", detail: "5+ hrs saved/wk" },
-] as const;
+function planDisplayName(kind: PlanKind, fallbackTitle?: string): string {
+  if (kind === "yearly") return "Yearly Premium";
+  if (kind === "monthly") return "Monthly Premium";
+  if (kind === "family") return "Family Premium";
+  return fallbackTitle || "MealMate Premium";
+}
+
+function formatTrialEndDate(days: number): string {
+  const end = new Date(Date.now() + days * 86400_000);
+  try {
+    return new Intl.DateTimeFormat("en-ZA", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(end);
+  } catch {
+    return end.toDateString();
+  }
+}
+
+function formatReminderDate(days: number): string {
+  const offsetDays = days > 1 ? days - 1 : 1;
+  const target = new Date(Date.now() + offsetDays * 86400_000);
+  try {
+    return new Intl.DateTimeFormat("en-ZA", {
+      day: "numeric",
+      month: "short",
+    }).format(target);
+  } catch {
+    return target.toDateString();
+  }
+}
+
+function CollagePhotoTile({ tile }: { tile: CollageTile }) {
+  const [errored, setErrored] = useState(false);
+  const src = RECIPE_PHOTOS[tile.slug]?.card;
+
+  return (
+    <div className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-white/10 bg-[#0f172a]">
+      {errored || !src ? (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-[#162241] to-[#0b1120] p-2 text-center">
+          <UtensilsCrossed className="h-4 w-4 text-[#818cf8]" aria-hidden="true" />
+          <span className="line-clamp-1 text-[10px] font-medium text-slate-300">{tile.title}</span>
+        </div>
+      ) : (
+        <img
+          src={src}
+          alt={tile.title}
+          referrerPolicy="no-referrer"
+          loading="eager"
+          decoding="async"
+          onError={() => setErrored(true)}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none"
+        />
+      )}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#060913]/80 via-[#060913]/15 to-transparent"
+      />
+      <span className="pointer-events-none absolute bottom-1.5 left-2 right-2 truncate text-[10px] font-medium text-slate-200">
+        {tile.caption}
+      </span>
+    </div>
+  );
+}
 
 export function PremiumPaywall() {
   const { user, loading: sessionLoading } = useSession();
   const { currency } = useCurrency();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
   const [store, setStore] = useState<BillingStore | null>(null);
   const [selected, setSelected] = useState<PlanKind>("yearly");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [online, setOnline] = useState(true);
   const [message, setMessage] = useState("");
   const [pendingVerification, setPendingVerification] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [tipIndex, setTipIndex] = useState(0);
-  const [mascotPulseKey, setMascotPulseKey] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [allPlansOpen, setAllPlansOpen] = useState(false);
+  const [stage, setStage] = useState<"primary" | "exit">("primary");
+  const [closeVisible, setCloseVisible] = useState(false);
+  const [exitingFree, setExitingFree] = useState(false);
+
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderBusy, setReminderBusy] = useState(false);
+  const [reminderStatus, setReminderStatus] = useState<string | null>(null);
+  const [reminderWarning, setReminderWarning] = useState<string | null>(null);
 
   const lock = useRef(false);
   const currencyRef = useRef(currency);
@@ -79,6 +223,40 @@ export function PremiumPaywall() {
       window.removeEventListener("offline", update);
     };
   }, []);
+
+  // Google Play compliant "Hide First" delay: fade in icon-only close button after 2.5s (Paywall 1) / 2s (Paywall 2)
+  useEffect(() => {
+    setCloseVisible(false);
+    const delayMs = stage === "primary" ? 2500 : 2000;
+    const timer = window.setTimeout(() => setCloseVisible(true), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [stage]);
+
+  // Load saved trial reminder preference from Firestore (or localStorage if signed out)
+  useEffect(() => {
+    let active = true;
+    try {
+      const saved = window.localStorage.getItem(TRIAL_REMINDER_STORAGE_KEY);
+      if (saved === "true") setReminderEnabled(true);
+    } catch {
+      // Ignore storage read failure
+    }
+    if (!userId) return;
+    void getTrialReminderPreference()
+      .then((pref) => {
+        if (!active) return;
+        setReminderEnabled(pref.enabled);
+        if (pref.enabled && pref.remindAt) {
+          setReminderStatus(
+            `Reminder saved (${pref.channel === "push" ? "notifications active" : "account reminder active"}).`,
+          );
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [userId]);
 
   const routeNext = useCallback(async () => {
     if (!userId) {
@@ -99,6 +277,7 @@ export function PremiumPaywall() {
     identityRef.current = null;
     loadedCurrencyRef.current = null;
     setLoading(true);
+    setLoadError(null);
     setStore(null);
     setMessage("");
 
@@ -107,9 +286,11 @@ export function PremiumPaywall() {
       timerId = window.setTimeout(
         () =>
           reject(
-            new Error("We couldn’t load subscription plans. Check your connection and try again."),
+            new Error(
+              "We couldn’t load subscription plans from RevenueCat right now. Check your connection and try again.",
+            ),
           ),
-        1_500,
+        10_000,
       );
     });
 
@@ -148,43 +329,18 @@ export function PremiumPaywall() {
       .then((next) => {
         if (!active || !next) return;
         setStore(next);
-        const best = next.plans.find((p) => p.kind === "yearly") ?? next.plans[0];
-        if (best) setSelected(best.kind);
+        setLoadError(null);
+        const preferred = next.plans.find((p) => p.kind === "yearly") ?? next.plans[0];
+        if (preferred) setSelected(preferred.kind);
       })
-      .catch(() => {
+      .catch((err) => {
         if (!active) return;
-        // Provide interactive fallback plans instantly so prices load immediately
-        const isUsd = currencyRef.current === "USD";
-        setStore({
-          plans: [
-            {
-              id: "premium_yearly",
-              kind: "yearly",
-              price: isUsd ? "$49.99" : "R399.00",
-              period: "year",
-              trialDays: 3,
-              purchase: async () => {},
-            },
-            {
-              id: "premium_monthly",
-              kind: "monthly",
-              price: isUsd ? "$7.99" : "R189.00",
-              period: "month",
-              trialDays: 3,
-              purchase: async () => {},
-            },
-            {
-              id: "premium_family",
-              kind: "family",
-              price: isUsd ? "$11.99" : "R249.00",
-              period: "month",
-              trialDays: 3,
-              purchase: async () => {},
-            },
-          ],
-          restore: async () => {},
-        });
-        setSelected("yearly");
+        const raw =
+          err instanceof Error && err.message
+            ? err.message
+            : "Subscription plans are temporarily unavailable. Please try again.";
+        setLoadError(raw);
+        setStore(null);
       })
       .finally(() => {
         if (timerId !== undefined) window.clearTimeout(timerId);
@@ -205,50 +361,38 @@ export function PremiumPaywall() {
       .then((next) => {
         if (!active) return;
         setStore(next);
-        const best = next.plans.find((p) => p.kind === "yearly") ?? next.plans[0];
-        if (best) setSelected(best.kind);
+        setLoadError(null);
+        const preferred =
+          next.plans.find((p) => p.kind === selected) ??
+          next.plans.find((p) => p.kind === "yearly") ??
+          next.plans[0];
+        if (preferred) setSelected(preferred.kind);
       })
       .catch((error) => {
         if (!active) return;
-        const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
-        if (/unavailable|temporarily|not available|plans|not configured|REVENUECAT/i.test(raw)) {
-          const isUsd = currency === "USD";
-          setStore({
-            plans: [
-              {
-                id: "premium_yearly",
-                kind: "yearly",
-                price: isUsd ? "$49.99" : "R399.00",
-                period: "year",
-                trialDays: 3,
-                purchase: async () => {},
-              },
-              {
-                id: "premium_monthly",
-                kind: "monthly",
-                price: isUsd ? "$7.99" : "R189.00",
-                period: "month",
-                trialDays: 3,
-                purchase: async () => {},
-              },
-              {
-                id: "premium_family",
-                kind: "family",
-                price: isUsd ? "$11.99" : "R249.00",
-                period: "month",
-                trialDays: 3,
-                purchase: async () => {},
-              },
-            ],
-            restore: async () => {},
-          });
-          setSelected("yearly");
-        }
+        const raw =
+          error instanceof Error && error.message
+            ? error.message
+            : "Could not refresh subscription pricing for your currency.";
+        setLoadError(raw);
       });
     return () => {
       active = false;
     };
-  }, [currency]);
+  }, [currency, selected]);
+
+  const plans = useMemo(() => store?.plans ?? [], [store?.plans]);
+  const monthlyPlan = useMemo(() => plans.find((p) => p.kind === "monthly"), [plans]);
+  const yearlyPlan = useMemo(() => plans.find((p) => p.kind === "yearly"), [plans]);
+  const plan: BillingPlan | undefined = useMemo(
+    () => plans.find((p) => p.kind === selected) ?? plans[0],
+    [plans, selected],
+  );
+
+  const annualSavingsPct = useMemo(
+    () => calculateAnnualSavingsPercent(monthlyPlan, yearlyPlan),
+    [monthlyPlan, yearlyPlan],
+  );
 
   async function confirm() {
     for (let i = 0; i < 3; i++) {
@@ -277,23 +421,28 @@ export function PremiumPaywall() {
     }
     setPendingVerification(true);
     setMessage(
-      "Your subscription isn’t confirmed yet. If you just purchased, check access again. You won’t be charged by checking.",
+      "Your subscription isn’t confirmed yet. If you just completed checkout, tap Check subscription access. You won’t be charged twice.",
     );
   }
 
-  async function perform(action: "purchase" | "restore" | "verify") {
+  async function perform(action: "purchase" | "restore" | "verify", overridePlan?: BillingPlan) {
     if (lock.current || !online) return;
     lock.current = true;
     setBusy(true);
     setMessage("");
     try {
       if (action === "purchase") {
-        const targetPlan = store?.plans.find((p) => p.kind === selected);
-        if (!targetPlan) throw new Error("Plan unavailable");
+        const targetPlan =
+          overridePlan ?? store?.plans.find((p) => p.kind === selected) ?? store?.plans[0];
+        if (!targetPlan) throw new Error("Selected subscription plan is unavailable.");
         await targetPlan.purchase();
         setPendingVerification(true);
       } else if (action === "restore") {
-        if (store) await store.restore();
+        if (!store) {
+          setMessage("Connect to load store offerings before restoring purchases.");
+          return;
+        }
+        await store.restore();
       }
       await confirm();
     } catch (error) {
@@ -316,322 +465,883 @@ export function PremiumPaywall() {
     }
   }
 
-  const plan = store?.plans.find((p) => p.kind === selected);
-
-  function handleTapMia() {
-    setMascotPulseKey((k) => k + 1);
-    setTipIndex((prev) => (prev + 1) % MIA_TIPS.length);
+  async function dismissToFreeMode() {
+    if (exitingFree || busy) return;
+    setExitingFree(true);
+    try {
+      if (userId) {
+        writeLocalFreeMode(userId, true);
+        queryClient.setQueryData(
+          ["user-flow-progress", userId],
+          (
+            prev: { onboardingCompleted?: boolean; tourCompleted?: boolean } | null | undefined,
+          ) => ({
+            onboardingCompleted: prev?.onboardingCompleted ?? true,
+            tourCompleted: prev?.tourCompleted ?? false,
+            freeModeEntered: true,
+          }),
+        );
+        await enterFreeMode().catch(() => undefined);
+        await queryClient.invalidateQueries({ queryKey: ["user-flow-progress", userId] });
+      }
+      await navigate({ to: "/", replace: true });
+    } finally {
+      setExitingFree(false);
+    }
   }
 
-  const getMonthlyBreakdown = (priceStr?: string) => {
-    if (!priceStr) return null;
-    const match = priceStr.match(/([^\d]*)([\d,.]+)/);
-    if (!match) return null;
-    const prefix = match[1].trim();
-    const num = parseFloat(match[2].replace(/,/g, ""));
-    if (isNaN(num)) return null;
-    const perMonth = Math.round(num / 12);
-    return `≈ ${prefix ? `${prefix} ` : ""}${perMonth}/mo`;
+  async function handleToggleReminder() {
+    if (reminderBusy) return;
+    const next = !reminderEnabled;
+    setReminderBusy(true);
+    setReminderWarning(null);
+    setReminderStatus(null);
+
+    const activeTrialDays = plan?.trialDays ?? 0;
+
+    if (!next) {
+      try {
+        window.localStorage.setItem(TRIAL_REMINDER_STORAGE_KEY, "false");
+      } catch {
+        // Ignore storage error
+      }
+      if (userId) {
+        try {
+          await saveTrialReminderPreference({
+            data: { enabled: false, planId: plan?.id ?? null, trialDays: 0, channel: "none" },
+          });
+        } catch {
+          setReminderWarning("Could not update your reminder setting on the server.");
+          setReminderBusy(false);
+          return;
+        }
+      }
+      setReminderEnabled(false);
+      setReminderStatus("Trial reminder turned off.");
+      setReminderBusy(false);
+      return;
+    }
+
+    // Turning reminder ON: check real notification capability/permission before promising push delivery
+    let channel: "push" | "in_app" = "in_app";
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (window.Notification.permission === "denied") {
+        setReminderEnabled(false);
+        setReminderWarning(
+          "Notifications are blocked in your browser or device settings. Enable notifications first to receive a reminder before your trial ends.",
+        );
+        setReminderBusy(false);
+        return;
+      }
+      if (window.Notification.permission === "default") {
+        try {
+          const permission = await window.Notification.requestPermission();
+          if (permission !== "granted") {
+            setReminderEnabled(false);
+            setReminderWarning(
+              "Notification permission was not granted, so we couldn’t schedule a push reminder.",
+            );
+            setReminderBusy(false);
+            return;
+          }
+          channel = "push";
+        } catch {
+          // Non-browser environment without prompt support
+        }
+      } else if (window.Notification.permission === "granted") {
+        channel = "push";
+      }
+    }
+
+    // Best-effort browser push token registration if VAPID is configured
+    if (channel === "push" && userId && import.meta.env.VITE_FIREBASE_VAPID_KEY) {
+      try {
+        const { requestBrowserPushToken } = await import("@/lib/push-client");
+        const { registerMyPushToken } = await import("@/lib/notifications.functions");
+        const token = await requestBrowserPushToken();
+        await registerMyPushToken({ data: { token } });
+      } catch {
+        // Keep saving account reminder record if web push registration isn't available in current context
+      }
+    }
+
+    if (userId) {
+      try {
+        await saveTrialReminderPreference({
+          data: {
+            enabled: true,
+            planId: plan?.id ?? null,
+            trialDays: activeTrialDays,
+            channel,
+          },
+        });
+      } catch {
+        setReminderEnabled(false);
+        setReminderWarning(
+          "We couldn’t save your reminder preference right now. Please try again.",
+        );
+        setReminderBusy(false);
+        return;
+      }
+    }
+
+    try {
+      window.localStorage.setItem(TRIAL_REMINDER_STORAGE_KEY, "true");
+    } catch {
+      // Ignore storage error
+    }
+
+    setReminderEnabled(true);
+    setReminderStatus(
+      activeTrialDays > 0
+        ? `Reminder saved for ${formatReminderDate(activeTrialDays)} (before your ${activeTrialDays}-day trial ends).`
+        : "Reminder preference saved for your account.",
+    );
+    setReminderBusy(false);
+  }
+
+  const getMonthlyEquivalent = (target: BillingPlan): string | null => {
+    if (target.kind !== "yearly" || !target.priceAmount || target.priceAmount <= 0) return null;
+    const monthly = target.priceAmount / 12;
+    const prefix = target.price.match(/^[^\d\s-]+/)?.[0] ?? "R";
+    return `${prefix} ${monthly.toFixed(0)}/mo`;
   };
 
-  return (
-    <main className="premium-flow paywall paywall-redesign">
-      {showSuccess && <SuccessAnimation onComplete={() => void routeNext()} />}
-      <div className="paywall-shell">
-        <div className="paywall-card shadow-sm">
-          {/* Top Brand Strip */}
-          <header className="flex items-center justify-between gap-3 border-b border-border bg-card px-4 py-2.5 sm:px-6">
-            <MealMateLogo imageClassName="size-7 rounded-lg border border-border" showName />
-            <div className="flex items-center gap-3 text-xs">
-              <span className="inline-flex items-center gap-1 font-medium text-foreground">
-                <Star size={11} className="fill-amber-500 text-amber-500" aria-hidden="true" />
-                <span className="tabular-nums">4.9</span>
-                <span className="text-muted-foreground">· MealMate Premium</span>
-              </span>
+  const hasTrial = Boolean(plan && plan.trialDays > 0);
+  const zeroToday = formatZeroToday(plan?.currencyCode, plan?.price);
+  const ctaLabel = pendingVerification
+    ? "Check subscription access"
+    : hasTrial
+      ? "Start my free trial"
+      : "Subscribe to Premium";
+
+  const exitCheckoutPlan = store?.exitOfferPlan ?? yearlyPlan ?? plans[0] ?? null;
+  const exitDiscountedDisplay = useMemo(() => {
+    if (store?.exitOfferPlan) return store.exitOfferPlan.price;
+    const base = yearlyPlan ?? plans[0];
+    if (!base?.priceAmount || base.priceAmount <= 0) return null;
+    const discounted = (base.priceAmount * 0.8).toFixed(2);
+    const prefix = base.price.match(/^[^\d\s-]+/)?.[0] ?? "";
+    return `${prefix}${discounted}`;
+  }, [plans, store?.exitOfferPlan, yearlyPlan]);
+
+  if (stage === "exit") {
+    const exitHasTrial = Boolean(exitCheckoutPlan && exitCheckoutPlan.trialDays > 0);
+    const exitZeroToday = formatZeroToday(exitCheckoutPlan?.currencyCode, exitCheckoutPlan?.price);
+    return (
+      <main className="premium-flow paywall paywall-redesign pb-44 sm:pb-40">
+        {showSuccess && <SuccessAnimation onComplete={() => void routeNext()} />}
+
+        <div className="paywall-exit-slide mx-auto w-full max-w-2xl px-4 pt-[max(14px,env(safe-area-inset-top))] sm:px-6 sm:pt-8">
+          <header className="flex items-center justify-between gap-4 py-2">
+            <MealMateLogo
+              imageClassName="size-8 rounded-xl border border-white/15 bg-white/5"
+              showName
+              className="text-white"
+            />
+            <div className="flex min-h-[44px] items-center gap-2">
+              {closeVisible && (
+                <button
+                  type="button"
+                  aria-label="Continue with limited free mode"
+                  disabled={exitingFree || busy}
+                  onClick={() => void dismissToFreeMode()}
+                  className="paywall-close-fade flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-white/15 bg-[#0b1120]/90 text-slate-300 transition-colors hover:border-white/30 hover:text-white disabled:opacity-40"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              )}
             </div>
           </header>
 
-          {/* Single-Page Split: Left = Only One Floating Mia + Compact Benefits | Right = Plans & CTA */}
-          <div className="paywall-grid">
-            {/* Left: Floating Full-Body Mia & 4 Compact Benefits */}
-            <section className="paywall-left">
-              <div>
-                {/* Single Floating Full-Body Mia + Speech */}
-                <div className="flex items-center gap-3.5 sm:gap-4">
-                  <button
-                    type="button"
-                    onClick={handleTapMia}
-                    aria-label="Tap Mia to cycle quick kitchen tips"
-                    className="group flex shrink-0 flex-col items-center rounded-xl p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--periwinkle)]"
-                  >
-                    <div key={mascotPulseKey} className="flex items-center justify-center">
-                      <ChefMascot animate interactive className="h-20 w-20 sm:h-24 sm:w-24" />
-                    </div>
-                    <span className="mia-ground-shadow -mt-1" aria-hidden="true" />
-                  </button>
+          <section
+            aria-labelledby="exit-offer-heading"
+            className="mt-4 overflow-hidden rounded-3xl border border-[#818cf8]/40 bg-gradient-to-b from-[#131d3b] via-[#0b1120] to-[#060913] p-6 sm:p-8"
+          >
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-[#818cf8]/40 bg-[#818cf8]/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#a5b4fc]">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+              20% Off Year 1
+            </div>
 
-                  <div className="min-w-0 flex-1">
-                    <h1 className="font-display text-lg font-semibold leading-snug tracking-tight text-foreground sm:text-2xl">
-                      Cook smarter. Waste zero food.
-                    </h1>
-                    <button
-                      type="button"
-                      onClick={handleTapMia}
-                      className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-left transition-colors hover:border-[var(--periwinkle)]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--periwinkle)]"
-                    >
-                      <p className="text-xs leading-snug text-foreground">
-                        <span className="font-semibold text-[var(--periwinkle)]">Mia:</span> “
-                        {MIA_TIPS[tipIndex]}”
-                      </p>
-                    </button>
+            <h1
+              id="exit-offer-heading"
+              className="mt-4 font-display text-3xl font-semibold leading-[1.08] tracking-tight text-white [text-wrap:balance] sm:text-4xl"
+            >
+              Wait — take 20% off Year 1
+            </h1>
+            <p className="mt-3 text-sm leading-relaxed text-slate-300 sm:text-base">
+              Unlock unlimited Mia AI kitchen coaching, weekly meal planning, food photo scanning,
+              and personalised recipes before you go.
+            </p>
+
+            {exitCheckoutPlan ? (
+              <div className="mt-6 rounded-2xl border border-[#818cf8]/50 bg-[#0b1120]/90 p-5">
+                <div className="flex flex-wrap items-baseline justify-between gap-3">
+                  <div>
+                    <p className="text-base font-semibold text-white">
+                      {planDisplayName(exitCheckoutPlan.kind, exitCheckoutPlan.title)}
+                    </p>
+                    <p className="mt-1 text-xs text-emerald-300">
+                      {exitHasTrial
+                        ? `Includes ${exitCheckoutPlan.trialDays}-day free trial · Cancel anytime`
+                        : "Introductory annual savings · Cancel anytime"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    {exitDiscountedDisplay && (
+                      <div className="text-2xl font-bold text-white tabular-nums">
+                        {exitDiscountedDisplay}
+                        <span className="text-xs font-normal text-slate-400">
+                          {" "}
+                          / {exitCheckoutPlan.period}
+                        </span>
+                      </div>
+                    )}
+                    {yearlyPlan && !store?.exitOfferPlan && (
+                      <div className="text-xs text-slate-400 tabular-nums">
+                        <span className="line-through">{yearlyPlan.price}</span> standard rate · 20%
+                        off reference
+                      </div>
+                    )}
+                    {store?.exitOfferPlan && yearlyPlan && (
+                      <div className="text-xs text-slate-400 line-through tabular-nums">
+                        {yearlyPlan.price} / {yearlyPlan.period}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Compact 2x2 Benefits */}
-                <div className="mt-3.5 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-2.5">
-                  {COMPACT_BENEFITS.map((item) => (
-                    <div
-                      key={item.title}
-                      className="flex items-start gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5"
-                    >
-                      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-[var(--periwinkle-soft)] text-[var(--periwinkle)]">
-                        <item.icon size={14} aria-hidden="true" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="truncate text-xs font-semibold text-foreground">
-                          {item.title}
-                        </div>
-                        <div className="truncate text-[11px] text-muted-foreground">
-                          {item.detail}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-3 hidden items-center justify-between border-t border-border pt-3 text-[11px] text-muted-foreground sm:flex">
-                <span>3-day free trial included</span>
-                <span>·</span>
-                <span>Day 2 renewal reminder</span>
-                <span>·</span>
-                <span>Cancel anytime</span>
-              </div>
-            </section>
-
-            {/* Right: Plans, Prices & Primary CTA */}
-            <section className="paywall-right">
-              <div>
-                <div className="mb-2.5 flex items-baseline justify-between gap-2">
-                  <h2 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">
-                    Choose your plan
-                  </h2>
-                  <span className="text-[11px] font-medium text-[var(--positive)]">
-                    Cancel anytime
-                  </span>
-                </div>
-
-                <fieldset className="premium-plans" disabled={busy || loading}>
-                  <legend className="sr-only">Choose a subscription plan</legend>
-                  {(["yearly", "monthly", "family"] as const).map((kind) => {
-                    const option = store?.plans.find((p) => p.kind === kind);
-                    const isSelected = selected === kind && !!option;
-                    const perMonth =
-                      kind === "yearly" && option ? getMonthlyBreakdown(option.price) : null;
-
-                    return (
-                      <label
-                        key={kind}
-                        className={`premium-plan ${isSelected ? "selected" : ""} ${
-                          !option ? "unavailable" : ""
-                        }`}
-                        onClick={() => {
-                          if (option) setSelected(kind);
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          name="subscription"
-                          value={kind}
-                          checked={isSelected}
-                          disabled={!option}
-                          onChange={() => setSelected(kind)}
-                        />
-
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className={`flex size-4 shrink-0 items-center justify-center rounded-full border transition-all ${
-                              isSelected
-                                ? "border-[var(--periwinkle)] bg-[var(--periwinkle)] text-[var(--primary-foreground)]"
-                                : "border-border bg-card"
-                            }`}
-                          >
-                            {isSelected && <Check size={10} strokeWidth={3} />}
-                          </div>
-
-                          <div className="plan-name">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="font-semibold text-foreground">
-                                {kind === "monthly"
-                                  ? "Monthly Plan"
-                                  : kind === "yearly"
-                                    ? "Annual Plan"
-                                    : "Family Plan"}
-                              </span>
-                              {kind === "yearly" && <span className="plan-badge">Save 50%</span>}
-                              {kind === "family" && (
-                                <span className="text-[11px] font-normal text-muted-foreground">
-                                  · Up to 5 accounts
-                                </span>
-                              )}
-                            </div>
-                            <span className="plan-trial">3-day free trial included</span>
-                          </div>
-                        </div>
-
-                        <div className="plan-price">
-                          {loading ? (
-                            <span className="text-xs font-normal text-muted-foreground">
-                              Loading…
-                            </span>
-                          ) : option ? (
-                            <div className="flex flex-col items-end">
-                              <div className="text-sm font-bold text-foreground tabular-nums">
-                                <span>{option.price}</span>
-                                <small> / {option.period}</small>
-                              </div>
-                              {perMonth && (
-                                <span className="text-[10px] font-semibold text-[var(--periwinkle)] tabular-nums">
-                                  {perMonth}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-xs font-normal text-muted-foreground">
-                              Unavailable
-                            </span>
-                          )}
-                        </div>
-                      </label>
-                    );
-                  })}
-                </fieldset>
-
-                {!online && (
-                  <p role="alert" className="premium-notice">
-                    You’re offline. Connect to verify your subscription or make a purchase.
-                  </p>
-                )}
-                {message && (
-                  <p role="status" className="premium-notice">
-                    {message}
-                  </p>
-                )}
-                {!store && !loading && (
-                  <button
-                    type="button"
-                    className="premium-secondary"
-                    onClick={() => setAttempt((n) => n + 1)}
-                    disabled={busy || !online}
-                  >
-                    Try again
-                  </button>
-                )}
-
-                {pendingVerification ? (
-                  <button
-                    type="button"
-                    className="premium-primary"
-                    disabled={busy || !online}
-                    onClick={() => void perform("verify")}
-                  >
-                    {busy ? (
-                      <Loader2 className="animate-spin" size={18} />
-                    ) : (
-                      "Check subscription access"
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="premium-primary"
-                    disabled={loading || busy || !online || !plan}
-                    onClick={() => void perform("purchase")}
-                  >
-                    {busy || loading ? (
-                      <Loader2 className="animate-spin" size={18} />
-                    ) : (
-                      <>
-                        <span>Start 3-day free trial</span>
-                        <ArrowRight size={15} aria-hidden="true" />
-                      </>
-                    )}
-                  </button>
-                )}
-
-                {plan && (
-                  <p className="premium-terms">
-                    {`3 days free, then ${plan.price} every ${plan.period}.`} Cancel anytime before
-                    renewal in your store settings.
-                  </p>
-                )}
-              </div>
-
-              {/* Compact Footer */}
-              <div className="mt-3 border-t border-border/70 pt-2.5">
-                <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-                  <button
-                    type="button"
-                    onClick={() => void perform("restore")}
-                    disabled={busy || loading || !online}
-                    className="text-xs font-semibold text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground disabled:opacity-50"
-                  >
-                    Restore Purchases
-                  </button>
-                  {userId ? (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => {
-                        void import("@/lib/firebase")
-                          .then((m) => m.signOutUser())
-                          .catch(() => undefined)
-                          .finally(() => {
-                            queryClient.clear();
-                            void navigate({ to: "/auth", replace: true });
-                          });
-                      }}
-                      className="text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-                    >
-                      Switch account
-                    </button>
+                <div className="mt-4 border-t border-white/10 pt-3.5 text-xs leading-relaxed text-slate-300">
+                  {exitHasTrial ? (
+                    <span>
+                      Pay <strong className="text-white">{exitZeroToday}</strong> today. Your{" "}
+                      {exitCheckoutPlan.trialDays}-day trial ends on{" "}
+                      <strong className="text-white">
+                        {formatTrialEndDate(exitCheckoutPlan.trialDays)}
+                      </strong>
+                      , then bills <strong className="text-white">{exitCheckoutPlan.price}</strong>{" "}
+                      per {exitCheckoutPlan.period} unless cancelled in store settings.
+                    </span>
                   ) : (
-                    <Link
-                      to="/auth"
-                      search={{ mode: "signin" }}
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      Already subscribed? Sign in
-                    </Link>
+                    <span>
+                      Billed through your official store account at{" "}
+                      <strong className="text-white">{exitCheckoutPlan.price}</strong> per{" "}
+                      {exitCheckoutPlan.period} unless cancelled.
+                    </span>
                   )}
                 </div>
-
-                <div className="premium-footer-links">
-                  <span className="inline-flex items-center gap-1">
-                    <Lock size={11} className="text-[var(--positive)]" aria-hidden="true" /> Secure
-                  </span>
-                  <span>·</span>
-                  <Link to="/legal/terms">Terms</Link>
-                  <span>·</span>
-                  <Link to="/legal/privacy">Privacy</Link>
-                  <span>·</span>
-                  <Link to="/support">Help</Link>
-                </div>
               </div>
-            </section>
+            ) : (
+              <div className="mt-6 rounded-2xl border border-white/10 bg-[#0b1120] p-5 text-sm text-slate-300">
+                Live store pricing couldn’t be loaded right now. You can retry loading plans or
+                dismiss to explore MealMate’s Dining features.
+              </div>
+            )}
+
+            <ul className="mt-6 space-y-2.5 text-sm text-slate-200">
+              <li className="flex items-center gap-2.5">
+                <Check className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" />
+                Unlimited Mia AI chef &amp; voice cooking guidance
+              </li>
+              <li className="flex items-center gap-2.5">
+                <Check className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" />
+                Automated weekly meal plans &amp; aisle-sorted grocery lists
+              </li>
+              <li className="flex items-center gap-2.5">
+                <Check className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" />
+                Kitchen fridge scanning &amp; full pantry tracking
+              </li>
+            </ul>
+
+            {message && (
+              <p
+                role="status"
+                className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-200"
+              >
+                {message}
+              </p>
+            )}
+          </section>
+        </div>
+
+        <div className="paywall-sticky-dock">
+          <div className="mx-auto max-w-2xl">
+            <button
+              type="button"
+              className="paywall-cta"
+              disabled={!online || busy || !exitCheckoutPlan}
+              onClick={() =>
+                void perform(
+                  pendingVerification ? "verify" : "purchase",
+                  exitCheckoutPlan ?? undefined,
+                )
+              }
+            >
+              {busy ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  <span>
+                    {pendingVerification
+                      ? "Check subscription access"
+                      : exitHasTrial
+                        ? "Claim 20% off Year 1 + Free Trial"
+                        : "Claim 20% off Year 1"}
+                  </span>
+                  <ArrowRight size={16} aria-hidden="true" />
+                </>
+              )}
+            </button>
           </div>
         </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="premium-flow paywall paywall-redesign pb-44 sm:pb-40">
+      {showSuccess && <SuccessAnimation onComplete={() => void routeNext()} />}
+
+      <div className="mx-auto w-full max-w-4xl px-4 pt-[max(14px,env(safe-area-inset-top))] sm:px-6 sm:pt-6">
+        {/* Top Utility Bar */}
+        <header className="flex items-center justify-between gap-4 py-2">
+          <MealMateLogo
+            imageClassName="size-8 rounded-xl border border-white/15 bg-white/5"
+            showName
+            className="text-white"
+          />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => void perform("restore")}
+              disabled={busy || loading || !online || !store}
+              className="min-h-[44px] px-2 text-xs font-medium text-slate-300 underline underline-offset-4 transition-colors hover:text-white disabled:opacity-40"
+            >
+              Restore Purchases
+            </button>
+            {userId ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  void import("@/lib/firebase")
+                    .then((m) => m.signOutUser())
+                    .catch(() => undefined)
+                    .finally(() => {
+                      queryClient.clear();
+                      void navigate({ to: "/auth", replace: true });
+                    });
+                }}
+                className="min-h-[44px] px-2 text-xs font-medium text-slate-400 transition-colors hover:text-white disabled:opacity-40"
+              >
+                Switch account
+              </button>
+            ) : (
+              <Link
+                to="/auth"
+                search={{ mode: "signin" }}
+                className="inline-flex min-h-[44px] items-center px-2 text-xs font-medium text-slate-300 transition-colors hover:text-white"
+              >
+                Sign in
+              </Link>
+            )}
+            {closeVisible && (
+              <button
+                type="button"
+                aria-label="Close offer"
+                disabled={busy}
+                onClick={() => {
+                  setMessage("");
+                  setStage("exit");
+                }}
+                className="paywall-close-fade flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-white/15 bg-[#0b1120]/90 text-slate-300 transition-colors hover:border-white/30 hover:text-white disabled:opacity-40"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Hero Section: Horizontal Food Photography Collage + Editorial Heading */}
+        <section className="relative mt-2 overflow-hidden rounded-3xl border border-white/10 bg-[#0b1120] p-4 sm:p-6">
+          <div className="paywall-collage-track">
+            {COLLAGE_TILES.map((tile) => (
+              <CollagePhotoTile key={tile.slug} tile={tile} />
+            ))}
+          </div>
+
+          <div
+            aria-hidden="true"
+            className="pointer-events-none -mt-12 h-12 bg-gradient-to-t from-[#0b1120] to-transparent"
+          />
+
+          <div className="relative mt-1 max-w-2xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a5b4fc]">
+              MealMate Premium
+            </p>
+            <h1 className="mt-2 font-display text-3xl font-semibold leading-[1.08] tracking-tight text-white [text-wrap:balance] sm:text-5xl">
+              Make every meal count.
+            </h1>
+            <p className="mt-3 text-sm leading-relaxed text-slate-300 sm:text-base">
+              Discover recipes, plan your meals, organise your kitchen and enjoy smarter cooking
+              with MealMate Premium.
+            </p>
+          </div>
+        </section>
+
+        {/* Subscription Options + Trial Clarity */}
+        <section aria-labelledby="paywall-plans-heading" className="mt-6">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h2
+              id="paywall-plans-heading"
+              className="text-lg font-semibold tracking-tight text-white sm:text-xl"
+            >
+              Choose your plan
+            </h2>
+            {plans.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setAllPlansOpen(true)}
+                className="inline-flex min-h-[44px] items-center gap-1.5 text-xs font-semibold text-[#a5b4fc] underline underline-offset-4 transition-colors hover:text-white"
+              >
+                View all plans
+              </button>
+            )}
+          </div>
+
+          {!online && (
+            <div
+              role="alert"
+              className="mb-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+            >
+              You’re offline. Connect to the internet to load live pricing, start a subscription, or
+              restore purchases.
+            </div>
+          )}
+
+          {loading ? (
+            <div className="space-y-3" aria-busy="true" aria-label="Loading subscription plans">
+              {[0, 1, 2].map((idx) => (
+                <div
+                  key={idx}
+                  className="h-20 animate-pulse rounded-2xl border border-white/10 bg-[#0b1120]"
+                />
+              ))}
+            </div>
+          ) : loadError || !store ? (
+            <div
+              role="alert"
+              className="rounded-2xl border border-white/15 bg-[#0b1120] p-5 text-center"
+            >
+              <Crown className="mx-auto h-7 w-7 text-[#818cf8]" aria-hidden="true" />
+              <h3 className="mt-3 text-base font-semibold text-white">
+                Subscription plans unavailable
+              </h3>
+              <p className="mx-auto mt-1.5 max-w-md text-sm text-slate-300">
+                {loadError ??
+                  "We couldn’t retrieve live subscription offerings from RevenueCat. Please try again."}
+              </p>
+              <div className="mt-4 flex flex-wrap justify-center gap-3">
+                <button
+                  type="button"
+                  disabled={!online}
+                  onClick={() => setAttempt((n) => n + 1)}
+                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-[#818cf8] px-5 text-sm font-semibold text-[#060913] transition-opacity hover:opacity-90 disabled:opacity-40"
+                >
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                  Retry loading plans
+                </button>
+              </div>
+            </div>
+          ) : (
+            <fieldset className="space-y-3" disabled={busy}>
+              <legend className="sr-only">Choose a MealMate Premium subscription plan</legend>
+              {plans.map((option) => {
+                const isSelected = plan?.kind === option.kind;
+                const monthlyEq = getMonthlyEquivalent(option);
+                const showYearlyBadge = option.kind === "yearly" && annualSavingsPct !== null;
+
+                return (
+                  <label
+                    key={option.id}
+                    className={`paywall-plan-card ${isSelected ? "selected" : ""}`}
+                    onClick={() => setSelected(option.kind)}
+                  >
+                    <input
+                      type="radio"
+                      name="subscription"
+                      value={option.kind}
+                      checked={isSelected}
+                      onChange={() => setSelected(option.kind)}
+                    />
+
+                    <div className="flex min-w-0 items-center gap-3.5">
+                      <span
+                        className={`flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                          isSelected
+                            ? "border-[#818cf8] bg-[#818cf8] text-[#060913]"
+                            : "border-slate-500 bg-transparent"
+                        }`}
+                      >
+                        {isSelected && <Check size={12} strokeWidth={3} />}
+                      </span>
+
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                          <span className="text-base font-semibold text-white">
+                            {planDisplayName(option.kind, option.title)}
+                          </span>
+                          {showYearlyBadge && (
+                            <span className="text-xs font-semibold tracking-wide text-[#a5b4fc]">
+                              · BEST VALUE · Save {annualSavingsPct}%
+                            </span>
+                          )}
+                          {option.kind === "family" && (
+                            <span className="text-xs text-slate-400">· Household sharing</span>
+                          )}
+                        </div>
+
+                        <p className="mt-0.5 text-xs text-slate-300">
+                          {option.trialDays > 0 ? (
+                            <span className="font-medium text-emerald-300">
+                              {option.trialDays}-day free trial available
+                            </span>
+                          ) : (
+                            <span>Billed every {option.period} · Cancel anytime</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <div className="text-base font-bold text-white tabular-nums sm:text-lg">
+                        {option.price}
+                        <span className="text-xs font-normal text-slate-400">
+                          {" "}
+                          / {option.period}
+                        </span>
+                      </div>
+                      {monthlyEq && (
+                        <div className="text-xs font-medium text-[#a5b4fc] tabular-nums">
+                          {monthlyEq}
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
+            </fieldset>
+          )}
+
+          {/* Honest Trial Explanation Card */}
+          {plan && (
+            <div className="mt-4 rounded-2xl border border-white/10 bg-[#0b1120] p-4 sm:p-5">
+              {plan.trialDays > 0 ? (
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <ShieldCheck className="h-4 w-4 text-[#818cf8]" aria-hidden="true" />
+                    <span>Start your {plan.trialDays}-day free trial.</span>
+                  </div>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-300">
+                    Pay <span className="font-semibold text-white tabular-nums">{zeroToday}</span>{" "}
+                    today. After your trial ends on{" "}
+                    <span className="font-semibold text-white">
+                      {formatTrialEndDate(plan.trialDays)}
+                    </span>
+                    , your subscription renews at{" "}
+                    <span className="font-semibold text-white tabular-nums">{plan.price}</span> per{" "}
+                    {plan.period} unless cancelled.
+                  </p>
+                  <p className="mt-1.5 text-xs text-slate-400">
+                    Cancel at least 24 hours before renewal in Google Play Subscriptions, Apple
+                    Account Settings, or MealMate Profile.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                    <ShieldCheck className="h-4 w-4 text-[#818cf8]" aria-hidden="true" />
+                    <span>Transparent billing from day one</span>
+                  </div>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-300">
+                    <span className="font-semibold text-white tabular-nums">{plan.price}</span> due
+                    today, then renews automatically at{" "}
+                    <span className="font-semibold text-white tabular-nums">{plan.price}</span> per{" "}
+                    {plan.period} unless cancelled. Cancel anytime in your store settings.
+                  </p>
+                </div>
+              )}
+
+              {/* Optional Trial Reminder Toggle */}
+              {plan.trialDays > 0 && (
+                <div className="mt-4 border-t border-white/10 pt-3.5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex min-w-0 items-start gap-2.5">
+                      <Bell className="mt-0.5 h-4 w-4 shrink-0 text-[#a5b4fc]" aria-hidden="true" />
+                      <div>
+                        <label
+                          htmlFor="trial-reminder-toggle"
+                          className="block cursor-pointer text-sm font-medium text-white"
+                        >
+                          Remind me before my trial ends.
+                        </label>
+                        <p className="text-xs text-slate-400">
+                          We’ll send a reminder before renewal when notifications are enabled.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      id="trial-reminder-toggle"
+                      type="button"
+                      role="switch"
+                      aria-checked={reminderEnabled}
+                      aria-label="Remind me before my trial ends."
+                      disabled={reminderBusy}
+                      onClick={() => void handleToggleReminder()}
+                      className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#818cf8] disabled:opacity-50 ${
+                        reminderEnabled
+                          ? "border-[#818cf8] bg-[#818cf8]"
+                          : "border-white/20 bg-slate-800"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block size-5 transform rounded-full bg-white shadow transition-transform ${
+                          reminderEnabled ? "translate-x-6" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {reminderStatus && (
+                    <p className="mt-2 text-xs font-medium text-emerald-300">{reminderStatus}</p>
+                  )}
+                  {reminderWarning && (
+                    <p role="alert" className="mt-2 text-xs font-medium text-amber-300">
+                      {reminderWarning}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {message && (
+            <p
+              role="status"
+              className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-200"
+            >
+              {message}
+            </p>
+          )}
+        </section>
+
+        {/* Premium Benefits Section */}
+        <section aria-labelledby="paywall-benefits-heading" className="mt-8">
+          <h2
+            id="paywall-benefits-heading"
+            className="font-display text-2xl font-semibold tracking-tight text-white"
+          >
+            Everything included with MealMate Premium
+          </h2>
+          <p className="mt-1 text-sm text-slate-300">
+            Practical everyday cooking tools designed around your preferences and kitchen.
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {PREMIUM_BENEFITS.map((benefit) => {
+              const Icon = benefit.icon;
+              return (
+                <div
+                  key={benefit.title}
+                  className="flex items-start gap-3 rounded-2xl border border-white/10 bg-[#0b1120] p-4"
+                >
+                  <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-[var(--periwinkle-soft)] text-[#a5b4fc]">
+                    <Icon size={17} aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-white">{benefit.title}</h3>
+                    <p className="mt-0.5 text-xs leading-relaxed text-slate-300">
+                      {benefit.description}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Trust & Transparency Footer */}
+        <footer className="mt-8 rounded-2xl border border-white/10 bg-[#0b1120] p-4 text-xs leading-relaxed text-slate-400 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+            <span className="inline-flex items-center gap-1.5 font-medium text-slate-200">
+              <Lock size={13} className="text-emerald-400" aria-hidden="true" />
+              Verified RevenueCat & store billing
+            </span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-300">
+              <button
+                type="button"
+                onClick={() => void perform("restore")}
+                disabled={busy || loading || !online || !store}
+                className="font-medium underline underline-offset-4 hover:text-white disabled:opacity-40"
+              >
+                Restore Purchases
+              </button>
+              <Link to="/legal/terms" className="underline underline-offset-4 hover:text-white">
+                Terms of Service
+              </Link>
+              <Link to="/legal/privacy" className="underline underline-offset-4 hover:text-white">
+                Privacy Policy
+              </Link>
+              <Link to="/support" className="underline underline-offset-4 hover:text-white">
+                Help &amp; Manage Subscription
+              </Link>
+            </div>
+          </div>
+
+          <p className="mt-3">
+            Subscriptions automatically renew for the selected billing period at the stated rate
+            unless cancelled at least 24 hours before the end of the current period or free trial.
+            You can manage or cancel your subscription anytime in Google Play Store, Apple App
+            Store, or your MealMate account settings.
+          </p>
+        </footer>
       </div>
+
+      {/* Persistent Bottom Sticky Purchase Panel */}
+      <div className="paywall-sticky-dock">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
+            <span className="inline-flex items-center gap-1.5 font-medium text-slate-200">
+              <Lock size={12} className="text-[#818cf8]" aria-hidden="true" />
+              Secure subscription. Manage or cancel anytime.
+            </span>
+            {plan && (
+              <span className="font-medium text-white tabular-nums">
+                {hasTrial
+                  ? `${zeroToday} today · then ${plan.price}/${plan.period}`
+                  : `${plan.price} / ${plan.period}`}
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="paywall-cta"
+            disabled={
+              !online || busy || (!pendingVerification && (loading || !plan || Boolean(loadError)))
+            }
+            onClick={() => void perform(pendingVerification ? "verify" : "purchase")}
+          >
+            {busy ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <>
+                <span>{ctaLabel}</span>
+                <ArrowRight size={16} aria-hidden="true" />
+              </>
+            )}
+          </button>
+
+          {plan && (
+            <p className="mt-1.5 text-center text-[11px] text-slate-400">
+              {hasTrial
+                ? `${plan.trialDays}-day free trial, then ${plan.price}/${plan.period}. Auto-renews unless cancelled.`
+                : `Billed ${plan.price} per ${plan.period}. Auto-renews unless cancelled.`}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* View All Plans Comparison Modal */}
+      {allPlansOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="all-plans-title"
+          onClick={() => setAllPlansOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-t-3xl border border-white/15 bg-[#0b1120] p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-white shadow-2xl sm:rounded-3xl sm:p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-3">
+              <div>
+                <h2 id="all-plans-title" className="text-lg font-semibold text-white">
+                  All MealMate Premium plans
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Live pricing from RevenueCat offering ({store?.offeringId ?? "default"})
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close all plans"
+                onClick={() => setAllPlansOpen(false)}
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-white/15 bg-[#111a2e] text-slate-300 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-2.5">
+              {plans.map((option) => {
+                const isSelected = plan?.kind === option.kind;
+                const monthlyEq = getMonthlyEquivalent(option);
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => {
+                      setSelected(option.kind);
+                      setAllPlansOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between gap-3 rounded-2xl border p-4 text-left transition-colors ${
+                      isSelected
+                        ? "border-[#818cf8] bg-[#162040]"
+                        : "border-white/10 bg-[#0f172a] hover:border-white/25"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-white">
+                          {planDisplayName(option.kind, option.title)}
+                        </span>
+                        {isSelected && (
+                          <span className="text-xs font-semibold text-[#a5b4fc]">· Selected</span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-xs text-slate-300">
+                        {option.trialDays > 0
+                          ? `${option.trialDays}-day free trial · Then ${option.price}/${option.period}`
+                          : `Billed every ${option.period} · No trial`}
+                      </p>
+                      {option.productId && (
+                        <p className="mt-0.5 text-[11px] text-slate-500">
+                          Product ID: {option.productId}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <div className="text-base font-bold text-white tabular-nums">
+                        {option.price}
+                      </div>
+                      <div className="text-[11px] text-slate-400">per {option.period}</div>
+                      {monthlyEq && (
+                        <div className="text-[11px] font-medium text-[#a5b4fc] tabular-nums">
+                          {monthlyEq}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

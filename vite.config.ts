@@ -53,19 +53,8 @@ export default defineConfig(({ command }) => ({
       "firebase/app",
       "firebase/auth",
       "firebase/firestore",
-      "firebase/storage",
-      "firebase/analytics",
-      "firebase/messaging",
-      "@revenuecat/purchases-js",
-      "@revenuecat/purchases-capacitor",
-      "@capacitor/core",
-      "@capacitor/app",
-      "@capacitor-community/text-to-speech",
       "lucide-react",
       "sonner",
-      "recharts",
-      "react-markdown",
-      "vosk-browser",
       "zod",
       "clsx",
       "tailwind-merge",
@@ -73,39 +62,6 @@ export default defineConfig(({ command }) => ({
       "date-fns",
       "i18next",
       "react-i18next",
-      "vaul",
-      "cmdk",
-      "input-otp",
-      "react-day-picker",
-      "embla-carousel-react",
-      "react-hook-form",
-      "react-resizable-panels",
-      "@radix-ui/react-accordion",
-      "@radix-ui/react-alert-dialog",
-      "@radix-ui/react-aspect-ratio",
-      "@radix-ui/react-avatar",
-      "@radix-ui/react-checkbox",
-      "@radix-ui/react-collapsible",
-      "@radix-ui/react-context-menu",
-      "@radix-ui/react-dialog",
-      "@radix-ui/react-dropdown-menu",
-      "@radix-ui/react-hover-card",
-      "@radix-ui/react-label",
-      "@radix-ui/react-menubar",
-      "@radix-ui/react-navigation-menu",
-      "@radix-ui/react-popover",
-      "@radix-ui/react-progress",
-      "@radix-ui/react-radio-group",
-      "@radix-ui/react-scroll-area",
-      "@radix-ui/react-select",
-      "@radix-ui/react-separator",
-      "@radix-ui/react-slider",
-      "@radix-ui/react-slot",
-      "@radix-ui/react-switch",
-      "@radix-ui/react-tabs",
-      "@radix-ui/react-toggle",
-      "@radix-ui/react-toggle-group",
-      "@radix-ui/react-tooltip",
     ],
     exclude: [
       "firebase-admin",
@@ -116,6 +72,35 @@ export default defineConfig(({ command }) => ({
       "ai",
       "@google/genai",
     ],
+  },
+  environments: {
+    client: {
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks(id: string) {
+              if (!id.includes("node_modules")) return undefined;
+              if (id.includes("/node_modules/firebase/")) return "vendor-firebase";
+              if (id.includes("/node_modules/@revenuecat/")) return "vendor-revenuecat";
+              if (id.includes("/node_modules/recharts/") || id.includes("/node_modules/d3-")) {
+                return "vendor-charts";
+              }
+              if (id.includes("/node_modules/vosk-browser/")) return "vendor-voice";
+              if (
+                id.includes("/node_modules/react-markdown/") ||
+                id.includes("/node_modules/remark-") ||
+                id.includes("/node_modules/rehype-") ||
+                id.includes("/node_modules/unified/")
+              ) {
+                return "vendor-markdown";
+              }
+              if (id.includes("/node_modules/@radix-ui/")) return "vendor-radix";
+              return undefined;
+            },
+          },
+        },
+      },
+    },
   },
   css: { transformer: "lightningcss" },
   resolve: {

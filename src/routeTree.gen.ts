@@ -36,6 +36,7 @@ import { Route as ScanRouteImport } from './routes/scan'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as WelcomeRouteImport } from './routes/welcome'
+import { Route as ApiEmailRouteImport } from './routes/api/email'
 import { Route as ApiMiaRouteImport } from './routes/api/mia'
 import { Route as ApiRecipeImageRouteImport } from './routes/api/recipe-image'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
@@ -48,6 +49,8 @@ import { Route as RecipeSlugRouteImport } from './routes/recipe.$slug'
 import { Route as RestaurantSlugRouteImport } from './routes/restaurant.$slug'
 import { Route as ApiPublicAnnouncementsCronRouteImport } from './routes/api/public/announcements-cron'
 import { Route as ApiPublicFirebaseMessagingConfigRouteImport } from './routes/api/public/firebase-messaging-config'
+import { Route as ApiWebhooksContactRouteImport } from './routes/api/webhooks.contact'
+import { Route as ApiPublicWebhooksContactRouteImport } from './routes/api/public/webhooks.contact'
 import { Route as ApiPublicWebhooksRevenuecatRouteImport } from './routes/api/public/webhooks.revenuecat'
 
 const IndexRoute = IndexRouteImport.update({
@@ -185,6 +188,11 @@ const WelcomeRoute = WelcomeRouteImport.update({
   path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEmailRoute = ApiEmailRouteImport.update({
+  id: '/api/email',
+  path: '/api/email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMiaRoute = ApiMiaRouteImport.update({
   id: '/api/mia',
   path: '/api/mia',
@@ -247,6 +255,17 @@ const ApiPublicFirebaseMessagingConfigRoute =
     path: '/api/public/firebase-messaging-config',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiWebhooksContactRoute = ApiWebhooksContactRouteImport.update({
+  id: '/api/webhooks/contact',
+  path: '/api/webhooks/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWebhooksContactRoute =
+  ApiPublicWebhooksContactRouteImport.update({
+    id: '/api/public/webhooks/contact',
+    path: '/api/public/webhooks/contact',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksRevenuecatRoute =
   ApiPublicWebhooksRevenuecatRouteImport.update({
     id: '/api/public/webhooks/revenuecat',
@@ -282,6 +301,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/welcome': typeof WelcomeRoute
+  '/api/email': typeof ApiEmailRoute
   '/api/mia': typeof ApiMiaRoute
   '/api/recipe-image': typeof ApiRecipeImageRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -294,6 +314,8 @@ export interface FileRoutesByFullPath {
   '/restaurant/$slug': typeof RestaurantSlugRoute
   '/api/public/announcements-cron': typeof ApiPublicAnnouncementsCronRoute
   '/api/public/firebase-messaging-config': typeof ApiPublicFirebaseMessagingConfigRoute
+  '/api/webhooks/contact': typeof ApiWebhooksContactRoute
+  '/api/public/webhooks/contact': typeof ApiPublicWebhooksContactRoute
   '/api/public/webhooks/revenuecat': typeof ApiPublicWebhooksRevenuecatRoute
 }
 export interface FileRoutesByTo {
@@ -324,6 +346,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/welcome': typeof WelcomeRoute
+  '/api/email': typeof ApiEmailRoute
   '/api/mia': typeof ApiMiaRoute
   '/api/recipe-image': typeof ApiRecipeImageRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -336,6 +359,8 @@ export interface FileRoutesByTo {
   '/restaurant/$slug': typeof RestaurantSlugRoute
   '/api/public/announcements-cron': typeof ApiPublicAnnouncementsCronRoute
   '/api/public/firebase-messaging-config': typeof ApiPublicFirebaseMessagingConfigRoute
+  '/api/webhooks/contact': typeof ApiWebhooksContactRoute
+  '/api/public/webhooks/contact': typeof ApiPublicWebhooksContactRoute
   '/api/public/webhooks/revenuecat': typeof ApiPublicWebhooksRevenuecatRoute
 }
 export interface FileRoutesById {
@@ -367,6 +392,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/welcome': typeof WelcomeRoute
+  '/api/email': typeof ApiEmailRoute
   '/api/mia': typeof ApiMiaRoute
   '/api/recipe-image': typeof ApiRecipeImageRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -379,6 +405,8 @@ export interface FileRoutesById {
   '/restaurant/$slug': typeof RestaurantSlugRoute
   '/api/public/announcements-cron': typeof ApiPublicAnnouncementsCronRoute
   '/api/public/firebase-messaging-config': typeof ApiPublicFirebaseMessagingConfigRoute
+  '/api/webhooks/contact': typeof ApiWebhooksContactRoute
+  '/api/public/webhooks/contact': typeof ApiPublicWebhooksContactRoute
   '/api/public/webhooks/revenuecat': typeof ApiPublicWebhooksRevenuecatRoute
 }
 export interface FileRouteTypes {
@@ -411,6 +439,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/support'
     | '/welcome'
+    | '/api/email'
     | '/api/mia'
     | '/api/recipe-image'
     | '/auth/callback'
@@ -423,6 +452,8 @@ export interface FileRouteTypes {
     | '/restaurant/$slug'
     | '/api/public/announcements-cron'
     | '/api/public/firebase-messaging-config'
+    | '/api/webhooks/contact'
+    | '/api/public/webhooks/contact'
     | '/api/public/webhooks/revenuecat'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -453,6 +484,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/support'
     | '/welcome'
+    | '/api/email'
     | '/api/mia'
     | '/api/recipe-image'
     | '/auth/callback'
@@ -465,6 +497,8 @@ export interface FileRouteTypes {
     | '/restaurant/$slug'
     | '/api/public/announcements-cron'
     | '/api/public/firebase-messaging-config'
+    | '/api/webhooks/contact'
+    | '/api/public/webhooks/contact'
     | '/api/public/webhooks/revenuecat'
   id:
     | '__root__'
@@ -495,6 +529,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/support'
     | '/welcome'
+    | '/api/email'
     | '/api/mia'
     | '/api/recipe-image'
     | '/auth/callback'
@@ -507,6 +542,8 @@ export interface FileRouteTypes {
     | '/restaurant/$slug'
     | '/api/public/announcements-cron'
     | '/api/public/firebase-messaging-config'
+    | '/api/webhooks/contact'
+    | '/api/public/webhooks/contact'
     | '/api/public/webhooks/revenuecat'
   fileRoutesById: FileRoutesById
 }
@@ -538,6 +575,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SupportRoute: typeof SupportRoute
   WelcomeRoute: typeof WelcomeRoute
+  ApiEmailRoute: typeof ApiEmailRoute
   ApiMiaRoute: typeof ApiMiaRoute
   ApiRecipeImageRoute: typeof ApiRecipeImageRoute
   LegalPrivacyRoute: typeof LegalPrivacyRoute
@@ -547,6 +585,8 @@ export interface RootRouteChildren {
   RestaurantSlugRoute: typeof RestaurantSlugRoute
   ApiPublicAnnouncementsCronRoute: typeof ApiPublicAnnouncementsCronRoute
   ApiPublicFirebaseMessagingConfigRoute: typeof ApiPublicFirebaseMessagingConfigRoute
+  ApiWebhooksContactRoute: typeof ApiWebhooksContactRoute
+  ApiPublicWebhooksContactRoute: typeof ApiPublicWebhooksContactRoute
   ApiPublicWebhooksRevenuecatRoute: typeof ApiPublicWebhooksRevenuecatRoute
 }
 
@@ -741,6 +781,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/email': {
+      id: '/api/email'
+      path: '/api/email'
+      fullPath: '/api/email'
+      preLoaderRoute: typeof ApiEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/mia': {
       id: '/api/mia'
       path: '/api/mia'
@@ -825,6 +872,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicFirebaseMessagingConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/webhooks/contact': {
+      id: '/api/webhooks/contact'
+      path: '/api/webhooks/contact'
+      fullPath: '/api/webhooks/contact'
+      preLoaderRoute: typeof ApiWebhooksContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/webhooks/contact': {
+      id: '/api/public/webhooks/contact'
+      path: '/api/public/webhooks/contact'
+      fullPath: '/api/public/webhooks/contact'
+      preLoaderRoute: typeof ApiPublicWebhooksContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/revenuecat': {
       id: '/api/public/webhooks/revenuecat'
       path: '/api/public/webhooks/revenuecat'
@@ -886,6 +947,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SupportRoute: SupportRoute,
   WelcomeRoute: WelcomeRoute,
+  ApiEmailRoute: ApiEmailRoute,
   ApiMiaRoute: ApiMiaRoute,
   ApiRecipeImageRoute: ApiRecipeImageRoute,
   LegalPrivacyRoute: LegalPrivacyRoute,
@@ -895,6 +957,8 @@ const rootRouteChildren: RootRouteChildren = {
   RestaurantSlugRoute: RestaurantSlugRoute,
   ApiPublicAnnouncementsCronRoute: ApiPublicAnnouncementsCronRoute,
   ApiPublicFirebaseMessagingConfigRoute: ApiPublicFirebaseMessagingConfigRoute,
+  ApiWebhooksContactRoute: ApiWebhooksContactRoute,
+  ApiPublicWebhooksContactRoute: ApiPublicWebhooksContactRoute,
   ApiPublicWebhooksRevenuecatRoute: ApiPublicWebhooksRevenuecatRoute,
 }
 export const routeTree = rootRouteImport

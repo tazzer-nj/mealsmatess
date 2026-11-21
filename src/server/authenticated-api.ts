@@ -1,4 +1,7 @@
-export async function authenticateApiRequest(request: Request) {
+export async function authenticateApiRequest(
+  request: Request,
+  options?: { allowFreeTier?: boolean },
+) {
   const authorization = request.headers.get("authorization") ?? "";
   const match = /^Bearer\s+(.+)$/i.exec(authorization);
   if (!match?.[1]) {
@@ -15,6 +18,31 @@ export async function authenticateApiRequest(request: Request) {
         response: Response.json({ error: "Sign in to continue." }, { status: 401 }),
       } as const;
     }
+
+    if (options?.allowFreeTier) {
+      let access;
+      try {
+        const { verifyAccountAccess } = await import("@/server/revenuecat");
+        access = await verifyAccountAccess(decoded.uid, undefined, decoded);
+      } catch {
+        return {
+          response: Response.json(
+            { error: "Subscription verification is temporarily unavailable." },
+            { status: 503 },
+          ),
+        } as const;
+      }
+      return {
+        user: {
+          userId: decoded.uid,
+          email: decoded.email ?? null,
+          isPremium: access.isPremium,
+          trialActive: access.trialActive,
+          firebase: firebaseUserDb(decoded.uid, { verifiedPremium: access.isPremium }),
+        },
+      } as const;
+    }
+
     try {
       const { requireActivePremium } = await import("@/server/revenuecat");
       await requireActivePremium(decoded.uid);

@@ -3,7 +3,6 @@ import { HubContext } from "@/components/hub/hub-context";
 import { HubShell } from "@/components/hub/hub-shell";
 import { isHubSurface } from "@/lib/hub-surface";
 import { requestHostname } from "@/lib/hub-request";
-import { SplashScreen } from "@/components/splash-screen";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -31,15 +30,9 @@ import { LocaleProvider } from "@/components/locale-provider";
 import { UpgradeModalProvider } from "@/components/upgrade-modal";
 import { ConsumerAccessGate } from "@/components/consumer-access-gate";
 import { GlobalLoadingCompanion } from "@/components/global-loading-companion";
-import { WebMcpProvider } from "@/components/web-mcp-provider";
 import { useShellMetrics } from "@/hooks/use-shell-metrics";
 import { useSession } from "@/hooks/use-session";
-import {
-  myFavoritesQuery,
-  myPantryQuery,
-  southAfricanFavoritesQuery,
-  trendingRecipesQuery,
-} from "@/lib/queries";
+import { southAfricanFavoritesQuery, trendingRecipesQuery } from "@/lib/queries";
 
 function NotFoundComponent() {
   return (
@@ -187,7 +180,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=DM+Serif+Display&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap",
       },
     ],
   }),
@@ -299,6 +292,7 @@ function RootComponent() {
         "/profile",
         "/recipes",
         "/pantry",
+        "/list",
         "/settings",
       ] as const;
       const run = () => {
@@ -308,8 +302,6 @@ function RootComponent() {
         if (firebaseUser) {
           void queryClient.prefetchQuery(trendingRecipesQuery()).catch(() => undefined);
           void queryClient.prefetchQuery(southAfricanFavoritesQuery()).catch(() => undefined);
-          void queryClient.prefetchQuery(myFavoritesQuery()).catch(() => undefined);
-          void queryClient.prefetchQuery(myPantryQuery()).catch(() => undefined);
         }
       };
       const idle = (
@@ -329,11 +321,17 @@ function RootComponent() {
     return onAuthStateChanged(auth, (firebaseUser) => {
       const nextUid = firebaseUser?.uid ?? null;
       if (initialized && prevUid === nextUid) return;
+      const wasInitialized = initialized;
+      const previousUid = prevUid;
       initialized = true;
       prevUid = nextUid;
-      router.invalidate();
+      if (wasInitialized || !firebaseUser) {
+        router.invalidate();
+      }
       if (firebaseUser) {
-        void queryClient.invalidateQueries();
+        if (wasInitialized && previousUid !== nextUid) {
+          void queryClient.invalidateQueries();
+        }
         warmRoutesAndData(firebaseUser);
       } else {
         queryClient.clear();
@@ -355,37 +353,32 @@ function RootComponent() {
                     </AuthGate>
                   </HubShell>
                 ) : (
-                  <AuthGate>
-                    <ConsumerAccessGate>
-                      <MiaProvider>
-                        <div className="theme-backdrop h-dvh w-full overflow-hidden bg-background">
-                          {showAppHeader && <AppHeader />}
+                  <ConsumerAccessGate>
+                    <MiaProvider>
+                      <div className="theme-backdrop h-dvh w-full overflow-hidden bg-background">
+                        {showAppHeader && <AppHeader />}
+                        <div
+                          id="app-scroll"
+                          className={`h-full overflow-x-hidden overflow-y-auto overscroll-y-none ${hideConsumerChrome ? "" : "pb-[calc(var(--app-nav-h)+14px)] pt-[var(--app-header-h)]"}`}
+                        >
                           <div
-                            id="app-scroll"
-                            className={`h-full overflow-x-hidden overflow-y-auto overscroll-y-none ${hideConsumerChrome ? "" : "pb-[calc(var(--app-nav-h)+14px)] pt-[var(--app-header-h)]"}`}
+                            className={`mx-auto flex min-h-full w-full min-w-0 flex-col ${hideConsumerChrome ? "" : pathname === "/admin" ? "max-w-6xl" : "max-w-3xl"}`}
                           >
-                            <div
-                              className={`mx-auto flex min-h-full w-full min-w-0 flex-col ${hideConsumerChrome ? "" : pathname === "/admin" ? "max-w-6xl" : "max-w-3xl"}`}
-                            >
-                              <div
-                                key={pathname}
-                                className="page-enter motion-reveal flex flex-1 flex-col"
-                              >
+                            <AuthGate>
+                              <div className="flex flex-1 flex-col">
                                 <Outlet />
                               </div>
-                            </div>
+                            </AuthGate>
                           </div>
-                          {hideConsumerChrome ? null : <BottomNav />}
-                          <GlobalLoadingCompanion />
                         </div>
-                      </MiaProvider>
-                    </ConsumerAccessGate>
-                  </AuthGate>
+                        {hideConsumerChrome ? null : <BottomNav />}
+                        <GlobalLoadingCompanion />
+                      </div>
+                    </MiaProvider>
+                  </ConsumerAccessGate>
                 )}
               </HubContext.Provider>
-              <WebMcpProvider />
               <Toaster position="top-center" />
-              {!isHub && <SplashScreen />}
             </UpgradeModalProvider>
           </LocaleProvider>
         </MascotThemeProvider>

@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { scanKitchen, scanDish, type ScannedDish, generateRecipe } from "@/lib/ai.functions";
 import { useSession } from "@/hooks/use-session";
+import { usePremium } from "@/hooks/use-premium";
+import { PremiumFeatureLock } from "@/components/premium-feature-lock";
 import { firebaseData } from "@/lib/firebase-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,6 +105,7 @@ function isoLocal(d: Date) {
 
 function ScanPage() {
   const { user, loading } = useSession();
+  const { isPremium, loading: premiumLoading } = usePremium();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -314,6 +317,16 @@ function ScanPage() {
         { label: "Fibre", value: dish.fiber_g, unit: "g" },
       ]
     : [];
+
+  if (!loading && !premiumLoading && user && !isPremium) {
+    return (
+      <PremiumFeatureLock
+        featureLabel="AI Kitchen Scanner"
+        title="Snap your fridge or meal"
+        description="Detect ingredients from photos, estimate dish nutrition, and cook instantly with your 3-day free trial."
+      />
+    );
+  }
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 bg-background px-4 py-8 text-foreground">

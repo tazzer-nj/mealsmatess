@@ -1,19 +1,38 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useState, useEffect, useRef } from "react";
-import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
-import { Crown, Loader2, Sparkles, Wand2, AudioWaveform, Mic, X } from "lucide-react";
+import {
+  AudioWaveform,
+  Crown,
+  History,
+  Loader2,
+  MessageSquarePlus,
+  Mic,
+  Sparkles,
+  Trash2,
+  Wand2,
+  X,
+} from "lucide-react";
 import { ChefMascot } from "@/components/chef-mascot";
 import { CookingInput } from "@/components/cooking-input";
-import { MiaLoadingCard } from "@/components/mia-loading-card";
 import { MiaThoughtBubble } from "@/components/mia-thought-bubble";
 import { useMia } from "@/hooks/use-mia";
-// Heavy media player (images and audio narration), only loaded when a visual answer exists.
+import { usePremium } from "@/hooks/use-premium";
+import { FREE_MIA_SEARCH_LIMIT, MIA_FREE_LIMIT_ERROR_CODE } from "@/lib/freemium";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+// Defer heavy markdown & visual explainer bundles until a reply renders.
+const ReactMarkdown = lazy(() => import("react-markdown"));
 const VisualExplainer = lazy(() =>
   import("@/components/visual-explainer").then((m) => ({ default: m.VisualExplainer })),
 );
-import { usePremium } from "@/hooks/use-premium";
-import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/chat")({
   component: ChatPage,
@@ -39,10 +58,10 @@ export const Route = createFileRoute("/chat")({
 });
 
 const SUGGESTIONS = [
-  "What can I cook?",
-  "Help me plan dinner.",
-  "Find a quick recipe.",
-  "What can I make with my ingredients?",
+  "What can I cook with my pantry?",
+  "Help me plan tonight's dinner.",
+  "Find a quick 20-minute recipe.",
+  "Check allergies & safe substitutions.",
 ];
 
 const VOICE_STATE_COPY: Record<string, string> = {
@@ -63,9 +82,23 @@ function ChatPage() {
   const [question, setQuestion] = useState(q ?? "");
   const endRef = useRef<HTMLDivElement>(null);
   const mia = useMia();
-  const { turns, busy, voice } = mia;
+  const {
+    turns,
+    busy,
+    voice,
+    quota,
+    conversations,
+    activeConversationId,
+    historyLoading,
+    refreshHistory,
+    openConversation,
+    newConversation,
+    removeConversation,
+  } = mia;
   const [visualMode, setVisualMode] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (turns.length) endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
@@ -73,11 +106,17 @@ function ChatPage() {
 
   async function ask(text: string) {
     if (!text.trim() || busy) return;
+    const draft = text;
     setQuestion("");
-    mia.endConversation();
     try {
-      await mia.ask(text, { visual: isPremium && visualMode });
+      await mia.ask(draft, { visual: isPremium && visualMode });
     } catch (error) {
+      const code = (error as { code?: unknown } | null)?.code;
+      const name = error instanceof Error ? error.name : "";
+      if (code === MIA_FREE_LIMIT_ERROR_CODE || name === "MiaFreeLimitError") {
+        setQuestion(draft);
+        return;
+      }
       toast.error("Couldn't answer that", {
         description:
           error instanceof Error ? error.message : "Mia is unavailable. Please try again.",
@@ -89,19 +128,54 @@ function ChatPage() {
     voice.state,
   );
   const latestTurn = turns.at(-1);
+  const waitingForFirstToken = busy && (!latestTurn || !latestTurn.answer);
+
+  const freeRemaining = quota?.freeRemaining ?? FREE_MIA_SEARCH_LIMIT;
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-x-hidden px-4 py-10 text-foreground">
+    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-x-hidden px-4 py-8 text-foreground">
+      {!isPremium && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-2.5 text-xs"
+        >
+          <span className="font-medium text-foreground tabular-nums">
+            {freeRemaining} free {freeRemaining === 1 ? "search" : "searches"} left
+          </span>
+          <Link
+            to="/premium"
+            className="inline-flex items-center gap-1.5 font-semibold text-primary hover:underline"
+          >
+            <Crown className="h-3.5 w-3.5" aria-hidden="true" />
+            {freeRemaining <= 0 ? "Start 3-day free trial" : "Unlock unlimited Mia"}
+          </Link>
+        </div>
+      )}
+
       {turns.length === 0 ? (
-        <div className="flex flex-col items-center py-6 text-center">
-          <ChefMascot animate className="h-48 w-48" />
-          <h1 className="mt-6 font-display text-3xl">Your little kitchen companion.</h1>
-          <p className="mt-3 text-sm text-muted-foreground">What&apos;s cooking, Chef?</p>
+        <div className="flex flex-col items-center py-4 text-center">
+          <ChefMascot animate className="h-44 w-44" />
+          <h1 className="mt-5 font-display text-3xl">Your little kitchen companion.</h1>
+          <p className="mt-2 text-sm text-muted-foreground">What&apos;s cooking, Chef?</p>
         </div>
       ) : (
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl">MealMate Chef</h1>
-          <ChefMascot className="h-9 w-9" />
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <ChefMascot className="h-9 w-9" />
+            <h1 className="font-display text-2xl">MealMate Chef</h1>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => newConversation()}
+            disabled={busy}
+            className="h-9 rounded-xl text-xs text-muted-foreground hover:text-foreground"
+          >
+            <MessageSquarePlus className="mr-1.5 h-4 w-4" />
+            New chat
+          </Button>
         </div>
       )}
 
@@ -109,8 +183,21 @@ function ChatPage() {
         <Button
           type="button"
           variant="outline"
+          onClick={() => {
+            setHistoryOpen(true);
+            void refreshHistory();
+          }}
+          className="h-10 rounded-full"
+        >
+          <History className="h-4 w-4 text-muted-foreground" />
+          History {conversations.length > 0 ? `(${conversations.length})` : ""}
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
           onClick={() => setVoiceOpen(true)}
-          className="rounded-full"
+          className="h-10 rounded-full"
         >
           <AudioWaveform className="h-4 w-4 text-primary" />
           Voice mode
@@ -120,14 +207,14 @@ function ChatPage() {
           <Button
             type="button"
             variant={visualMode ? "default" : "outline"}
-            className="rounded-full"
+            className="h-10 rounded-full"
             aria-pressed={visualMode}
             onClick={() => setVisualMode((v) => !v)}
           >
-            <Wand2 className="h-4 w-4" /> Visual Mode {visualMode ? "on" : "off"}
+            <Wand2 className="h-4 w-4" /> Visual {visualMode ? "on" : "off"}
           </Button>
         ) : (
-          <Button asChild variant="ghost" className="rounded-full text-muted-foreground">
+          <Button asChild variant="ghost" className="h-10 rounded-full text-muted-foreground">
             <Link to="/premium">
               <Crown className="h-4 w-4" /> Premium Visual Mode
             </Link>
@@ -135,7 +222,7 @@ function ChatPage() {
         )}
       </div>
 
-      <div className="mt-8 flex-1 space-y-6">
+      <div className="mt-7 flex-1 space-y-6">
         {turns.length === 0 && (
           <div className="flex flex-wrap gap-2">
             {SUGGESTIONS.map((s) => (
@@ -159,7 +246,9 @@ function ChatPage() {
             </p>
             {t.answer && (
               <div className="mr-auto max-w-[85%] overflow-x-hidden break-words rounded-2xl rounded-bl-sm bg-card px-4 py-2.5 text-sm leading-relaxed [&_h1]:mb-2 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mb-1.5 [&_h2]:mt-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:mb-1 [&_h3]:mt-2 [&_h3]:text-sm [&_h3]:font-medium [&_li]:my-0.5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p+p]:mt-2 [&_pre]:overflow-x-auto [&_strong]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5">
-                <ReactMarkdown>{t.answer}</ReactMarkdown>
+                <Suspense fallback={<p className="whitespace-pre-wrap">{t.answer}</p>}>
+                  <ReactMarkdown>{t.answer}</ReactMarkdown>
+                </Suspense>
               </div>
             )}
             {t.error && (
@@ -198,24 +287,17 @@ function ChatPage() {
           </div>
         ))}
 
-        {busy && (
-          <div className="space-y-3">
-            <div className="flex items-end gap-2.5">
-              <ChefMascot animate className="h-10 w-10 shrink-0" />
-              <MiaThoughtBubble
-                variant="thinking"
-                tone="surface"
-                tailPosition="left"
-                thinkingLabel="Mia is thinking..."
-                role="status"
-                ariaLive="polite"
-                className="max-w-xs"
-              />
-            </div>
-            <MiaLoadingCard
-              active={busy}
-              delayMs={120_000}
-              label="Mia is whisking together your answer..."
+        {waitingForFirstToken && (
+          <div className="flex items-end gap-2.5">
+            <ChefMascot animate className="h-10 w-10 shrink-0" />
+            <MiaThoughtBubble
+              variant="thinking"
+              tone="surface"
+              tailPosition="left"
+              thinkingLabel="Mia is thinking..."
+              role="status"
+              ariaLive="polite"
+              className="max-w-xs"
             />
           </div>
         )}
@@ -233,9 +315,93 @@ function ChatPage() {
         />
       </div>
       <p className="mt-2 flex items-center justify-center gap-1 text-center text-xs text-muted-foreground">
-        <Sparkles className="h-3 w-3" /> AI answers can be wrong. Use judgment for allergies and
-        food safety.
+        <Sparkles className="h-3 w-3" /> AI answers can be wrong. Always verify allergens before
+        cooking.
       </p>
+
+      {/* Conversation History Dialog */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-h-[82dvh] overflow-y-auto rounded-2xl border-border bg-card text-foreground">
+          <DialogHeader>
+            <DialogTitle className="font-medium">Saved Mia Conversations</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Resume a previous kitchen chat or start a fresh thread.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                newConversation();
+                setHistoryOpen(false);
+              }}
+              className="w-full justify-start rounded-xl border-border"
+            >
+              <MessageSquarePlus className="mr-2 h-4 w-4 text-primary" />
+              Start a new conversation
+            </Button>
+
+            {historyLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : conversations.length === 0 ? (
+              <p className="py-6 text-center text-xs text-muted-foreground">
+                No previous conversations saved yet. Your chats automatically save to your account.
+              </p>
+            ) : (
+              conversations.map((conv) => {
+                const isCurrent = conv.id === activeConversationId;
+                return (
+                  <div
+                    key={conv.id}
+                    className={`flex items-center justify-between gap-2 rounded-xl border p-3 ${
+                      isCurrent ? "border-primary bg-primary/5" : "border-border bg-secondary/40"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void openConversation(conv.id);
+                        setHistoryOpen(false);
+                      }}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <p className="truncate text-sm font-medium text-foreground">{conv.title}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
+                        {conv.turns.length} turn{conv.turns.length === 1 ? "" : "s"} ·{" "}
+                        {new Date(conv.updated_at).toLocaleDateString()}
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Delete conversation ${conv.title}`}
+                      disabled={deletingId === conv.id}
+                      onClick={async () => {
+                        setDeletingId(conv.id);
+                        try {
+                          await removeConversation(conv.id);
+                          toast.success("Conversation deleted");
+                        } finally {
+                          setDeletingId(null);
+                        }
+                      }}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      {deletingId === conv.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Full-Screen Voice Mode */}
       {voiceOpen && (

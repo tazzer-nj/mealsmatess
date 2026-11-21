@@ -1,7 +1,7 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { CURATED_RECIPES, findCuratedRecipeBySlug } from "@/lib/curated-recipes";
-import { requirePremium } from "@/lib/premium-middleware";
+import { requireFirebaseAuth } from "@/lib/firebase-auth-middleware";
 import {
   filterRecipeCatalog,
   mergeRecipeCatalog,
@@ -9,7 +9,9 @@ import {
   type CatalogRecipe,
 } from "@/lib/recipe-catalog";
 
-const CATALOG_CACHE_TTL_MS = 15_000;
+const loadPremiumService = createServerOnlyFn(() => import("@/server/revenuecat"));
+
+const CATALOG_CACHE_TTL_MS = 120_000;
 let cachedCatalog: { expiresAt: number; recipes: CatalogRecipe[] } | null = null;
 let inFlightCatalogRead: Promise<CatalogRecipe[]> | null = null;
 
@@ -70,7 +72,7 @@ async function loadMergedRecipeCatalog(firebase: {
 }
 
 export const listRecipeCatalog = createServerFn({ method: "GET" })
-  .middleware([requirePremium])
+  .middleware([requireFirebaseAuth])
   .validator((input: unknown) =>
     z
       .object({
@@ -81,15 +83,29 @@ export const listRecipeCatalog = createServerFn({ method: "GET" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    const { verifyAccountAccess } = await loadPremiumService();
+    const access = await verifyAccountAccess(context.userId, undefined, context.claims).catch(
+      () => ({ isPremium: false }),
+    );
+    if (!access.isPremium) {
+      return filterRecipeCatalog(CURATED_RECIPES, data);
+    }
     const recipes = await loadMergedRecipeCatalog(context.firebase);
     // Apply matching before the result limit, including older rows without created_at.
     return filterRecipeCatalog(recipes, data);
   });
 
 export const getRecipeCatalogEntry = createServerFn({ method: "GET" })
-  .middleware([requirePremium])
+  .middleware([requireFirebaseAuth])
   .validator((input: unknown) => z.object({ slug: z.string().trim().min(1).max(300) }).parse(input))
   .handler(async ({ data, context }) => {
+    const { verifyAccountAccess } = await loadPremiumService();
+    const access = await verifyAccountAccess(context.userId, undefined, context.claims).catch(
+      () => ({ isPremium: false }),
+    );
+    if (!access.isPremium) {
+      return findCuratedRecipeBySlug(data.slug);
+    }
     try {
       const { data: row, error } = await context.firebase
         .from("recipes")

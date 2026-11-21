@@ -288,3 +288,69 @@ export const cancelAdminAnnouncement = createServerFn({ method: "POST" })
     const { cancelScheduledAnnouncement } = await import("@/server/notification-delivery");
     return cancelScheduledAnnouncement(data.id);
   });
+
+export const getTrialReminderPreference = createServerFn({ method: "GET" })
+  .middleware([requireFirebaseAuth])
+  .handler(async ({ context }) => {
+    const { getFirebaseAdminFirestore } = await loadFirebaseAdmin();
+    const snapshot = await getFirebaseAdminFirestore()
+      .collection("users")
+      .doc(context.userId)
+      .collection("notification_settings")
+      .doc("preferences")
+      .get();
+    const data = snapshot.data() ?? {};
+    return {
+      enabled: data["trialReminderEnabled"] === true,
+      planId: typeof data["trialReminderPlanId"] === "string" ? data["trialReminderPlanId"] : null,
+      remindAt: typeof data["trialReminderAt"] === "string" ? data["trialReminderAt"] : null,
+      channel:
+        typeof data["trialReminderChannel"] === "string" ? data["trialReminderChannel"] : null,
+    };
+  });
+
+export const saveTrialReminderPreference = createServerFn({ method: "POST" })
+  .middleware([requireFirebaseAuth])
+  .validator((value: unknown) =>
+    z
+      .object({
+        enabled: z.boolean(),
+        planId: z.string().max(120).nullable().optional(),
+        trialDays: z.number().int().min(0).max(90).optional().default(0),
+        channel: z.enum(["push", "in_app", "none"]).optional().default("in_app"),
+      })
+      .parse(value),
+  )
+  .handler(async ({ data, context }) => {
+    const { getFirebaseAdminFirestore } = await loadFirebaseAdmin();
+    const db = getFirebaseAdminFirestore();
+    const now = new Date();
+    const remindMs =
+      data.enabled && data.trialDays > 1
+        ? now.getTime() + (data.trialDays - 1) * 86400_000
+        : data.enabled && data.trialDays === 1
+          ? now.getTime() + 12 * 3600_000
+          : null;
+    const remindAt = remindMs ? new Date(remindMs).toISOString() : null;
+    await db
+      .collection("users")
+      .doc(context.userId)
+      .collection("notification_settings")
+      .doc("preferences")
+      .set(
+        {
+          trialReminderEnabled: data.enabled,
+          trialReminderPlanId: data.planId ?? null,
+          trialReminderAt: remindAt,
+          trialReminderChannel: data.enabled ? data.channel : "none",
+          trialReminderUpdatedAt: now.toISOString(),
+        },
+        { merge: true },
+      );
+    return {
+      enabled: data.enabled,
+      planId: data.planId ?? null,
+      remindAt,
+      channel: data.enabled ? data.channel : "none",
+    };
+  });

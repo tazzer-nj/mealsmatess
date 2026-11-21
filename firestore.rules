@@ -12,22 +12,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isVerifiedAdmin() {
-      return isSignedIn()
-        && request.auth.token.email_verified == true
-        && request.auth.token.email in ['tatendamkhwanazi6@gmail.com', 'ttmine60@gmail.com'];
-    }
-
     // Server-only RevenueCat verification lease; clients cannot mint or extend it.
     // premium_access/{uid}: source, entitlement, valid_until (Timestamp, at most 5 minutes).
     function hasPremium() {
-      return isVerifiedAdmin()
-        || (isSignedIn()
-          && exists(/databases/$(database)/documents/premium_access/$(request.auth.uid))
-          && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.source == 'revenuecat'
-          && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.entitlement == 'premium'
-          && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.valid_until is timestamp
-          && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.valid_until > request.time);
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/premium_access/$(request.auth.uid))
+        && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.source == 'revenuecat'
+        && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.entitlement == 'premium'
+        && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.valid_until is timestamp
+        && get(/databases/$(database)/documents/premium_access/$(request.auth.uid)).data.valid_until > request.time;
     }
 
     function isOwner(uid) {
@@ -35,13 +28,14 @@ service cloud.firestore {
     }
 
     function validOptionalString(data, field, maxLength) {
-      return !(field in data) || data[field] == null || (data[field] is string && data[field].size() <= maxLength);
+      return !(field in data) || (data[field] is string && data[field].size() <= maxLength);
     }
 
     function validUserProfile(uid, data) {
       return data.keys().hasOnly([
           'id', 'email', 'displayName', 'display_name', 'name', 'photoURL', 'goal', 'createdAt',
           'onboarding_completed', 'onboarding_step', 'household_size', 'preferences',
+          'free_mode_entered', 'free_mode_entered_at',
           'currency', 'locale', 'theme', 'theme_updated_at', 'isAdmin', 'role', 'updatedAt', 'updated_at'
         ])
         && data.id == uid
@@ -52,6 +46,8 @@ service cloud.firestore {
         && validOptionalString(data, 'photoURL', 2048)
         && (!('goal' in data) || data.goal == null || (data.goal is string && data.goal.size() <= 80))
         && validOptionalString(data, 'createdAt', 40)
+        && (!('free_mode_entered' in data) || data.free_mode_entered is bool)
+        && (!('free_mode_entered_at' in data) || data.free_mode_entered_at == null || validTimestampString(data, 'free_mode_entered_at'))
         && validOptionalString(data, 'currency', 3)
         && validOptionalString(data, 'locale', 12)
         && validOptionalString(data, 'theme', 40)
@@ -94,11 +90,12 @@ service cloud.firestore {
             && validOptionalString(data, 'source', 40)
             && validTimestampString(data, 'created_at'))
           || (collectionName == 'mealPlans'
-            && data.keys().hasOnly(['id', 'user_id', 'plan_date', 'meal_type', 'recipe_id', 'custom_name', 'created_at'])
+            && data.keys().hasOnly(['id', 'user_id', 'plan_date', 'meal_type', 'recipe_id', 'custom_name', 'servings', 'created_at'])
             && data.plan_date is string && data.plan_date.size() == 10
             && data.meal_type is string && data.meal_type.size() <= 40
             && validOptionalString(data, 'recipe_id', 128)
             && validOptionalString(data, 'custom_name', 160)
+            && (!('servings' in data) || (data.servings is number && data.servings >= 1 && data.servings <= 50))
             && validTimestampString(data, 'created_at'))
           || (collectionName == 'nutritionLogs'
             && data.keys().hasOnly(['id', 'user_id', 'name', 'meal_type', 'logged_at', 'calories', 'protein_g', 'carbs_g', 'fat_g', 'servings', 'created_at'])
@@ -115,14 +112,12 @@ service cloud.firestore {
     }
 
     function safeOwnedItemUpdate(collectionName) {
-      return (
-        (collectionName == 'grocery'
+      return (collectionName == 'grocery'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'checked', 'category', 'quantity']))
         || (collectionName == 'pantry'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'quantity', 'category', 'expires_at', 'source']))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'quantity', 'category', 'expires_at']))
         || (collectionName == 'mealPlans'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plan_date', 'meal_type', 'recipe_id', 'custom_name']))
-      );
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plan_date', 'meal_type', 'recipe_id', 'custom_name', 'servings']));
     }
 
     function isCustomerOrder(orderId) {
@@ -153,6 +148,32 @@ service cloud.firestore {
       match /notifications/{notificationId} {
         allow get, list: if isOwner(uid);
         allow create, update, delete: if false;
+      }
+
+      match /conversations/{conversationId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && request.resource.data.id == conversationId
+          && request.resource.data.user_id == uid
+          && request.resource.data.keys().hasOnly(['id', 'user_id', 'title', 'turns', 'recipeContext', 'created_at', 'updated_at'])
+          && request.resource.data.title is string && request.resource.data.title.size() <= 160
+          && request.resource.data.turns is list && request.resource.data.turns.size() <= 100
+          && validTimestampString(request.resource.data, 'created_at')
+          && validTimestampString(request.resource.data, 'updated_at');
+        allow delete: if isOwner(uid);
+      }
+
+      match /plannerTemplates/{templateId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && request.resource.data.id == templateId
+          && request.resource.data.user_id == uid
+          && request.resource.data.keys().hasOnly(['id', 'user_id', 'name', 'slots', 'created_at', 'updated_at'])
+          && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 120
+          && request.resource.data.slots is list && request.resource.data.slots.size() <= 40
+          && validTimestampString(request.resource.data, 'created_at')
+          && validTimestampString(request.resource.data, 'updated_at');
+        allow delete: if isOwner(uid);
       }
 
       match /{collectionName}/{itemId} {
@@ -215,6 +236,16 @@ service cloud.firestore {
     match /user_roles/{roleId} {
       allow get, list: if isSignedIn() && resource.data.user_id == request.auth.uid;
       allow write: if false;
+    }
+    match /feedback_reports/{reportId} {
+      allow get, list: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.id == reportId
+        && request.resource.data.status == 'received'
+        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 160
+        && request.resource.data.description is string && request.resource.data.description.size() > 0 && request.resource.data.description.size() <= 2000;
+      allow update, delete: if false;
     }
   }
 }

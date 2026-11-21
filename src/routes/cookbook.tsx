@@ -20,6 +20,8 @@ import {
 import { toast } from "sonner";
 import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
+import { usePremium } from "@/hooks/use-premium";
+import { PremiumFeatureLock } from "@/components/premium-feature-lock";
 import { myFavoritesQuery } from "@/lib/queries";
 import {
   importRecipeFromUrl,
@@ -84,6 +86,7 @@ type CookbookItem = {
 
 function CookbookPage() {
   const { user, loading } = useSession();
+  const { isPremium } = usePremium();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -98,7 +101,7 @@ function CookbookPage() {
 
   const { data: favorites, isLoading } = useQuery({
     ...myFavoritesQuery(),
-    enabled: !!user,
+    enabled: !!user && isPremium,
   });
 
   const items: CookbookItem[] = useMemo(() => {
@@ -111,7 +114,7 @@ function CookbookPage() {
   // Also pull user's own imports even if unfavorited
   const { data: owned } = useQuery({
     queryKey: ["cookbook", "owned", user?.id],
-    enabled: !!user,
+    enabled: !!user && isPremium,
     queryFn: async () => {
       const { data, error } = await firebaseData
         .from("recipes")
@@ -264,6 +267,15 @@ function CookbookPage() {
           Sign in
         </Button>
       </main>
+    );
+  }
+
+  if (user && !isPremium) {
+    return (
+      <PremiumFeatureLock
+        title="Personal Cookbook & Video Imports"
+        description="Save unlimited recipes and turn TikTok, Instagram, and YouTube cooking videos into step-by-step recipes with MealMate Premium."
+      />
     );
   }
 

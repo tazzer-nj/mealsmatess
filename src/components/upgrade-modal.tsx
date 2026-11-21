@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { Link } from "@tanstack/react-router";
 import { Crown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MIA_FREE_LIMIT_MESSAGE } from "@/lib/freemium";
 
 type Ctx = { open: (reason?: string) => void; close: () => void };
 const UpgradeCtx = createContext<Ctx | null>(null);
@@ -35,6 +36,10 @@ export function useUpgradeModal() {
   return ctx;
 }
 
+export function useOptionalUpgradeModal() {
+  return useContext(UpgradeCtx);
+}
+
 export function useAutoPaywall(reason?: string, when = true) {
   const { open } = useUpgradeModal();
   useEffect(() => {
@@ -48,6 +53,8 @@ export function useAutoPaywall(reason?: string, when = true) {
 
 /** An in-app prompt; subscription access itself is enforced by ConsumerAccessGate. */
 function UpgradeSheet({ reason, onClose }: { reason?: string; onClose: () => void }) {
+  const isMiaFreeLimit = reason === MIA_FREE_LIMIT_MESSAGE;
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -76,7 +83,7 @@ function UpgradeSheet({ reason, onClose }: { reason?: string; onClose: () => voi
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-secondary text-muted-foreground transition hover:text-foreground"
+          className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-secondary text-muted-foreground transition hover:text-foreground"
         >
           <X className="h-5 w-5" />
         </button>
@@ -95,11 +102,13 @@ function UpgradeSheet({ reason, onClose }: { reason?: string; onClose: () => voi
               "Cook smarter with Mia: personalised recipes, meal planning, food scanning and nutrition insights."}
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            View available plans, prices and trial eligibility on the subscription page.
+            {isMiaFreeLimit
+              ? "Enjoy Dining anytime, or unlock unlimited Mia AI, meal planning, and pantry tools."
+              : "View available plans, prices and trial eligibility on the subscription page."}
           </p>
           <Link to="/premium" onClick={onClose} className="mt-6 block">
             <Button className="h-12 w-full rounded-xl bg-foreground text-background hover:opacity-90">
-              View subscription plans
+              {isMiaFreeLimit ? "Start 3-day free trial" : "View subscription plans"}
             </Button>
           </Link>
         </div>

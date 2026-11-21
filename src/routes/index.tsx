@@ -1,6 +1,6 @@
 import { HubHome } from "@/components/hub/hub-home";
+import { loadRecipeSearchImages } from "@/lib/recipe-search-images";
 import { RecipeImage } from "@/components/recipe-image";
-import { searchOrGenerateRecipe, toastRecipeGenerationError } from "@/lib/recipe-search";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -27,15 +27,21 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
-import { trendingRecipesQuery, southAfricanFavoritesQuery, myFavoritesQuery } from "@/lib/queries";
+import {
+  trendingRecipesQuery,
+  recipesByCategoryQuery,
+  southAfricanFavoritesQuery,
+  myFavoritesQuery,
+  type RecipeRecord,
+} from "@/lib/queries";
 import { surpriseMe } from "@/lib/ai.functions";
 import { useSession } from "@/hooks/use-session";
+import { usePremium } from "@/hooks/use-premium";
+import { useOptionalUpgradeModal } from "@/components/upgrade-modal";
 import { firebaseData } from "@/lib/firebase-data";
 import { waitForFirebaseAuth } from "@/lib/firebase";
 import { getContinueCooking } from "@/lib/continue-cooking";
 import { TrendingCard } from "@/components/recipe-card";
-import { ChefMascot } from "@/components/chef-mascot";
-import { MotionReveal, MotionStagger } from "@/components/motion";
 import { MiaLoadingCard } from "@/components/mia-loading-card";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { XpChip } from "@/components/xp-chip";
@@ -63,7 +69,6 @@ export const Route = createFileRoute("/")({
     await Promise.all([
       context.queryClient.ensureQueryData(trendingRecipesQuery()),
       context.queryClient.ensureQueryData(southAfricanFavoritesQuery()),
-      context.queryClient.ensureQueryData(myFavoritesQuery()),
     ]).catch(() => undefined);
   },
   component: HomeSurface,
@@ -75,54 +80,14 @@ function HomeSurface() {
 }
 
 const CATEGORY_PILLS = [
-  {
-    label: "Breakfast",
-    icon: Coffee,
-    search: { c: "Breakfast" },
-    badge: "bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300",
-  },
-  {
-    label: "Lunch",
-    icon: Utensils,
-    search: { c: "Lunch" },
-    badge: "bg-orange-100 text-orange-700 dark:bg-orange-950/70 dark:text-orange-300",
-  },
-  {
-    label: "Dinner",
-    icon: Flame,
-    search: { c: "Dinner" },
-    badge: "bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300",
-  },
-  {
-    label: "Dessert",
-    icon: Cake,
-    search: { c: "Dessert" },
-    badge: "bg-violet-100 text-violet-700 dark:bg-violet-950/70 dark:text-violet-300",
-  },
-  {
-    label: "Snacks",
-    icon: Cookie,
-    search: { c: "Snacks" },
-    badge: "bg-pink-100 text-pink-700 dark:bg-pink-950/70 dark:text-pink-300",
-  },
-  {
-    label: "South African",
-    icon: Compass,
-    search: { c: "South African Favorites" },
-    badge: "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300",
-  },
-  {
-    label: "Healthy",
-    icon: Salad,
-    search: { c: "Healthy Meals" },
-    badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300",
-  },
-  {
-    label: "Vegan",
-    icon: Leaf,
-    search: { c: "Vegan" },
-    badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300",
-  },
+  { label: "Breakfast", icon: Coffee, search: { c: "Breakfast" } },
+  { label: "Lunch", icon: Utensils, search: { c: "Lunch" } },
+  { label: "Dinner", icon: Flame, search: { c: "Dinner" } },
+  { label: "Dessert", icon: Cake, search: { c: "Dessert" } },
+  { label: "Snacks", icon: Cookie, search: { c: "Snacks" } },
+  { label: "South African", icon: Compass, search: { c: "South African Favorites" } },
+  { label: "Healthy", icon: Salad, search: { c: "Healthy Meals" } },
+  { label: "Vegan", icon: Leaf, search: { c: "Vegan" } },
 ] as const;
 
 function greeting() {
@@ -136,6 +101,8 @@ function Index() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, loading: sessionLoading } = useSession();
+  const { isPremium } = usePremium();
+  const upgradeModal = useOptionalUpgradeModal();
   const { preferences, hasPreferences } = usePreferences();
   const {
     data: trendingRaw = [],
@@ -149,7 +116,7 @@ function Index() {
     error: southAfricanError,
   } = useQuery({ ...southAfricanFavoritesQuery(), enabled: !!user });
 
-  const { data: favorites } = useQuery({ ...myFavoritesQuery(), enabled: !!user });
+  const { data: favorites } = useQuery({ ...myFavoritesQuery(), enabled: !!user && isPremium });
   const favoriteIds = new Set(favorites?.map((f) => f.recipe_id) ?? []);
 
   const { data: continueCooking } = useQuery({
@@ -171,42 +138,33 @@ function Index() {
 
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<"search" | "surprise" | null>(null);
-  const [generatingQuery, setGeneratingQuery] = useState<string | null>(null);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const q = query.trim();
-    if (!q || busy !== null) return;
+    if (!q) return;
     setBusy("search");
-    setGeneratingQuery(null);
-    let startedGeneration = false;
     try {
-      const result = await searchOrGenerateRecipe({
-        query: q,
-        queryClient,
-        onGenerating: (term) => {
-          startedGeneration = true;
-          setGeneratingQuery(term);
-        },
-      });
-      if (result.kind === "generated") {
-        await navigate({ to: "/recipe/$slug", params: { slug: result.slug } });
-      } else {
-        await navigate({ to: "/recipes", search: { q } });
-      }
-    } catch (err) {
-      if (startedGeneration) {
-        toastRecipeGenerationError(err);
-      }
+      const matches = await queryClient.fetchQuery(recipesByCategoryQuery(undefined, q));
+      if (isPremium) void loadRecipeSearchImages(matches, queryClient);
+      await navigate({ to: "/recipes", search: { q } });
+    } catch {
       await navigate({ to: "/recipes", search: { q } });
     } finally {
-      setGeneratingQuery(null);
       setBusy(null);
     }
   }
 
   async function handleSurpriseMe() {
     if (busy) return;
+    if (!isPremium) {
+      if (upgradeModal) {
+        upgradeModal.open("Start your 3-day free trial to generate unlimited surprise AI recipes.");
+      } else {
+        await navigate({ to: "/premium" });
+      }
+      return;
+    }
     setBusy("surprise");
     try {
       const res = await surpriseMe();
@@ -229,24 +187,28 @@ function Index() {
       await navigate({ to: "/auth" });
       return;
     }
+    if (!isPremium) {
+      if (upgradeModal) {
+        upgradeModal.open("Start your 3-day free trial to save favorite recipes.");
+      } else {
+        await navigate({ to: "/premium" });
+      }
+      return;
+    }
     const isFav = favoriteIds.has(recipeId);
     try {
       if (isFav) {
-        const { error } = await firebaseData
+        await firebaseData
           .from("favorites")
           .delete()
           .eq("recipe_id", recipeId)
           .eq("user_id", user.id);
-        if (error) throw error;
         toast.success("Removed from favorites");
       } else {
-        const { error } = await firebaseData
-          .from("favorites")
-          .insert({ recipe_id: recipeId, user_id: user.id });
-        if (error) throw error;
+        await firebaseData.from("favorites").insert({ recipe_id: recipeId, user_id: user.id });
         toast.success("Added to favorites");
       }
-      await queryClient.invalidateQueries({ queryKey: ["favorites"] });
+      await queryClient.invalidateQueries({ queryKey: ["favorites", user.id] });
     } catch {
       toast.error("Could not update favorites.");
     }
@@ -257,10 +219,9 @@ function Index() {
   return (
     <main className="flex min-h-full flex-col pb-10">
       {/* Greeting header */}
-      <MotionReveal className="flex items-center justify-between px-4 pt-6">
+      <div className="flex items-center justify-between px-4 pt-6">
         <div>
-          <p className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            <span className="live-dot-pulse inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             {greeting()}
           </p>
           <h1 className="font-display text-4xl leading-tight">Hi {firstName}</h1>
@@ -270,21 +231,13 @@ function Index() {
           <ThemeToggle />
           <Link
             to="/profile"
-            className="tap-spring flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-border bg-secondary text-secondary-foreground ring-2 ring-primary/15 transition-all duration-200 hover:scale-105 hover:ring-primary/40"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition-all duration-200 hover:scale-105 hover:bg-secondary/80 active:scale-95"
             aria-label="Profile"
           >
-            {user?.photoURL ? (
-              <img
-                src={user.photoURL}
-                alt={user.displayName || "Profile"}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <UserIcon className="h-4 w-4" />
-            )}
+            <UserIcon className="h-4 w-4" />
           </Link>
         </div>
-      </MotionReveal>
+      </div>
 
       {/* Search */}
       <form onSubmit={handleSearch} className="px-4 pt-6">
@@ -310,14 +263,6 @@ function Index() {
             )}
           </button>
         </div>
-        {generatingQuery && (
-          <div className="mt-3">
-            <MiaLoadingCard
-              delayMs={0}
-              label={`Mia is creating a recipe for "${generatingQuery}"...`}
-            />
-          </div>
-        )}
       </form>
 
       {/* Category chips */}
@@ -330,13 +275,9 @@ function Index() {
                 key={c.label}
                 to="/recipes"
                 search={c.search}
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-card py-1.5 pl-2 pr-3.5 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted hover:shadow-sm active:scale-95"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted hover:shadow-sm active:scale-95"
               >
-                <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-full ${c.badge}`}
-                >
-                  <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                </span>
+                <Icon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
                 {c.label}
               </Link>
             );
@@ -352,10 +293,10 @@ function Index() {
       </section>
 
       {/* Hero cards: AI Kitchen Scan + Surprise Me */}
-      <MotionReveal delay={40} className="grid grid-cols-2 gap-3 px-4 pt-6">
+      <section className="grid grid-cols-2 gap-3 px-4 pt-6">
         <Link
           to="/scan"
-          className="recipe-card-lift tap-spring group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-ink p-5 text-background"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl bg-ink p-5 text-background"
         >
           <div>
             <p className="text-[11px] font-medium uppercase tracking-widest text-background/60">
@@ -366,10 +307,10 @@ function Index() {
             </h2>
           </div>
           <div className="mt-6 flex items-center justify-between">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-background text-foreground transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-background text-foreground transition-transform group-hover:scale-105">
               <Camera className="h-4 w-4" />
             </span>
-            <span className="text-xs font-semibold text-background/80 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:underline">
+            <span className="text-xs font-semibold text-background/80 group-hover:underline">
               Scan items &rarr;
             </span>
           </div>
@@ -379,31 +320,27 @@ function Index() {
           type="button"
           disabled={busy !== null}
           onClick={handleSurpriseMe}
-          className="recipe-card-lift tap-spring group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-border bg-card p-5 text-left text-foreground transition-all hover:border-primary/40"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-border bg-card p-5 text-left text-foreground transition-all hover:border-primary/40 hover:shadow-sm"
         >
-          <ChefMascot
-            animate
-            className="pointer-events-none absolute -bottom-3 -right-3 h-20 w-20 opacity-20 transition-all duration-300 group-hover:scale-110 group-hover:opacity-35"
-          />
           <div>
             <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
               Chef Mia
             </p>
             <h2 className="mt-2 font-display text-2xl leading-tight">Surprise me with a recipe</h2>
           </div>
-          <span className="mia-ai-pill mt-6 inline-flex w-fit items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold">
+          <span className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
             {busy === "surprise" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Sparkles className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
+              <Sparkles className="h-3.5 w-3.5" />
             )}
             Surprise me
           </span>
         </button>
-      </MotionReveal>
+      </section>
 
       {/* Quick actions */}
-      <MotionStagger className="grid grid-cols-4 gap-2 px-4 pt-6">
+      <section className="grid grid-cols-4 gap-2 px-4 pt-6">
         {[
           {
             to: "/coach",
@@ -433,18 +370,16 @@ function Index() {
           <Link
             key={a.to}
             to={a.to}
-            className="recipe-card-lift tap-spring group flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-2 py-4 text-center transition-colors hover:border-primary/30 hover:bg-muted/70"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-2 py-4 text-center transition-colors hover:bg-muted"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-foreground transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:scale-110 group-hover:text-primary">
-              <a.icon className="h-4 w-4" />
-            </span>
+            <a.icon className="h-5 w-5" />
             <span className="text-xs font-semibold leading-tight">{a.label}</span>
             <span className="hidden text-[10px] leading-tight text-muted-foreground sm:block">
               {a.sub}
             </span>
           </Link>
         ))}
-      </MotionStagger>
+      </section>
 
       {/* Plan status + premium features */}
       <section className="px-4 pt-6">
@@ -539,14 +474,10 @@ function Index() {
                 key={r.id}
                 to="/recipe/$slug"
                 params={{ slug: r.slug }}
-                className="recipe-card-lift tap-spring group w-24 flex-shrink-0 text-center"
+                className="w-24 flex-shrink-0 text-center"
               >
-                <div className="aspect-square w-24 overflow-hidden rounded-2xl bg-muted shadow-xs">
-                  <RecipeImage
-                    recipe={r}
-                    size="thumb"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
+                <div className="aspect-square w-24 overflow-hidden rounded-2xl bg-muted">
+                  <RecipeImage recipe={r} size="thumb" className="h-full w-full object-cover" />
                 </div>
                 <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-tight">{r.name}</p>
               </Link>
@@ -581,20 +512,20 @@ function Index() {
           <Link
             to="/recipe/$slug"
             params={{ slug: continueCooking.slug }}
-            className="recipe-card-lift tap-spring group flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
           >
             <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-muted">
               <RecipeImage
                 recipe={continueCooking}
                 size="thumb"
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                className="h-full w-full object-cover"
               />
             </div>
             <div className="flex-1">
               <p className="font-display text-lg leading-tight">{continueCooking.name}</p>
               <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-700"
+                  className="h-full rounded-full bg-primary"
                   style={{ width: `${continueCooking.progress}%` }}
                 />
               </div>
@@ -606,7 +537,7 @@ function Index() {
                 {continueCooking.calories && <span>{continueCooking.calories} cal</span>}
               </div>
             </div>
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-ink text-background transition-transform duration-200 group-hover:scale-110">
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-ink text-background">
               <Play className="h-3.5 w-3.5 fill-current" />
             </span>
           </Link>

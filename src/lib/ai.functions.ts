@@ -1,5 +1,5 @@
 import { aiProfile } from "@/lib/ai-profile";
-import { preferenceSummary } from "@/lib/preferences";
+import { evaluateRecipeAllergens, preferenceSummary } from "@/lib/preferences";
 import { createServerFn } from "@tanstack/react-start";
 import { requireAiCredit } from "@/lib/ai-credits.server";
 import {
@@ -78,7 +78,7 @@ async function callModel(prompt: string): Promise<GeneratedRecipe> {
     instructions: SYSTEM,
     prompt,
     schema: RecipeSchema,
-    timeoutMs: 25_000,
+    timeoutMs: 30_000,
   });
 }
 
@@ -109,7 +109,6 @@ function toDbRecipe(r: GeneratedRecipe, userId: string | null) {
     steps: r.steps ?? [],
     fun_fact: r.fun_fact ?? null,
     created_by: userId,
-    created_at: new Date().toISOString(),
   };
 }
 
@@ -174,66 +173,50 @@ export const surpriseMe = createServerFn({ method: "POST" })
 // Search / generate a specific recipe — signed-in users only, rate limited.
 export const generateRecipe = createServerFn({ method: "POST" })
   .middleware([requirePremium])
-  .validator((v: unknown) =>
-    z
-      .object({
-        query: z.string().trim().min(1).max(200),
-        force: z.boolean().optional(),
-        forceNew: z.boolean().optional(),
-        excludeNames: z.array(z.string().trim().min(1).max(120)).max(10).optional(),
-        twist: z.string().trim().min(1).max(120).optional(),
-      })
-      .parse(v),
-  )
+  .validator((v: unknown) => z.object({ query: z.string().trim().min(1).max(200) }).parse(v))
   .handler(async ({ data, context }) => {
-    const excludeNames = data.excludeNames ?? [];
-    const bypassCache = Boolean(
-      data.force || data.forceNew || data.twist || excludeNames.length > 0,
-    );
     const requestKey = aiRequestFingerprint(
       context.userId,
       "recipe.generate",
-      `${data.query.toLowerCase()}|${data.twist ?? ""}|${bypassCache ? Date.now() : "cached"}`,
+      data.query.toLowerCase(),
     );
     return deduplicateAiRequest(requestKey, async () => {
       await enforceRateLimit("ai_generate", context.userId, 10);
       const { firebaseAdmin } = await loadFirebaseAdmin();
       const t0 = Date.now();
       try {
-        if (!bypassCache) {
-          const { data: exact } = await firebaseAdmin
-            .from("recipes")
-            .select("id,slug,name")
-            .ilike("name", data.query)
-            .limit(1);
-          if (exact && exact.length > 0) {
-            void trackEvent({
-              user_id: context.userId,
-              kind: "ai",
-              name: "ai.generate_recipe",
-              latency_ms: Date.now() - t0,
-              success: true,
-              metadata: { query: data.query, cached: true },
-            });
-            return { slug: exact[0]?.slug ?? "", id: exact[0]?.id ?? null, cached: true };
-          }
+        const { data: exact } = await firebaseAdmin
+          .from("recipes")
+          .select("id,slug,name")
+          .ilike("name", data.query)
+          .limit(1);
+        if (exact && exact.length > 0) {
+          void trackEvent({
+            user_id: context.userId,
+            kind: "ai",
+            name: "ai.generate_recipe",
+            latency_ms: Date.now() - t0,
+            success: true,
+            metadata: { query: data.query, cached: true },
+          });
+          return { slug: exact[0]?.slug ?? "", id: exact[0]?.id ?? null, cached: true };
+        }
 
-          const { data: fuzzy } = await firebaseAdmin
-            .from("recipes")
-            .select("id,slug,name")
-            .ilike("name", `%${data.query}%`)
-            .limit(1);
-          if (fuzzy && fuzzy.length > 0) {
-            void trackEvent({
-              user_id: context.userId,
-              kind: "ai",
-              name: "ai.generate_recipe",
-              latency_ms: Date.now() - t0,
-              success: true,
-              metadata: { query: data.query, cached: true },
-            });
-            return { slug: fuzzy[0]?.slug ?? "", id: fuzzy[0]?.id ?? null, cached: true };
-          }
+        const { data: fuzzy } = await firebaseAdmin
+          .from("recipes")
+          .select("id,slug,name")
+          .ilike("name", `%${data.query}%`)
+          .limit(1);
+        if (fuzzy && fuzzy.length > 0) {
+          void trackEvent({
+            user_id: context.userId,
+            kind: "ai",
+            name: "ai.generate_recipe",
+            latency_ms: Date.now() - t0,
+            success: true,
+            metadata: { query: data.query, cached: true },
+          });
+          return { slug: fuzzy[0]?.slug ?? "", id: fuzzy[0]?.id ?? null, cached: true };
         }
 
         await requireAiCredit(context.userId);
@@ -248,37 +231,20 @@ export const generateRecipe = createServerFn({ method: "POST" })
         const recipe = await callModel(
           [
             `Create a real, authentic recipe for: "${data.query}". If the dish exists in any culture, use the traditional version. Be specific and accurate.`,
-            data.twist
-              ? `Remix requirement (MUST follow): "${data.twist}". Adapt the ingredients, cooking method, and title to clearly reflect this twist.`
-              : "",
-            excludeNames.length > 0
-              ? `Do NOT repeat or closely duplicate these existing recipe titles: ${excludeNames.join(", ")}. Invent a distinct variation with a new title.`
-              : "",
             `Saved preferences: ${profile ? preferenceSummary(profile.preferences) : "none specified"}.`,
             `Dietary preferences: ${dietaryPreferences.join(", ") || "none specified"}.`,
             `Allergies that must be completely excluded: ${allergies.join(", ") || "none specified"}.`,
             "Use requested ingredients where possible, include practical quantities and at least four actionable steps.",
-          ]
-            .filter(Boolean)
-            .join("\n"),
+          ].join("\n"),
         );
-        const ingredientTokens = new Set(
-          recipe.ingredients
-            .flatMap((ingredient) => ingredient.name.toLowerCase().split(/[^a-z0-9]+/))
-            .filter(Boolean)
-            .map((word) => word.replace(/s$/, "")),
-        );
-        const allergyConflict = allergies.some((allergy) =>
-          allergy
-            .trim()
-            .toLowerCase()
-            .split(/[^a-z0-9]+/)
-            .filter((word) => word.length > 2)
-            .some((word) => ingredientTokens.has(word.replace(/s$/, ""))),
-        );
-        if (allergyConflict) {
+        const safety = evaluateRecipeAllergens(profile?.preferences, {
+          name: recipe.name,
+          description: recipe.description,
+          ingredients: recipe.ingredients,
+        });
+        if (!safety.safe) {
           throw new Error(
-            "The generated recipe conflicted with a saved allergy. Please try again.",
+            `The generated recipe conflicted with a saved allergy (${safety.matchedAllergens.join(", ")}). Please try again.`,
           );
         }
         const row = toDbRecipe(recipe, context.userId);

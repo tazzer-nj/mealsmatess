@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Crown, Check, Zap } from "lucide-react";
 import { usePremium } from "@/hooks/use-premium";
 import { useSession } from "@/hooks/use-session";
+import { readLocalFreeMode } from "@/lib/freemium";
 
 const PREMIUM_PERKS = [
   "Up to 100 Mia conversations & recipes a day (fair use)",
@@ -17,6 +18,7 @@ const PREMIUM_PERKS = [
 export function PlanStatusCard() {
   const { user } = useSession();
   const { isPremium, tier, trialActive, entitlement } = usePremium();
+  const isFreeMode = Boolean(user && !isPremium && readLocalFreeMode(user.id));
 
   if (!user) {
     return (
@@ -64,6 +66,27 @@ export function PlanStatusCard() {
           ))}
         </ul>
       </div>
+    );
+  }
+
+  if (isFreeMode) {
+    return (
+      <Link
+        to="/premium"
+        className="flex items-center justify-between gap-3 rounded-3xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"
+      >
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            MealMate Free
+          </p>
+          <p className="mt-0.5 font-display text-xl leading-tight text-foreground">
+            Dining unlocked · 2 free Mia chats
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
+          Start 3-day trial
+        </span>
+      </Link>
     );
   }
 

@@ -18,7 +18,7 @@ const OPTIONS: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
 ];
 
 export function ThemeToggle() {
-  const { mode, colorScheme, activeTheme, setMode } = useTheme();
+  const { mode, colorScheme, setMode } = useTheme();
   const { isPremium } = usePremium();
   const Icon = colorScheme === "dark" ? Moon : Sun;
 
@@ -38,9 +38,7 @@ export function ThemeToggle() {
       <DropdownMenuContent align="end" className="min-w-[10.5rem]">
         {OPTIONS.map((o) => {
           const O = o.icon;
-          const active =
-            mode === o.value ||
-            (o.value === "dark" && mode === "dark-premium" && activeTheme.premium);
+          const active = mode === o.value;
           return (
             <DropdownMenuItem
               key={o.value}
