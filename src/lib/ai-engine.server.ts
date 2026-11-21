@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { GoogleGenAI, type Content, type Part } from "@google/genai";
 import {
   createGateway,
   generateImage,
@@ -11,6 +12,7 @@ import {
 import { z } from "zod";
 
 export const DEFAULT_AI_TEXT_MODEL = "google/gemini-2.5-flash";
+export const DEFAULT_GEMINI_TEXT_MODEL = "gemini-4-hydrogen";
 export const DEFAULT_AI_IMAGE_MODEL = "openai/gpt-image-2";
 export const DEFAULT_AI_SPEECH_MODEL = "openai/gpt-4o-mini-tts";
 
@@ -52,35 +54,79 @@ function readLovableKey(): string {
   return (process.env["LOVABLE_API_KEY"] || process.env["LOVABLE_AI_API_KEY"] || "").trim();
 }
 
+function readGeminiKey(): string {
+  return (process.env["GEMINI_API_KEY"] || "").trim();
+}
+
 function usesLovableGateway() {
   return Boolean(readLovableKey());
 }
 
+function usesVercelGateway() {
+  return Boolean(
+    process.env["AI_GATEWAY_API_KEY"] ||
+    process.env["VERCEL_OIDC_TOKEN"] ||
+    process.env["VERCEL"] === "1",
+  );
+}
+
+function usesGeminiApi() {
+  return !usesLovableGateway() && !usesVercelGateway() && Boolean(readGeminiKey());
+}
+
+function activeTextModel(options?: Pick<AiRequestOptions, "model">) {
+  if (usesGeminiApi()) {
+    return options?.model && !options.model.includes("/")
+      ? options.model
+      : DEFAULT_GEMINI_TEXT_MODEL;
+  }
+  return options?.model ?? DEFAULT_AI_TEXT_MODEL;
+}
+
 export function getAiProviderConfiguration() {
   const lovable = usesLovableGateway();
-  const provider = lovable ? "Lovable AI Gateway" : "Vercel AI Gateway";
+  const vercel = !lovable && usesVercelGateway();
+  const gemini = !lovable && !vercel && usesGeminiApi();
+  const provider = lovable
+    ? "Lovable AI Gateway"
+    : vercel
+      ? "Vercel AI Gateway"
+      : gemini
+        ? "Google Gemini API"
+        : "Vercel AI Gateway";
   return {
     textProvider: provider,
-    textModel: DEFAULT_AI_TEXT_MODEL,
-    imageProvider: provider,
+    textModel: gemini ? DEFAULT_GEMINI_TEXT_MODEL : DEFAULT_AI_TEXT_MODEL,
+    imageProvider: gemini ? "Google Gemini API (requires paid key)" : provider,
     imageModel: DEFAULT_AI_IMAGE_MODEL,
     speechProvider: provider,
     speechModel: DEFAULT_AI_SPEECH_MODEL,
-    authentication: lovable ? "Server-only credentials" : "Server API key or Vercel OIDC",
-    configured:
-      lovable ||
-      Boolean(
-        process.env["AI_GATEWAY_API_KEY"] ||
-        process.env["VERCEL_OIDC_TOKEN"] ||
-        process.env["VERCEL"] === "1",
-      ),
+    authentication: lovable
+      ? "Server-only credentials"
+      : gemini
+        ? "Server-only GEMINI_API_KEY"
+        : "Server API key or Vercel OIDC",
+    configured: lovable || vercel || gemini,
   };
 }
 
 function vercelGateway() {
-  if (!getAiProviderConfiguration().configured) throw new AiProviderError("configuration_missing");
+  if (!usesVercelGateway()) throw new AiProviderError("configuration_missing");
   // The SDK handles Vercel's request-scoped OIDC token and local API keys.
   return createGateway();
+}
+
+function geminiClient(): GoogleGenAI {
+  const key = readGeminiKey();
+  if (!key) throw new AiProviderError("configuration_missing");
+  return new GoogleGenAI({
+    apiKey: key,
+    httpOptions: {
+      headers: {
+        "User-Agent": "aistudio-build",
+      },
+    },
+  });
 }
 
 function errorStatus(error: unknown): number | undefined {
@@ -96,22 +142,31 @@ function errorCategory(error: unknown): string {
   const name = error instanceof Error ? error.name : "UnknownError";
   const message = error instanceof Error ? error.message : "";
   const status = errorStatus(error);
-  if (/not configured|LOVABLE_API_KEY|AI_GATEWAY_API_KEY/i.test(message))
+  if (/not configured|LOVABLE_API_KEY|AI_GATEWAY_API_KEY|GEMINI_API_KEY/i.test(message))
     return "configuration_missing";
   if (/timeout|abort/i.test(name)) return "timeout";
   if (/credit|billing|payment/i.test(message) || status === 402) return "credits_unavailable";
-  if (status === 401 || status === 403 || /authentication/i.test(name)) return "authentication";
-  if (status === 429 || /rate.?limit/i.test(name)) return "rate_limited";
-  if (status && status >= 500) return "provider_unavailable";
+  if (
+    status === 401 ||
+    status === 403 ||
+    (status === 400 && /api[_ ]?key|permission|unauthorized/i.test(message)) ||
+    /authentication|API_KEY_INVALID|PERMISSION_DENIED/i.test(`${name} ${message}`)
+  )
+    return "authentication";
+  if (status === 429 || /rate.?limit|RESOURCE_EXHAUSTED/i.test(`${name} ${message}`))
+    return "rate_limited";
+  if (status === 404 || (status && status >= 500)) return "provider_unavailable";
   return "request_failed";
 }
 
 function publicError(category: string): Error {
   const messages: Record<string, string> = {
-    configuration_missing: "MealMate AI is not configured for this server runtime.",
+    configuration_missing:
+      "MealMate AI is not configured for this server runtime. Add GEMINI_API_KEY in Settings > Secrets.",
     timeout: "MealMate AI took too long to respond. Please try again.",
     credits_unavailable: "MealMate AI has no available credits for this request.",
-    authentication: "MealMate AI rejected its server credentials. Please check the provider setup.",
+    authentication:
+      "MealMate AI rejected its server credentials. Check your GEMINI_API_KEY in Settings > Secrets or provider setup.",
     rate_limited: "MealMate AI is busy right now. Please try again shortly.",
     provider_unavailable: "MealMate AI is temporarily unavailable. Please try again shortly.",
     request_failed: "MealMate AI could not complete that request. Please try again.",
@@ -264,6 +319,130 @@ async function lovableChat(options: AiRequestOptions, jsonMode = false): Promise
   return text.trim();
 }
 
+async function geminiImagePart(
+  image: unknown,
+  mediaType: string | undefined,
+  timeoutMs: number,
+): Promise<Part> {
+  const fallbackMime = mediaType && /^image\//i.test(mediaType) ? mediaType : "image/png";
+  if (image instanceof Uint8Array) {
+    return {
+      inlineData: {
+        mimeType: fallbackMime,
+        data: Buffer.from(image).toString("base64"),
+      },
+    };
+  }
+  if (image instanceof ArrayBuffer) {
+    return {
+      inlineData: {
+        mimeType: fallbackMime,
+        data: Buffer.from(new Uint8Array(image)).toString("base64"),
+      },
+    };
+  }
+  const source = image instanceof URL ? image.toString() : typeof image === "string" ? image : "";
+  if (!source) throw new AiProviderError("invalid_response");
+
+  const dataMatch = /^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=\r\n]+)$/i.exec(
+    source,
+  );
+  if (dataMatch?.[1] && dataMatch[2]) {
+    return {
+      inlineData: {
+        mimeType: dataMatch[1].toLowerCase(),
+        data: dataMatch[2].replace(/\s+/g, ""),
+      },
+    };
+  }
+
+  if (/^https?:\/\//i.test(source)) {
+    const fetched = await fetch(source, { signal: AbortSignal.timeout(timeoutMs) });
+    if (!fetched.ok) throw new AiProviderError("provider_unavailable", fetched.status);
+    const headerType = fetched.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+    return {
+      inlineData: {
+        mimeType: headerType && /^image\//i.test(headerType) ? headerType : fallbackMime,
+        data: Buffer.from(await fetched.arrayBuffer()).toString("base64"),
+      },
+    };
+  }
+
+  return {
+    inlineData: {
+      mimeType: fallbackMime,
+      data: source.replace(/\s+/g, ""),
+    },
+  };
+}
+
+async function geminiPayload(
+  options: AiRequestOptions,
+  timeoutMs: number,
+): Promise<{ contents: string | Content[]; systemInstruction?: string }> {
+  const systemParts: string[] = [];
+  if (options.instructions?.trim()) {
+    systemParts.push(options.instructions.trim());
+  }
+
+  if (!options.messages) {
+    return {
+      contents: options.prompt,
+      ...(systemParts.length > 0 ? { systemInstruction: systemParts.join("\n\n") } : {}),
+    };
+  }
+
+  const contents: Content[] = [];
+  for (const message of options.messages) {
+    if (message.role === "system") {
+      if (typeof message.content === "string" && message.content.trim()) {
+        systemParts.push(message.content.trim());
+      }
+      continue;
+    }
+
+    const role = message.role === "assistant" ? "model" : "user";
+    if (typeof message.content === "string") {
+      contents.push({ role, parts: [{ text: message.content }] });
+      continue;
+    }
+
+    const parts: Part[] = [];
+    for (const part of message.content) {
+      if (part.type === "text") {
+        parts.push({ text: part.text });
+      } else if (part.type === "image") {
+        parts.push(await geminiImagePart(part.image, part.mediaType, timeoutMs));
+      } else {
+        throw new AiProviderError("invalid_response");
+      }
+    }
+    contents.push({ role, parts });
+  }
+
+  return {
+    contents: contents.length > 0 ? contents : [{ role: "user", parts: [{ text: "" }] }],
+    ...(systemParts.length > 0 ? { systemInstruction: systemParts.join("\n\n") } : {}),
+  };
+}
+
+async function geminiChat(options: AiRequestOptions, jsonMode = false): Promise<string> {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TEXT_TIMEOUT_MS;
+  const { contents, systemInstruction } = await geminiPayload(options, timeoutMs);
+  const response = await geminiClient().models.generateContent({
+    model: activeTextModel(options),
+    contents,
+    config: {
+      ...(systemInstruction ? { systemInstruction } : {}),
+      ...(jsonMode ? { responseMimeType: "application/json" } : {}),
+      abortSignal: AbortSignal.timeout(timeoutMs),
+    },
+  });
+  const text = (response.text ?? "").trim();
+  if (!text) throw new AiProviderError("empty_response");
+  return text;
+}
+
 async function sdkTextRequest<T>(
   options: AiRequestOptions,
   generate: (model: TextModel, settings: { maxRetries: number; timeout: number }) => Promise<T>,
@@ -284,31 +463,31 @@ function promptFields(options: AiRequestOptions) {
 
 export async function generateAiText(options: AiRequestOptions): Promise<string> {
   const startedAt = Date.now();
+  const model = activeTextModel(options);
   try {
     let text: string;
-    if (options.modelOverride || !usesLovableGateway()) {
-      const result = await sdkTextRequest(options, (model, settings) =>
-        generateText({ model, ...promptFields(options), ...settings }),
+    if (options.modelOverride || (!usesLovableGateway() && usesVercelGateway())) {
+      const result = await sdkTextRequest(options, (selectedModel, settings) =>
+        generateText({ model: selectedModel, ...promptFields(options), ...settings }),
       );
       text = result.text.trim();
-    } else {
+    } else if (usesLovableGateway()) {
       text = await lovableChat(options);
+    } else if (usesGeminiApi()) {
+      text = await geminiChat(options);
+    } else {
+      throw new AiProviderError("configuration_missing");
     }
     if (!text) throw new AiProviderError("empty_response");
     console.info("[MealMate AI] request completed", {
       provider: getAiProviderConfiguration().textProvider,
       feature: options.feature,
-      model: options.model ?? DEFAULT_AI_TEXT_MODEL,
+      model,
       durationMs: Date.now() - startedAt,
     });
     return text;
   } catch (error) {
-    logFailure(
-      options.feature,
-      options.model ?? DEFAULT_AI_TEXT_MODEL,
-      error,
-      Date.now() - startedAt,
-    );
+    logFailure(options.feature, model, error, Date.now() - startedAt);
     throw publicError(errorCategory(error));
   }
 }
@@ -332,19 +511,20 @@ export async function generateAiObject<TSchema extends z.ZodTypeAny>(
   options: AiRequestOptions & { schema: TSchema },
 ): Promise<z.output<TSchema>> {
   const startedAt = Date.now();
+  const model = activeTextModel(options);
   try {
     let output: unknown;
-    if (options.modelOverride || !usesLovableGateway()) {
-      const result = await sdkTextRequest(options, (model, settings) =>
+    if (options.modelOverride || (!usesLovableGateway() && usesVercelGateway())) {
+      const result = await sdkTextRequest(options, (selectedModel, settings) =>
         generateText({
-          model,
+          model: selectedModel,
           ...promptFields(options),
           output: Output.object({ schema: options.schema }),
           ...settings,
         }),
       );
       output = result.output;
-    } else {
+    } else if (usesLovableGateway()) {
       const schema = await zodSchema(options.schema).jsonSchema;
       output = parseJsonObject(
         await lovableChat(
@@ -355,6 +535,19 @@ export async function generateAiObject<TSchema extends z.ZodTypeAny>(
           true,
         ),
       );
+    } else if (usesGeminiApi()) {
+      const schema = await zodSchema(options.schema).jsonSchema;
+      output = parseJsonObject(
+        await geminiChat(
+          {
+            ...options,
+            instructions: `${options.instructions ?? ""}\nReturn only a JSON object matching this JSON Schema:\n${JSON.stringify(schema)}`,
+          },
+          true,
+        ),
+      );
+    } else {
+      throw new AiProviderError("configuration_missing");
     }
     try {
       return options.schema.parse(output) as z.output<TSchema>;
@@ -362,12 +555,7 @@ export async function generateAiObject<TSchema extends z.ZodTypeAny>(
       throw new AiProviderError("invalid_response");
     }
   } catch (error) {
-    logFailure(
-      options.feature,
-      options.model ?? DEFAULT_AI_TEXT_MODEL,
-      error,
-      Date.now() - startedAt,
-    );
+    logFailure(options.feature, model, error, Date.now() - startedAt);
     throw publicError(errorCategory(error));
   }
 }

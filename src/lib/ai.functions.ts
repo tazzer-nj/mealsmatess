@@ -78,7 +78,7 @@ async function callModel(prompt: string): Promise<GeneratedRecipe> {
     instructions: SYSTEM,
     prompt,
     schema: RecipeSchema,
-    timeoutMs: 15_000,
+    timeoutMs: 25_000,
   });
 }
 
@@ -179,21 +179,28 @@ export const generateRecipe = createServerFn({ method: "POST" })
       .object({
         query: z.string().trim().min(1).max(200),
         force: z.boolean().optional(),
+        forceNew: z.boolean().optional(),
+        excludeNames: z.array(z.string().trim().min(1).max(120)).max(10).optional(),
+        twist: z.string().trim().min(1).max(120).optional(),
       })
       .parse(v),
   )
   .handler(async ({ data, context }) => {
+    const excludeNames = data.excludeNames ?? [];
+    const bypassCache = Boolean(
+      data.force || data.forceNew || data.twist || excludeNames.length > 0,
+    );
     const requestKey = aiRequestFingerprint(
       context.userId,
       "recipe.generate",
-      `${data.force ? "force:" : ""}${data.query.toLowerCase()}`,
+      `${data.query.toLowerCase()}|${data.twist ?? ""}|${bypassCache ? Date.now() : "cached"}`,
     );
     return deduplicateAiRequest(requestKey, async () => {
       await enforceRateLimit("ai_generate", context.userId, 10);
       const { firebaseAdmin } = await loadFirebaseAdmin();
       const t0 = Date.now();
       try {
-        if (!data.force) {
+        if (!bypassCache) {
           const { data: exact } = await firebaseAdmin
             .from("recipes")
             .select("id,slug,name")
@@ -241,11 +248,19 @@ export const generateRecipe = createServerFn({ method: "POST" })
         const recipe = await callModel(
           [
             `Create a real, authentic recipe for: "${data.query}". If the dish exists in any culture, use the traditional version. Be specific and accurate.`,
+            data.twist
+              ? `Remix requirement (MUST follow): "${data.twist}". Adapt the ingredients, cooking method, and title to clearly reflect this twist.`
+              : "",
+            excludeNames.length > 0
+              ? `Do NOT repeat or closely duplicate these existing recipe titles: ${excludeNames.join(", ")}. Invent a distinct variation with a new title.`
+              : "",
             `Saved preferences: ${profile ? preferenceSummary(profile.preferences) : "none specified"}.`,
             `Dietary preferences: ${dietaryPreferences.join(", ") || "none specified"}.`,
             `Allergies that must be completely excluded: ${allergies.join(", ") || "none specified"}.`,
             "Use requested ingredients where possible, include practical quantities and at least four actionable steps.",
-          ].join("\n"),
+          ]
+            .filter(Boolean)
+            .join("\n"),
         );
         const ingredientTokens = new Set(
           recipe.ingredients

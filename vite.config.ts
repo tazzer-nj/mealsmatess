@@ -114,6 +114,7 @@ export default defineConfig(({ command }) => ({
       "@upstash/redis",
       "@upstash/ratelimit",
       "ai",
+      "@google/genai",
     ],
   },
   css: { transformer: "lightningcss" },

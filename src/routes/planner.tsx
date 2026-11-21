@@ -94,7 +94,7 @@ function PlannerPage() {
     id: string;
     plan_date: string;
     meal_type: string;
-    custom_name: string | null;
+    custom_name?: string | null;
     recipes?: { name?: string | null } | null;
   }) {
     if (!user || swappingId) return;

@@ -184,18 +184,17 @@ function RecipesPage() {
         </Button>
         <Button
           type="button"
-          variant="outline"
           size="lg"
           disabled={busy || !query.trim()}
-          className="h-12 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
+          className="mia-ai-pill h-12 rounded-xl px-4 text-sm font-semibold"
           onClick={() => void handleAiGenerate()}
         >
           {busy && generatingFor ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <>
-              <Sparkles className="mr-1.5 h-4 w-4 text-primary" />
-              Ask AI chef
+              <Sparkles className="mr-1.5 h-4 w-4" />
+              Ask Mia
             </>
           )}
         </Button>

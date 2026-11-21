@@ -2,12 +2,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { createGateway, generateImage, generateSpeech, generateText } from "ai";
 import {
+  DEFAULT_GEMINI_TEXT_MODEL,
   generateAiText,
   generateAiObject,
   generateAiImage,
   generateAiSpeech,
   getAiProviderConfiguration,
 } from "@/lib/ai-engine.server";
+
+const geminiMocks = vi.hoisted(() => ({
+  constructorArgs: vi.fn(),
+  generateContent: vi.fn(),
+}));
+
+vi.mock("@google/genai", () => ({
+  GoogleGenAI: class MockGoogleGenAI {
+    models = { generateContent: geminiMocks.generateContent };
+    constructor(options: unknown) {
+      geminiMocks.constructorArgs(options);
+    }
+  },
+}));
 
 vi.mock("ai", async (importOriginal) => ({
   ...(await importOriginal<typeof import("ai")>()),
@@ -128,5 +143,119 @@ describe("Vercel AI Gateway integration", () => {
     } finally {
       request.mockRestore();
     }
+  });
+});
+
+describe("Google Gemini API (@google/genai) integration", () => {
+  beforeEach(() => {
+    vi.stubEnv("LOVABLE_API_KEY", "");
+    vi.stubEnv("LOVABLE_AI_API_KEY", "");
+    vi.stubEnv("AI_GATEWAY_API_KEY", "");
+    vi.stubEnv("VERCEL_OIDC_TOKEN", "");
+    vi.stubEnv("VERCEL", "");
+    vi.stubEnv("GEMINI_API_KEY", "test-gemini-key");
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  it("reports Google Gemini API and gemini-4-hydrogen when only GEMINI_API_KEY is set", () => {
+    const config = getAiProviderConfiguration();
+    expect(config).toMatchObject({
+      textProvider: "Google Gemini API",
+      textModel: DEFAULT_GEMINI_TEXT_MODEL,
+      configured: true,
+    });
+    expect(JSON.stringify(config)).not.toContain("test-gemini-key");
+  });
+
+  it("sends Mia conversation history, systemInstruction, and User-Agent header to @google/genai", async () => {
+    geminiMocks.generateContent.mockResolvedValue({ text: "Use oat milk and lemon juice." });
+    const reply = await generateAiText({
+      feature: "chat.mia",
+      instructions: "You are Mia.",
+      messages: [
+        { role: "user", content: "Buttermilk sub?" },
+        { role: "assistant", content: "Milk and vinegar." },
+        { role: "user", content: "Dairy-free?" },
+      ],
+    });
+
+    expect(reply).toBe("Use oat milk and lemon juice.");
+    expect(geminiMocks.constructorArgs).toHaveBeenCalledWith({
+      apiKey: "test-gemini-key",
+      httpOptions: { headers: { "User-Agent": "aistudio-build" } },
+    });
+    expect(geminiMocks.generateContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: DEFAULT_GEMINI_TEXT_MODEL,
+        contents: [
+          { role: "user", parts: [{ text: "Buttermilk sub?" }] },
+          { role: "model", parts: [{ text: "Milk and vinegar." }] },
+          { role: "user", parts: [{ text: "Dairy-free?" }] },
+        ],
+        config: expect.objectContaining({
+          systemInstruction: "You are Mia.",
+        }),
+      }),
+    );
+  });
+
+  it("requests JSON mode and serializes inline image parts for structured responses", async () => {
+    geminiMocks.generateContent.mockResolvedValue({
+      text: '```json\n{"items":["tomato","egg"]}\n```',
+    });
+
+    const parsed = await generateAiObject({
+      feature: "scan.kitchen",
+      instructions: "List visible food items.",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "What is visible?" },
+            { type: "image", image: new Uint8Array([1, 2, 3]), mediaType: "image/jpeg" },
+          ],
+        },
+      ],
+      schema: z.object({ items: z.array(z.string()) }),
+    });
+
+    expect(parsed).toEqual({ items: ["tomato", "egg"] });
+    expect(geminiMocks.generateContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: DEFAULT_GEMINI_TEXT_MODEL,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: "What is visible?" },
+              { inlineData: { mimeType: "image/jpeg", data: "AQID" } },
+            ],
+          },
+        ],
+        config: expect.objectContaining({
+          responseMimeType: "application/json",
+        }),
+      }),
+    );
+  });
+
+  it("maps Gemini API invalid-key and rate-limit errors cleanly", async () => {
+    geminiMocks.generateContent.mockRejectedValueOnce(
+      Object.assign(new Error("API_KEY_INVALID"), { status: 400 }),
+    );
+    await expect(generateAiText({ feature: "chat.mia", prompt: "Hi" })).rejects.toThrow(
+      /rejected its server credentials/i,
+    );
+
+    geminiMocks.generateContent.mockRejectedValueOnce(
+      Object.assign(new Error("RESOURCE_EXHAUSTED"), { status: 429 }),
+    );
+    await expect(generateAiText({ feature: "chat.mia", prompt: "Hi" })).rejects.toThrow(
+      /busy right now/i,
+    );
   });
 });

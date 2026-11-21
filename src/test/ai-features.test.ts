@@ -63,6 +63,7 @@ describe("shared MealMate AI engine", () => {
     vi.stubEnv("AI_GATEWAY_API_KEY", "");
     vi.stubEnv("VERCEL_OIDC_TOKEN", "");
     vi.stubEnv("VERCEL", "");
+    vi.stubEnv("GEMINI_API_KEY", "");
     await expect(
       generateAiText({ feature: "test.unconfigured", prompt: "Reply." }),
     ).rejects.toThrow(/not configured/i);
