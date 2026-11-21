@@ -3,11 +3,11 @@ const AMBER_PILL =
 const EMERALD_PILL =
   "border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/60 dark:text-emerald-300";
 const ROSE_PILL =
-  "border-rose-200 bg-rose-100 text-rose-700 dark:border-rose-800/60 dark:bg-rose-950/60 dark:text-rose-300";
+  "border-stone-300 bg-stone-100 text-stone-800 dark:border-stone-700/60 dark:bg-stone-900/60 dark:text-stone-200";
 const ORANGE_PILL =
   "border-orange-200 bg-orange-100 text-orange-800 dark:border-orange-800/60 dark:bg-orange-950/60 dark:text-orange-300";
 const VIOLET_PILL =
-  "border-violet-200 bg-violet-100 text-violet-800 dark:border-violet-800/60 dark:bg-violet-950/60 dark:text-violet-300";
+  "border-teal-200 bg-teal-100 text-teal-800 dark:border-teal-800/60 dark:bg-teal-950/60 dark:text-teal-300";
 const SKY_PILL =
   "border-sky-200 bg-sky-100 text-sky-800 dark:border-sky-800/60 dark:bg-sky-950/60 dark:text-sky-300";
 

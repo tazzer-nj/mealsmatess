@@ -304,7 +304,7 @@ function ChatPage() {
       </div>
 
       <div ref={endRef} />
-      <div className="chat-composer sticky bottom-3 mt-6 bg-background pb-2 pt-2">
+      <div className="chat-composer sticky bottom-3 mt-6">
         <CookingInput
           value={question}
           onChange={setQuestion}

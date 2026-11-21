@@ -160,3 +160,61 @@ export function renderErrorPage(options?: {
   </body>
 </html>`;
 }
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+export function renderErrorResponse(
+  request: Request,
+  options?: {
+    status?: number;
+    code?: string;
+    title?: string;
+    message?: string;
+  },
+): Response {
+  const status = options?.status ?? 500;
+  const code =
+    options?.code ??
+    (status === 404
+      ? "NOT_FOUND"
+      : status === 503
+        ? "SERVICE_UNAVAILABLE"
+        : "INTERNAL_SERVER_ERROR");
+  const title = options?.title ?? "Something went wrong in the kitchen";
+  const message = options?.message ?? "Please try again shortly.";
+  const accept = (request.headers.get("accept") ?? "").toLowerCase();
+
+  if (accept.includes("application/json")) {
+    return new Response(JSON.stringify({ error: code, status, title, message }), {
+      status,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
+
+  if (accept.includes("application/xml") || accept.includes("text/xml")) {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<error>\n  <status>${status}</status>\n  <code>${escapeXml(code)}</code>\n  <title>${escapeXml(title)}</title>\n  <message>${escapeXml(message)}</message>\n</error>`;
+    return new Response(xml, {
+      status,
+      headers: { "content-type": "application/xml; charset=utf-8" },
+    });
+  }
+
+  if (accept.includes("text/plain") && !accept.includes("text/html")) {
+    return new Response(`MealMate Error (${status} ${code}): ${title} — ${message}`, {
+      status,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
+  }
+
+  return new Response(renderErrorPage({ status, title, message }), {
+    status,
+    headers: { "content-type": "text/html; charset=utf-8" },
+  });
+}

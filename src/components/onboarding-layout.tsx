@@ -2,15 +2,18 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, ChevronDown, Globe } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { APP_LANGUAGES, normalizeAppLanguage, type AppLanguageCode } from "@/lib/i18n";
+import { ONBOARDING_EN } from "@/lib/onboarding-i18n";
 import { MealMateLogo } from "@/components/mealmate-logo";
 import { RecipeImage } from "@/components/recipe-image";
 
 const STEP_DISHES = [
-  "Creamy chicken alfredo",
   "Rainbow buddha bowl",
+  "Creamy chicken alfredo",
   "Greek chicken salad",
-  "West African jollof rice",
   "Cape malay bobotie",
+  "West African jollof rice",
+  "Chicken peri peri",
+  "Beef potjiekos",
   "Classic american apple pie",
 ] as const;
 
@@ -22,12 +25,14 @@ type TranslatedStepMeta = {
 
 export function OnboardingLayout({
   step,
-  total = 6,
+  total = 8,
   children,
   footer,
   onBack,
   onLanguageChange,
   busy = false,
+  customMeta,
+  hideStepCounter = false,
 }: {
   step: number;
   total?: number;
@@ -36,21 +41,29 @@ export function OnboardingLayout({
   onBack?: () => void;
   onLanguageChange?: (lang: AppLanguageCode) => void;
   busy?: boolean;
+  customMeta?: TranslatedStepMeta;
+  hideStepCounter?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const content = useRef<HTMLDivElement>(null);
   const langSelectId = useId();
 
   const stepIndex = Math.min(Math.max(0, step), STEP_DISHES.length - 1);
-  const translatedSteps = t("onboarding.steps", {
+  const translatedPages = t("onboarding.pages", {
     returnObjects: true,
   }) as TranslatedStepMeta[];
-  const currentMeta = (Array.isArray(translatedSteps) ? translatedSteps[stepIndex] : undefined) ??
-    translatedSteps?.[0] ?? {
+  const defaultMeta =
+    ONBOARDING_EN.pages?.[stepIndex] ??
+    ONBOARDING_EN.steps[stepIndex] ?? {
       stepName: "Welcome",
-      title: "Personalize your kitchen",
-      desc: "Let's make mealtime better. Tailor MealMate to your household, tastes, and rhythm.",
+      title: "Let's make eating better easier.",
+      desc: "MealMate helps you discover delicious meals and organise your food routine.",
     };
+  const currentMeta =
+    customMeta ??
+    (Array.isArray(translatedPages) && translatedPages[stepIndex]
+      ? translatedPages[stepIndex]
+      : defaultMeta);
   const currentDish = STEP_DISHES[stepIndex] ?? STEP_DISHES[0];
   const activeLang = normalizeAppLanguage(i18n.resolvedLanguage ?? i18n.language);
   const prevLangRef = useRef<AppLanguageCode>(activeLang);
@@ -108,26 +121,30 @@ export function OnboardingLayout({
                 />
               )}
             </div>
-            <span
-              className="onboarding-step onboarding-lang-fade"
-              data-lang-fade={langFadeCycle ?? undefined}
-            >
-              {t("onboarding.stepCounter", { current: step + 1, total })}
-            </span>
+            {!hideStepCounter && (
+              <span
+                className="onboarding-step onboarding-lang-fade"
+                data-lang-fade={langFadeCycle ?? undefined}
+              >
+                {t("onboarding.stepCounter", { current: step + 1, total })}
+              </span>
+            )}
           </div>
 
-          <div
-            className="onboarding-progress"
-            role="progressbar"
-            aria-label={t("onboarding.progressAria")}
-            aria-valuemin={1}
-            aria-valuemax={total}
-            aria-valuenow={step + 1}
-          >
-            {Array.from({ length: total }).map((_, i) => (
-              <span key={i} data-active={i <= step} />
-            ))}
-          </div>
+          {!hideStepCounter && (
+            <div
+              className="onboarding-progress"
+              role="progressbar"
+              aria-label={t("onboarding.progressAria")}
+              aria-valuemin={1}
+              aria-valuemax={total}
+              aria-valuenow={step + 1}
+            >
+              {Array.from({ length: total }).map((_, i) => (
+                <span key={i} data-active={i <= step} />
+              ))}
+            </div>
+          )}
         </header>
 
         <div className="onboarding-surface">
@@ -150,7 +167,7 @@ export function OnboardingLayout({
           </div>
 
           <div
-            key={step}
+            key={customMeta ? customMeta.stepName : step}
             className={`onboarding-content motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300 motion-safe:ease-out ${
               stepDirection === "backward"
                 ? "motion-safe:slide-in-from-left-4"

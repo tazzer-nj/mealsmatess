@@ -21,6 +21,12 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { sendEmailVerification } from "firebase/auth";
 import { isHardcodedAdminEmail } from "@/lib/admin-emails";
 import { adminIsAdmin } from "@/lib/premium.functions";
+import {
+  captureInitialAttribution,
+  detectClientCountry,
+  detectClientPlatform,
+  dispatchAnalyticsEvent,
+} from "@/lib/analytics-events";
 
 async function resolvePostAuthRoute(email?: string | null): Promise<"/" | "/onboarding"> {
   if (isHardcodedAdminEmail(email)) return "/";
@@ -40,14 +46,14 @@ async function ensureUserProfile(user: {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-}) {
+}): Promise<{ isNewUser: boolean }> {
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
   if (snap.exists()) {
     const existing = snap.data() as Record<string, unknown>;
     // Never overwrite user-edited onboarding goal/displayName or server-managed preference docs.
     if ("preferences" in existing || existing["goal"] || existing["displayName"]) {
-      return;
+      return { isNewUser: false };
     }
     await setDoc(
       userRef,
@@ -60,9 +66,11 @@ async function ensureUserProfile(user: {
       },
       { merge: true },
     );
-    return;
+    return { isNewUser: false };
   }
 
+  const nowIso = new Date().toISOString();
+  const utm = captureInitialAttribution();
   await setDoc(
     userRef,
     {
@@ -71,10 +79,34 @@ async function ensureUserProfile(user: {
       displayName: user.displayName || user.email?.split("@")[0] || "Chef",
       photoURL: user.photoURL ?? "",
       goal: "healthy_cooking",
-      createdAt: new Date().toISOString(),
+      platform: detectClientPlatform(),
+      country: detectClientCountry(),
+      createdAt: nowIso,
     },
     { merge: true },
   );
+
+  // Best-effort initial UTM/referrer capture before Page 7 self-reported attribution.
+  if (utm && (utm.utm_source || utm.referrer)) {
+    void setDoc(
+      doc(db, "user_acquisition_sources", user.uid),
+      {
+        id: user.uid,
+        user_id: user.uid,
+        utm_source: utm.utm_source,
+        utm_medium: utm.utm_medium,
+        utm_campaign: utm.utm_campaign,
+        referrer: utm.referrer,
+        platform: detectClientPlatform(),
+        country: detectClientCountry(),
+        captured_at: utm.captured_at || nowIso,
+        updated_at: nowIso,
+      },
+      { merge: true },
+    ).catch(() => undefined);
+  }
+
+  return { isNewUser: true };
 }
 
 export const Route = createFileRoute("/auth")({
@@ -180,7 +212,15 @@ function AuthPage() {
       .then(async (result) => {
         if (!active || !result?.user) return;
         try {
-          await ensureUserProfile(result.user);
+          const { isNewUser } = await ensureUserProfile(result.user);
+          if (isNewUser) {
+            void dispatchAnalyticsEvent({
+              userId: result.user.uid,
+              eventName: "signup_completed",
+              dedupeKey: "signup",
+              metadata: { provider: "google_redirect" },
+            });
+          }
           toast.success("Welcome to MealMate!");
           const dest = await resolvePostAuthRoute(result.user.email);
           if (active) navigate({ to: dest, replace: true });
@@ -242,7 +282,15 @@ function AuthPage() {
       const cred = await signInWithFirebaseGoogle();
       if (cred?.user) {
         try {
-          await ensureUserProfile(cred.user);
+          const { isNewUser } = await ensureUserProfile(cred.user);
+          if (isNewUser) {
+            void dispatchAnalyticsEvent({
+              userId: cred.user.uid,
+              eventName: "signup_completed",
+              dedupeKey: "signup",
+              metadata: { provider: "google" },
+            });
+          }
         } catch (dbErr) {
           console.warn("[Auth] Could not create Firestore profile:", dbErr);
         }
@@ -327,6 +375,12 @@ function AuthPage() {
             } catch (fsErr) {
               console.warn("[Auth] Could not initialize firestore user profile:", fsErr);
             }
+            void dispatchAnalyticsEvent({
+              userId: cred.user.uid,
+              eventName: "signup_completed",
+              dedupeKey: "signup",
+              metadata: { provider: "email" },
+            });
             try {
               await sendEmailVerification(cred.user);
               toast.message("Verification link sent. Check your inbox to activate your account.");

@@ -13,6 +13,7 @@ import { z } from "zod";
 
 export const DEFAULT_AI_TEXT_MODEL = "google/gemini-2.5-flash";
 export const GEMINI_SDK_TEXT_MODEL = "gemini-4-hydrogen";
+export const DEFAULT_GEMINI_TEXT_MODEL = GEMINI_SDK_TEXT_MODEL;
 export const GEMINI_SDK_IMAGE_MODEL = "gemini-2.5-flash-image";
 export const DEFAULT_AI_IMAGE_MODEL = "openai/gpt-image-2";
 export const DEFAULT_AI_SPEECH_MODEL = "openai/gpt-4o-mini-tts";
@@ -138,8 +139,17 @@ function errorCategory(error: unknown): string {
     return "configuration_missing";
   if (/timeout|abort/i.test(name)) return "timeout";
   if (/credit|billing|payment/i.test(message) || status === 402) return "credits_unavailable";
-  if (status === 401 || status === 403 || /authentication/i.test(name)) return "authentication";
-  if (status === 429 || /rate.?limit/i.test(name)) return "rate_limited";
+  if (
+    status === 401 ||
+    status === 403 ||
+    /authentication/i.test(name) ||
+    /API_KEY_INVALID|PERMISSION_DENIED/i.test(message)
+  ) {
+    return "authentication";
+  }
+  if (status === 429 || /rate.?limit/i.test(name) || /RESOURCE_EXHAUSTED/i.test(message)) {
+    return "rate_limited";
+  }
   if (status && status >= 500) return "provider_unavailable";
   return "request_failed";
 }

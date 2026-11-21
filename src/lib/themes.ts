@@ -60,83 +60,83 @@ export const LEGACY_APPEARANCE_STORAGE_KEY = "mealmate-theme";
 export const LEGACY_MASCOT_STORAGE_KEY = "mealmate.theme.v1";
 
 export const MEALMATE_THEMES: MealMateTheme[] = [
-  // ---- DEFAULT BLACK & WHITE (2) ----
+  // ---- DEFAULT KITCHEN THEMES (2) ----
   {
     id: "classic-light",
-    name: "Default White",
-    subtitle: "Clean white canvas & crisp black ink",
+    name: "Fresh Kitchen",
+    subtitle: "Warm ivory canvas, soft cream & fresh sage",
     colorScheme: "light",
     premium: false,
     mascotImage: "/mascots/mascot-classic.png",
     tokens: {
-      background: "oklch(0.992 0.003 95)",
-      foreground: "oklch(0.12 0 0)",
-      card: "oklch(0.975 0.005 95)",
-      cardForeground: "oklch(0.12 0 0)",
-      popover: "oklch(1 0 0)",
-      popoverForeground: "oklch(0.12 0 0)",
-      primary: "oklch(0.12 0 0)",
-      primaryForeground: "oklch(0.99 0 0)",
-      secondary: "oklch(0.94 0 0)",
-      secondaryForeground: "oklch(0.12 0 0)",
-      muted: "oklch(0.94 0 0)",
-      mutedForeground: "oklch(0.42 0 0)",
-      accent: "oklch(0.92 0 0)",
-      accentForeground: "oklch(0.12 0 0)",
-      periwinkle: "oklch(0.61 0.16 139)",
-      periwinkleSoft: "oklch(0.61 0.16 139 / 12%)",
-      border: "oklch(0.91 0.003 95)",
-      input: "oklch(0.89 0.003 95)",
-      ring: "oklch(0.25 0 0)",
-      positive: "oklch(0.61 0.16 139)",
-      negative: "#dc2626",
-      destructive: "#dc2626",
+      background: "#faf7f1",
+      foreground: "#1c221d",
+      card: "#ffffff",
+      cardForeground: "#1c221d",
+      popover: "#ffffff",
+      popoverForeground: "#1c221d",
+      primary: "#3b6644",
+      primaryForeground: "#fbfcf9",
+      secondary: "#f1ece2",
+      secondaryForeground: "#222923",
+      muted: "#ece6da",
+      mutedForeground: "#555e55",
+      accent: "#e5ede1",
+      accentForeground: "#1c221d",
+      periwinkle: "#4a7551",
+      periwinkleSoft: "rgba(74, 117, 81, 0.13)",
+      border: "#e3dcd0",
+      input: "#dbd3c5",
+      ring: "#4a7551",
+      positive: "#3d7a47",
+      negative: "#c8372d",
+      destructive: "#c8372d",
       destructiveForeground: "#ffffff",
-      navBackground: "rgba(252, 252, 251, 0.94)",
-      headerBackground: "rgba(252, 252, 251, 0.94)",
-      themeColor: "#fcfcfb",
-      ink: "oklch(0.3 0.055 152)",
-      ember: "oklch(0.72 0.16 55)",
-      leaf: "oklch(0.61 0.16 139)",
+      navBackground: "rgba(252, 249, 243, 0.92)",
+      headerBackground: "rgba(250, 247, 241, 0.9)",
+      themeColor: "#faf7f1",
+      ink: "#1f3224",
+      ember: "#c77d32",
+      leaf: "#548256",
     },
   },
   {
     id: "midnight-black",
-    name: "Default Black",
-    subtitle: "True black surface & crisp white ink",
+    name: "Midnight Kitchen",
+    subtitle: "Midnight black, forest green & refined emerald",
     colorScheme: "dark",
     premium: false,
     mascotImage: "/mascots/mascot-classic.png",
     tokens: {
-      background: "oklch(0.08 0 0)",
-      foreground: "oklch(0.98 0 0)",
-      card: "oklch(0.14 0 0)",
-      cardForeground: "oklch(0.98 0 0)",
-      popover: "oklch(0.14 0 0)",
-      popoverForeground: "oklch(0.98 0 0)",
-      primary: "oklch(0.98 0 0)",
-      primaryForeground: "oklch(0.08 0 0)",
-      secondary: "oklch(0.2 0 0)",
-      secondaryForeground: "oklch(0.98 0 0)",
-      muted: "oklch(0.2 0 0)",
-      mutedForeground: "oklch(0.72 0 0)",
-      accent: "oklch(0.24 0 0)",
-      accentForeground: "oklch(0.98 0 0)",
-      periwinkle: "oklch(0.72 0.16 140)",
-      periwinkleSoft: "oklch(0.72 0.16 140 / 16%)",
-      border: "oklch(1 0 0 / 12%)",
-      input: "oklch(1 0 0 / 15%)",
-      ring: "oklch(0.72 0.16 140)",
-      positive: "oklch(0.72 0.16 140)",
-      negative: "#ef4444",
-      destructive: "oklch(0.65 0.22 25)",
-      destructiveForeground: "oklch(0.98 0 0)",
-      navBackground: "rgba(10, 10, 10, 0.94)",
-      headerBackground: "rgba(10, 10, 10, 0.94)",
-      themeColor: "#0a0a0a",
-      ink: "oklch(0.95 0.015 125)",
-      ember: "oklch(0.75 0.15 55)",
-      leaf: "oklch(0.72 0.16 140)",
+      background: "#070e0a",
+      foreground: "#f4f8f5",
+      card: "#0e1c14",
+      cardForeground: "#f4f8f5",
+      popover: "#12241a",
+      popoverForeground: "#f4f8f5",
+      primary: "#2ec47a",
+      primaryForeground: "#04140b",
+      secondary: "#15281d",
+      secondaryForeground: "#e8f2ec",
+      muted: "#13241a",
+      mutedForeground: "#9cb5a6",
+      accent: "#1a3325",
+      accentForeground: "#f4f8f5",
+      periwinkle: "#2ec47a",
+      periwinkleSoft: "rgba(46, 196, 122, 0.16)",
+      border: "rgba(116, 186, 146, 0.18)",
+      input: "rgba(116, 186, 146, 0.22)",
+      ring: "#34d399",
+      positive: "#34d399",
+      negative: "#f87171",
+      destructive: "#ef4444",
+      destructiveForeground: "#ffffff",
+      navBackground: "rgba(7, 15, 11, 0.92)",
+      headerBackground: "rgba(7, 14, 10, 0.9)",
+      themeColor: "#070e0a",
+      ink: "#e6f2ea",
+      ember: "#dba04a",
+      leaf: "#2ec47a",
     },
   },
 
@@ -708,7 +708,7 @@ export function applyMealMateThemeToDom(
     "--ink": t.ink,
     "--ember": t.ember,
     "--leaf": t.leaf,
-    "--market-hero": isDark ? t.card : "oklch(0.98 0.01 120)",
+    "--market-hero": "oklch(0.98 0.01 120)",
     "--brand": t.primary,
     "--brand-dark": t.primary,
     "--brand-foreground": t.primaryForeground,
@@ -718,7 +718,12 @@ export function applyMealMateThemeToDom(
     root.style.setProperty(key, val);
   }
 
-  const metaTheme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  let metaTheme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!metaTheme && document.head) {
+    metaTheme = document.createElement("meta");
+    metaTheme.name = "theme-color";
+    document.head.appendChild(metaTheme);
+  }
   if (metaTheme) {
     metaTheme.content = t.themeColor;
   }
@@ -728,6 +733,53 @@ export function applyMealMateThemeToDom(
   );
   if (metaStatus) {
     metaStatus.content = isDark ? "black-translucent" : "default";
+  }
+
+  const metaNavButton = document.querySelector<HTMLMetaElement>(
+    'meta[name="msapplication-navbutton-color"]',
+  );
+  if (metaNavButton) {
+    metaNavButton.content = t.themeColor;
+  }
+
+  if (document.body) {
+    document.body.style.backgroundColor = t.background;
+  }
+
+  // Synchronize native Android status bar & navigation bar when hosted in Capacitor
+  if (typeof window !== "undefined") {
+    try {
+      const cap = (
+        window as unknown as {
+          Capacitor?: {
+            isNativePlatform?: () => boolean;
+            Plugins?: {
+              StatusBar?: {
+                setBackgroundColor?: (opts: { color: string }) => Promise<void>;
+                setStyle?: (opts: { style: "DARK" | "LIGHT" }) => Promise<void>;
+              };
+              NavigationBar?: {
+                setNavigationBarColor?: (opts: {
+                  color: string;
+                  darkButtons?: boolean;
+                }) => Promise<void>;
+              };
+            };
+          };
+        }
+      ).Capacitor;
+      if (cap?.isNativePlatform?.()) {
+        const sb = cap.Plugins?.StatusBar;
+        void sb?.setBackgroundColor?.({ color: t.themeColor })?.catch(() => undefined);
+        void sb?.setStyle?.({ style: isDark ? "DARK" : "LIGHT" })?.catch(() => undefined);
+        const nb = cap.Plugins?.NavigationBar;
+        void nb
+          ?.setNavigationBarColor?.({ color: t.themeColor, darkButtons: !isDark })
+          ?.catch(() => undefined);
+      }
+    } catch {
+      /* ignore native bridge errors */
+    }
   }
 }
 
@@ -826,4 +878,4 @@ export const THEME_BOOT_SCRIPT = `(function(){try{var m=${JSON.stringify(
   LEGACY_APPEARANCE_STORAGE_KEY,
 )});var ms=localStorage.getItem(${JSON.stringify(
   LEGACY_MASCOT_STORAGE_KEY,
-)});var pick=k2&&m[k2]?k2:(k2&&lg[k2]?lg[k2]:null);if(!pick){var sysDark=window.matchMedia("(prefers-color-scheme: dark)").matches;if(ap==="dark-premium")pick="midnight-pro";else if(ap==="dark")pick="midnight-black";else if(ap==="light")pick="classic-light";else if(ms&&lg[ms])pick=lg[ms];else if(ms&&m[ms])pick=ms;else pick=sysDark?"midnight-black":"classic-light";}var d=(ks2==="light"||ks2==="dark")&&sm[pick]&&sm[pick][ks2]?sm[pick][ks2]:(m[pick]||m["classic-light"]);var r=document.documentElement;var dark=d[0]==="dark";r.classList.toggle("dark",dark);r.classList.toggle("dark-premium",pick==="midnight-pro"&&dark);r.style.colorScheme=d[0];r.dataset.appTheme=pick;r.dataset.mascot=ma[pick]||"classic";r.dataset.theme=pick==="midnight-pro"&&dark?"dark-premium":(dark?"dark":"light");for(var i=0;i<ks.length;i++){r.style.setProperty(ks[i],d[i+1]);}r.style.setProperty("--cream",d[3]);r.style.setProperty("--ink",d[27]);r.style.setProperty("--ember",d[28]);r.style.setProperty("--leaf",d[29]);r.style.setProperty("--market-hero",dark?d[3]:"oklch(0.98 0.01 120)");r.style.setProperty("--brand",d[7]);r.style.setProperty("--brand-dark",d[7]);r.style.setProperty("--brand-foreground",d[8]);var mt=document.querySelector('meta[name="theme-color"]');if(mt)mt.setAttribute("content",d[26]);var f=localStorage.getItem("mealmate-font");r.dataset.font=(f==="editorial"||f==="jakarta"||f==="outfit"||f==="dm"||f==="fraunces")?f:"editorial";}catch(e){}})();`;
+)});var pick=k2&&m[k2]?k2:(k2&&lg[k2]?lg[k2]:null);if(!pick){var sysDark=window.matchMedia("(prefers-color-scheme: dark)").matches;if(ap==="dark-premium")pick="midnight-pro";else if(ap==="dark")pick="midnight-black";else if(ap==="light")pick="classic-light";else if(ms&&lg[ms])pick=lg[ms];else if(ms&&m[ms])pick=ms;else pick=sysDark?"midnight-black":"classic-light";}var d=(ks2==="light"||ks2==="dark")&&sm[pick]&&sm[pick][ks2]?sm[pick][ks2]:(m[pick]||m["classic-light"]);var r=document.documentElement;var dark=d[0]==="dark";r.classList.toggle("dark",dark);r.classList.toggle("dark-premium",pick==="midnight-pro"&&dark);r.style.colorScheme=d[0];r.dataset.appTheme=pick;r.dataset.mascot=ma[pick]||"classic";r.dataset.theme=pick==="midnight-pro"&&dark?"dark-premium":(dark?"dark":"light");for(var i=0;i<ks.length;i++){r.style.setProperty(ks[i],d[i+1]);}r.style.setProperty("--cream",d[3]);r.style.setProperty("--ink",d[27]);r.style.setProperty("--ember",d[28]);r.style.setProperty("--leaf",d[29]);r.style.setProperty("--market-hero","oklch(0.98 0.01 120)");r.style.setProperty("--brand",d[7]);r.style.setProperty("--brand-dark",d[7]);r.style.setProperty("--brand-foreground",d[8]);var mt=document.querySelector('meta[name="theme-color"]');if(mt)mt.setAttribute("content",d[26]);var msb=document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');if(msb)msb.setAttribute("content",dark?"black-translucent":"default");var f=localStorage.getItem("mealmate-font");r.dataset.font=(f==="editorial"||f==="jakarta"||f==="outfit"||f==="dm"||f==="fraunces")?f:"editorial";}catch(e){}})();`;

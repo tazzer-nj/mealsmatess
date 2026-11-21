@@ -195,6 +195,17 @@ function RecipePage() {
     });
     if (user && r.id) {
       void trackRecipeView({ data: { recipeId: r.id } }).catch(() => {});
+      void import("@/lib/analytics-events")
+        .then(({ dispatchAnalyticsEvent }) =>
+          dispatchAnalyticsEvent({
+            userId: user.id,
+            eventName: "recipe_viewed",
+            entityId: r.id,
+            dedupeKey: `view_${r.id}_${new Date().toISOString().slice(0, 10)}`,
+            metadata: { slug: r.slug, name: r.name },
+          }),
+        )
+        .catch(() => undefined);
     }
   }, [r, user]);
 
@@ -303,6 +314,17 @@ function RecipePage() {
         await firebaseData.from("favorites").delete().eq("recipe_id", r.id).eq("user_id", user.id);
       } else {
         await firebaseData.from("favorites").insert({ recipe_id: r.id, user_id: user.id });
+        void import("@/lib/analytics-events")
+          .then(({ dispatchAnalyticsEvent }) =>
+            dispatchAnalyticsEvent({
+              userId: user.id,
+              eventName: "recipe_saved",
+              entityId: r.id,
+              dedupeKey: `save_${r.id}_${new Date().toISOString().slice(0, 10)}`,
+              metadata: { slug: r.slug, name: r.name },
+            }),
+          )
+          .catch(() => undefined);
       }
       await queryClient.invalidateQueries({ queryKey: ["favorites"] });
     } catch {

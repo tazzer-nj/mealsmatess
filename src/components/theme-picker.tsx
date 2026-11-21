@@ -81,6 +81,7 @@ export function ThemePicker() {
             <button
               type="button"
               onClick={() => void applyTheme("classic-light")}
+              aria-label="Fresh Kitchen"
               aria-pressed={activeThemeId === "classic-light"}
               className={cn(
                 "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
@@ -89,11 +90,12 @@ export function ThemePicker() {
                   : "border-border bg-card text-foreground hover:bg-muted",
               )}
             >
-              <Sun className="h-3 w-3" /> White
+              <Sun className="h-3 w-3" /> Fresh
             </button>
             <button
               type="button"
               onClick={() => void applyTheme("midnight-black")}
+              aria-label="Midnight Kitchen"
               aria-pressed={activeThemeId === "midnight-black"}
               className={cn(
                 "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
@@ -102,7 +104,7 @@ export function ThemePicker() {
                   : "border-border bg-card text-foreground hover:bg-muted",
               )}
             >
-              <Moon className="h-3 w-3" /> Black
+              <Moon className="h-3 w-3" /> Midnight
             </button>
           </div>
         </div>

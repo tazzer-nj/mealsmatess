@@ -342,6 +342,59 @@ export const Route = createFileRoute("/api/public/webhooks/revenuecat")({
           }
         }
 
+        const { recordServerAnalyticsEvent } = await import("@/lib/analytics-events.functions");
+        const rcPlatform =
+          store === "play_store" ? "android" : store === "app_store" ? "ios" : "web";
+        const eventIdSafe = evt.id.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 80);
+
+        if (ACTIVATE_TYPES.has(evt.type)) {
+          const periodUpper = (evt.period_type ?? "").toUpperCase();
+          const isTrialPeriod =
+            evt.type === "TRIAL_STARTED" ||
+            (periodUpper === "TRIAL" && evt.type !== "TRIAL_CONVERTED");
+          const isPaidTrialConversion =
+            evt.type === "TRIAL_CONVERTED" ||
+            (evt.type === "RENEWAL" &&
+              (evt.is_trial_conversion === true || existing?.status === "trialing"));
+          const isDirectPaidPurchase = evt.type === "INITIAL_PURCHASE" && !isTrialPeriod;
+
+          if (isTrialPeriod) {
+            void recordServerAnalyticsEvent({
+              eventId: `trial_started_${eventIdSafe}`,
+              userId,
+              eventName: "trial_started",
+              platform: rcPlatform,
+              metadata: { tier, store, product_id: evt.product_id ?? null },
+            });
+          } else if (isPaidTrialConversion || isDirectPaidPurchase || evt.type === "RENEWAL") {
+            void recordServerAnalyticsEvent({
+              eventId: `subscription_started_${eventIdSafe}`,
+              userId,
+              eventName: "subscription_started",
+              platform: rcPlatform,
+              metadata: {
+                tier,
+                store,
+                product_id: evt.product_id ?? null,
+                amount: evt.price_in_purchased_currency ?? null,
+                currency: evt.currency ?? "USD",
+              },
+            });
+          }
+        } else if (
+          evt.type === "CANCELLATION" ||
+          evt.type === "EXPIRATION" ||
+          evt.type === "REFUND"
+        ) {
+          void recordServerAnalyticsEvent({
+            eventId: `subscription_cancelled_${eventIdSafe}`,
+            userId,
+            eventName: "subscription_cancelled",
+            platform: rcPlatform,
+            metadata: { tier, store, rc_type: evt.type },
+          });
+        }
+
         const { error: completionError } = await firebaseAdmin
           .from("subscription_events")
           .update({ processed: true, completed_at: new Date().toISOString() })

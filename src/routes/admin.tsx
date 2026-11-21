@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
+  BarChart3,
   Crown,
   DollarSign,
   Download,
@@ -72,6 +73,9 @@ const AiDiagnosticsTab = lazy(() =>
 );
 const FlagsTab = lazy(() =>
   import("@/components/admin/flags-tab").then((m) => ({ default: m.FlagsTab })),
+);
+const UserInsightsTab = lazy(() =>
+  import("@/components/admin/user-insights-tab").then((m) => ({ default: m.UserInsightsTab })),
 );
 
 // Charts pull in the charting library — load them only when a chart renders.
@@ -318,6 +322,10 @@ function AdminPage() {
             <Activity className="mr-2 size-4" />
             Overview
           </TabsTrigger>
+          <TabsTrigger value="insights">
+            <BarChart3 className="mr-2 size-4" />
+            User Insights
+          </TabsTrigger>
           <TabsTrigger value="users">
             <Users className="mr-2 size-4" />
             Users
@@ -350,6 +358,17 @@ function AdminPage() {
           <div className="mt-4">
             <RecipeImageBackfillCard />
           </div>
+        </TabsContent>
+        <TabsContent value="insights" className="mt-4">
+          <Suspense
+            fallback={
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            }
+          >
+            <UserInsightsTab />
+          </Suspense>
         </TabsContent>
         <TabsContent value="users" className="mt-4">
           <UsersTab

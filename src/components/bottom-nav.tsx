@@ -57,7 +57,7 @@ export function BottomNav() {
     <nav
       id="app-nav"
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur supports-[backdrop-filter]:bg-background/80"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/85 bg-[var(--nav-background)] pb-[env(safe-area-inset-bottom)] backdrop-blur-md transition-colors"
     >
       <div className="mx-auto grid max-w-3xl grid-cols-[1fr_1fr_64px_1fr_1fr] items-end px-2">
         {LEFT_TABS.map((t) => (
@@ -74,7 +74,7 @@ export function BottomNav() {
         >
           <span
             className={cn(
-              "flex h-14 w-14 items-center justify-center rounded-full border border-border bg-card shadow-lg ring-4 ring-background transition-transform duration-200 group-hover:scale-110 group-active:scale-95",
+              "flex h-14 w-14 items-center justify-center rounded-full border border-border bg-card shadow-lg ring-4 ring-[var(--background)] transition-transform duration-200 group-hover:scale-110 group-active:scale-95",
               isActive("/chat") && "ai-floating-glow border-primary/40",
             )}
           >

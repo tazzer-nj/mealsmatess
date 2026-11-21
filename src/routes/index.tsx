@@ -51,6 +51,7 @@ import { PlanStatusCard } from "@/components/plan-status-card";
 import { AdSlot } from "@/components/ad-slot";
 import { usePreferences } from "@/hooks/use-preferences";
 import { personalize } from "@/lib/preferences";
+import { buildPersonalisationProfile } from "@/lib/personalisation";
 
 export const Route = createFileRoute("/")({
   head: ({ matches }) => ({
@@ -207,6 +208,16 @@ function Index() {
       } else {
         await firebaseData.from("favorites").insert({ recipe_id: recipeId, user_id: user.id });
         toast.success("Added to favorites");
+        void import("@/lib/analytics-events")
+          .then(({ dispatchAnalyticsEvent }) =>
+            dispatchAnalyticsEvent({
+              userId: user.id,
+              eventName: "recipe_saved",
+              entityId: recipeId,
+              dedupeKey: `save_${recipeId}_${new Date().toISOString().slice(0, 10)}`,
+            }),
+          )
+          .catch(() => undefined);
       }
       await queryClient.invalidateQueries({ queryKey: ["favorites", user.id] });
     } catch {
@@ -214,7 +225,18 @@ function Index() {
     }
   }
 
-  const firstName = user?.displayName?.split(" ")[0] || user?.email?.split("@")[0] || "Chef";
+  const firstName =
+    preferences.preferred_name?.trim().split(" ")[0] ||
+    user?.displayName?.split(" ")[0] ||
+    user?.email?.split("@")[0] ||
+    "Chef";
+  const personalisation = hasPreferences ? buildPersonalisationProfile(preferences) : null;
+  const recommendedPillOrder = CATEGORY_PILLS.slice().sort((a, b) => {
+    if (!personalisation) return 0;
+    const aRec = personalisation.recommended_categories.includes(a.search.c) ? 1 : 0;
+    const bRec = personalisation.recommended_categories.includes(b.search.c) ? 1 : 0;
+    return bRec - aRec;
+  });
 
   return (
     <main className="flex min-h-full flex-col pb-10">
@@ -268,7 +290,7 @@ function Index() {
       {/* Category chips */}
       <section className="px-4 pt-5">
         <div className="flex flex-wrap gap-2">
-          {CATEGORY_PILLS.map((c) => {
+          {recommendedPillOrder.map((c) => {
             const Icon = c.icon;
             return (
               <Link
@@ -290,6 +312,31 @@ function Index() {
             More
           </Link>
         </div>
+        {personalisation && personalisation.home_sections[0] && (
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-foreground">
+                {personalisation.home_sections[0].title}
+              </p>
+              <p className="truncate text-[11px] text-muted-foreground">
+                {personalisation.home_sections[0].subtitle}
+              </p>
+            </div>
+            <Link
+              to="/recipes"
+              search={
+                personalisation.home_sections[0].category
+                  ? { c: personalisation.home_sections[0].category }
+                  : personalisation.pantry_focus === "zero_waste"
+                    ? { pantry: "1" }
+                    : {}
+              }
+              className="shrink-0 text-xs font-medium text-[var(--periwinkle)] hover:underline"
+            >
+              Explore
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* Hero cards: AI Kitchen Scan + Surprise Me */}

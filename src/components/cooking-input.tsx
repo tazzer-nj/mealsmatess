@@ -20,7 +20,7 @@ export function CookingInput({
         e.preventDefault();
         onSubmit();
       }}
-      className="cooking-input rounded-3xl bg-card/95 p-3 shadow-md backdrop-blur-md"
+      className="cooking-input rounded-3xl border border-border/80 bg-card/90 p-3 backdrop-blur-md transition-colors"
     >
       <Input
         aria-label="Ask MealMate"
@@ -28,7 +28,7 @@ export function CookingInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder="What can I cook today?"
         maxLength={200}
-        className="h-11 min-w-0 border-0 bg-transparent px-2 text-base shadow-none focus-visible:ring-0"
+        className="h-11 min-w-0 border-0 bg-transparent px-2 text-base shadow-none focus-visible:border-transparent focus-visible:bg-transparent focus-visible:ring-0"
       />
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
         <div className="flex min-w-0 gap-1">

@@ -41,7 +41,7 @@ export function PlanStatusCard() {
 
   if (isPremium) {
     return (
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-5 text-white shadow-lg shadow-orange-500/30">
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-400/25 bg-gradient-to-br from-[#0e2618] via-[#173d27] to-[#235739] p-5 text-[#f7fbf8] shadow-lg shadow-emerald-950/30">
         <div className="flex items-start justify-between gap-3">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest backdrop-blur">

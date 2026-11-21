@@ -10,6 +10,7 @@ import {
 import { getDownloadURL, getStorage } from "firebase-admin/storage";
 import { getMessaging } from "firebase-admin/messaging";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import firebaseAppletConfig from "../../firebase-applet-config.json";
 
 type Filter = { field: string; operator: string; value: unknown };
 type DbResult<T = unknown> = { data: T; error: Error | null; count?: number | null };
@@ -192,6 +193,12 @@ function matches(row: Row, filter: Filter): boolean {
 
 const USER_OWNED_FIELDS: Record<string, string> = {
   profiles: "id",
+  user_onboarding_profiles: "user_id",
+  onboarding_answers: "user_id",
+  onboarding_progress: "user_id",
+  user_acquisition_sources: "user_id",
+  analytics_events: "user_id",
+  user_activity: "user_id",
   favorites: "user_id",
   grocery_items: "user_id",
   pantry_items: "user_id",
@@ -1099,7 +1106,23 @@ export async function getOrCreateFirebaseUser(email: string, displayName: string
 }
 
 export async function verifyFirebaseIdToken(token: string) {
-  return getServices().auth.verifyIdToken(token, true);
+  if (process.env["FIREBASE_SERVICE_ACCOUNT_JSON"]?.trim()) {
+    return getServices().auth.verifyIdToken(token, true);
+  }
+  const projectId = (
+    process.env["FIREBASE_PROJECT_ID"] ||
+    process.env["VITE_FIREBASE_PROJECT_ID"] ||
+    firebaseAppletConfig.projectId ||
+    ""
+  ).trim();
+  if (!projectId) {
+    throw new Error(
+      "Firebase Admin is not configured. Add FIREBASE_SERVICE_ACCOUNT_JSON or configure projectId.",
+    );
+  }
+  const existingVerifier = getApps().find((app) => app.name === "mealmate-token-verifier");
+  const verifierApp = existingVerifier ?? initializeApp({ projectId }, "mealmate-token-verifier");
+  return getAuth(verifierApp).verifyIdToken(token);
 }
 
 export async function firebaseAuthUserExists(uid: string) {

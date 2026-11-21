@@ -238,7 +238,7 @@ describe("onboarding and mandatory paywall", () => {
           priceAmount: 189,
           currencyCode: "ZAR",
           period: "month",
-          trialDays: 3,
+          trialDays: 0,
           purchase: mocks.purchase,
         },
         {

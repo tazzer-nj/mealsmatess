@@ -2,16 +2,8 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
-import {
-  buildApiCatalog,
-  buildApiDocsMarkdown,
-  buildAuthMd,
-  buildHomepageLinkHeaders,
-  buildOAuthAuthorizationServerMetadata,
-  buildOAuthProtectedResourceMetadata,
-  buildOpenApiSpec,
-  resolvePublicOrigin,
-} from "./lib/discovery";
+import { buildApiDocsMarkdown, resolvePublicOrigin } from "./lib/discovery";
+import { buildHomepageLinkHeaderValue, handleAgentDiscoveryRequest } from "./lib/agent-discovery";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -76,7 +68,10 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
-function buildDiscoveryResponse(request: Request, url: URL): Response | null {
+async function buildDiscoveryResponse(request: Request, url: URL): Promise<Response | null> {
+  const agentResponse = await handleAgentDiscoveryRequest(request);
+  if (agentResponse) return agentResponse;
+
   if (request.method !== "GET" && request.method !== "HEAD") return null;
 
   const origin = resolvePublicOrigin(request.url);
@@ -89,22 +84,6 @@ function buildDiscoveryResponse(request: Request, url: URL): Response | null {
         status: 200,
         headers: { "content-type": "text/html; charset=utf-8" },
       });
-    case "/.well-known/api-catalog":
-      return new Response(isHead ? null : JSON.stringify(buildApiCatalog(origin), null, 2), {
-        status: 200,
-        headers: {
-          "content-type": "application/linkset+json; charset=utf-8",
-          "cache-control": cacheControl,
-        },
-      });
-    case "/openapi.json":
-      return new Response(isHead ? null : JSON.stringify(buildOpenApiSpec(origin), null, 2), {
-        status: 200,
-        headers: {
-          "content-type": "application/openapi+json; charset=utf-8",
-          "cache-control": cacheControl,
-        },
-      });
     case "/api/docs":
       return new Response(isHead ? null : buildApiDocsMarkdown(origin), {
         status: 200,
@@ -113,54 +92,6 @@ function buildDiscoveryResponse(request: Request, url: URL): Response | null {
           "cache-control": cacheControl,
         },
       });
-    case "/api/health":
-      return new Response(
-        isHead
-          ? null
-          : JSON.stringify({
-              status: "ok",
-              service: "mealmate-consumer",
-              company: "Taz Technologies",
-              timestamp: new Date().toISOString(),
-            }),
-        {
-          status: 200,
-          headers: {
-            "content-type": "application/json; charset=utf-8",
-            "cache-control": "no-store",
-          },
-        },
-      );
-    case "/auth.md":
-      return new Response(isHead ? null : buildAuthMd(origin), {
-        status: 200,
-        headers: {
-          "content-type": "text/markdown; charset=utf-8",
-          "cache-control": cacheControl,
-        },
-      });
-    case "/.well-known/oauth-protected-resource":
-      return new Response(
-        isHead ? null : JSON.stringify(buildOAuthProtectedResourceMetadata(origin), null, 2),
-        {
-          status: 200,
-          headers: {
-            "content-type": "application/json; charset=utf-8",
-            "cache-control": cacheControl,
-          },
-        },
-      );
-    case "/.well-known/oauth-authorization-server":
-      return new Response(
-        isHead ? null : JSON.stringify(buildOAuthAuthorizationServerMetadata(origin), null, 2),
-        {
-          status: 200,
-          headers: {
-            "content-type": "application/json; charset=utf-8",
-            "cache-control": cacheControl,
-          },
-        },
-      );
     default:
       return null;
   }
@@ -173,9 +104,7 @@ export function applyResponseHeaders(response: Response, url: URL): Response {
 
   const headers = new Headers(response.headers);
   if (isHomepage) {
-    for (const linkValue of buildHomepageLinkHeaders()) {
-      headers.append("Link", linkValue);
-    }
+    headers.set("Link", buildHomepageLinkHeaderValue());
   }
   if (isAiFounder) {
     headers.set("X-Robots-Tag", "noindex, nofollow, noarchive, nosnippet");
@@ -191,7 +120,7 @@ export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const url = new URL(request.url);
-      const discovery = buildDiscoveryResponse(request, url);
+      const discovery = await buildDiscoveryResponse(request, url);
       if (discovery) {
         return discovery;
       }

@@ -232,6 +232,23 @@ export function PremiumPaywall() {
     return () => window.clearTimeout(timer);
   }, [stage]);
 
+  // Emit deduplicated paywall_viewed event (never treated as subscription conversion).
+  const paywallViewedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!userId || paywallViewedRef.current === `${userId}:${stage}`) return;
+    paywallViewedRef.current = `${userId}:${stage}`;
+    void import("@/lib/analytics-events")
+      .then(({ dispatchAnalyticsEvent }) =>
+        dispatchAnalyticsEvent({
+          userId,
+          eventName: "paywall_viewed",
+          dedupeKey: `paywall_${stage}_${new Date().toISOString().slice(0, 10)}`,
+          metadata: { stage, currency },
+        }),
+      )
+      .catch(() => undefined);
+  }, [userId, stage, currency]);
+
   // Load saved trial reminder preference from Firestore (or localStorage if signed out)
   useEffect(() => {
     let active = true;

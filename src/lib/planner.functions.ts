@@ -78,15 +78,26 @@ export const generatePersonalizedPlan = createServerFn({ method: "POST" })
       dates.push(date.toISOString().slice(0, 10));
     }
 
+    const safeguard = profile?.preferences.balanced_nutrition_safeguard === true;
+    const safeguardLine = safeguard
+      ? "- Youth safeguard ACTIVE: Balanced, nourishing everyday meals ONLY — never prescribe weight-loss or calorie-deficit targets."
+      : "";
+    const budgetText =
+      profile?.preferences.budget_range_zar ??
+      (profile?.budget_per_day ? `$${profile.budget_per_day}/day` : "flexible");
+
     const prompt = `Build a ${data.days}-day meal plan for meals: ${data.meals.join(", ")}.
 User profile:
 - Saved preferences: ${profile ? preferenceSummary(profile.preferences) : "none specified"}
 - Goal: ${profile?.goal ?? "general wellness"}
 - Activity: ${profile?.activity_level ?? "moderate"}
-- Allergies: ${(profile?.allergies ?? []).join(", ") || "none"}
+- Allergies (strictly exclude): ${(profile?.allergies ?? []).join(", ") || "none"}
 - Dietary preferences: ${(profile?.dietary_preferences ?? []).join(", ") || "none"}
-- Daily budget: ${profile?.budget_per_day ? `$${profile.budget_per_day}` : "flexible"}
-- Family size: ${profile?.family_size ?? 1}
+- Disliked foods: ${(profile?.preferences.disliked_foods ?? []).join(", ") || "none"}
+- Preferred cooking time: ${profile?.preferences.cooking_time ?? "flexible"}
+- Food budget: ${budgetText}
+- Household size: ${profile?.preferences.household_size ?? profile?.family_size ?? 1}
+${safeguardLine}
 
 Prefer varied, culturally diverse dishes including South African options. Reply ONLY as JSON:
 {"plan":[{"day":1,"meal_type":"Breakfast","name":"...","calories":450,"short_reason":"..."}]}

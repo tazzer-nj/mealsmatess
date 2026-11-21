@@ -122,6 +122,16 @@ function PantryPage() {
       setQuantity("");
       setExpiresAt("");
       await client.invalidateQueries({ queryKey: ["pantry"] });
+      void import("@/lib/analytics-events")
+        .then(({ dispatchAnalyticsEvent }) =>
+          dispatchAnalyticsEvent({
+            userId: user.id,
+            eventName: "pantry_item_added",
+            entityId: cleanName.toLowerCase().replace(/[^a-z0-9_-]+/g, "_").slice(0, 64),
+            metadata: { source: "manual", hasExpiry: Boolean(expiresAt) },
+          }),
+        )
+        .catch(() => undefined);
       toast.success("Ingredient added to pantry");
     } catch {
       toast.error("Couldn't add that ingredient. Please try again.");

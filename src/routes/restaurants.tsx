@@ -481,11 +481,11 @@ function RestaurantsPage() {
         {miaPick && (
           <section
             aria-label="Mia's dining recommendation"
-            className="mx-4 rounded-2xl border border-[#8b5cf6]/35 bg-card p-4 shadow-sm"
+            className="mx-4 rounded-2xl border border-primary/35 bg-card p-4 shadow-sm"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#8b5cf6]">
+                <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary">
                   <Sparkles className="h-3.5 w-3.5" />
                   Mia&apos;s Pick
                 </p>

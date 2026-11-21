@@ -146,6 +146,16 @@ function PlannerPage() {
       });
       await refresh();
       await queryClient.invalidateQueries({ queryKey: ["grocery"] });
+      void import("@/lib/analytics-events")
+        .then(({ dispatchAnalyticsEvent }) =>
+          dispatchAnalyticsEvent({
+            userId: user.id,
+            eventName: "meal_plan_created",
+            entityId: fromISO,
+            metadata: { mode: "ai_plan_and_shop", meals: res.meals },
+          }),
+        )
+        .catch(() => undefined);
       toast.success(`Planned ${res.meals} meals, added ${res.groceries} to your list`, {
         description:
           res.skipped > 0 ? `Updated ${res.skipped} items already on your list.` : undefined,
@@ -165,6 +175,16 @@ function PlannerPage() {
       const { suggestions } = await generatePersonalizedPlan({
         data: { days: 7, startDate: fromISO },
       });
+      void import("@/lib/analytics-events")
+        .then(({ dispatchAnalyticsEvent }) =>
+          dispatchAnalyticsEvent({
+            userId: user.id,
+            eventName: "meal_plan_created",
+            entityId: fromISO,
+            metadata: { mode: "ai_suggestions", count: suggestions.length },
+          }),
+        )
+        .catch(() => undefined);
       toast.success(`Generated ${suggestions.length} meal ideas`, {
         description: suggestions
           .slice(0, 3)
@@ -219,6 +239,16 @@ function PlannerPage() {
       setAddingDay(null);
       setRecipeId("");
       await refresh();
+      void import("@/lib/analytics-events")
+        .then(({ dispatchAnalyticsEvent }) =>
+          dispatchAnalyticsEvent({
+            userId: user.id,
+            eventName: "meal_plan_created",
+            entityId: `${day}_${mealType}`,
+            metadata: { mode: "manual", recipeId },
+          }),
+        )
+        .catch(() => undefined);
     } catch {
       toast.error("Couldn't add meal");
     } finally {
