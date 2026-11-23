@@ -12,15 +12,20 @@ const mocks = vi.hoisted(() => ({
   setDoc: vi.fn().mockResolvedValue(undefined),
   getDoc: vi.fn().mockResolvedValue({ exists: () => false, data: () => ({}) }),
   doc: vi.fn((_db: unknown, col: string, id: string) => ({ path: `${col}/${id}` })),
+  saveMyAccountSettings: vi.fn().mockResolvedValue({ success: true }),
   currentUser: {
     uid: "user-123",
     displayName: "Chef Taz",
     photoURL: null as string | null,
-  },
+  } as { uid: string; displayName: string | null; photoURL: string | null } | null,
 }));
 
 vi.mock("firebase/auth", () => ({
   updateProfile: mocks.updateProfile,
+}));
+
+vi.mock("@/lib/account.functions", () => ({
+  saveMyAccountSettings: mocks.saveMyAccountSettings,
 }));
 
 vi.mock("firebase/firestore", () => ({
@@ -48,9 +53,11 @@ vi.mock("@/lib/firebase", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   window.localStorage.clear();
-  mocks.currentUser.uid = "user-123";
-  mocks.currentUser.displayName = "Chef Taz";
-  mocks.currentUser.photoURL = null;
+  mocks.currentUser = {
+    uid: "user-123",
+    displayName: "Chef Taz",
+    photoURL: null,
+  };
 });
 
 afterEach(() => {
@@ -117,6 +124,29 @@ describe("saveUserProfile & PFP length safety", () => {
       photoURL: mascotUrl,
     });
     expect(readProfileOverride("user-123")?.photoURL).toBe(mascotUrl);
+  });
+
+  it("saves profile via saveMyAccountSettings when currentUser is null (Whop OAuth user)", async () => {
+    mocks.currentUser = null;
+
+    const result = await saveUserProfile({
+      userId: "whop-user-456",
+      displayName: "Whop Chef",
+      photoURL: "https://cdn.example.com/whop.png",
+    });
+
+    expect(result).toEqual({
+      displayName: "Whop Chef",
+      photoURL: "https://cdn.example.com/whop.png",
+    });
+    expect(mocks.updateProfile).not.toHaveBeenCalled();
+    expect(mocks.saveMyAccountSettings).toHaveBeenCalledWith({
+      data: {
+        displayName: "Whop Chef",
+        photoURL: "https://cdn.example.com/whop.png",
+      },
+    });
+    expect(readProfileOverride("whop-user-456")?.displayName).toBe("Whop Chef");
   });
 
   it("validates avatar URL inputs cleanly", () => {

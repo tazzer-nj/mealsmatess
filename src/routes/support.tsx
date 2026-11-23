@@ -61,8 +61,8 @@ function SupportPage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
       <Link
-        to={user ? "/profile" : "/auth"}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        to={user ? "/settings" : "/auth"}
+        className="inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
         {user ? "Back to settings" : "Back to sign in"}

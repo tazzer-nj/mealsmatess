@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Bell, CheckCheck, ChevronRight, Loader2, Utensils } from "lucide-react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/use-session";
@@ -80,7 +81,9 @@ export function NotificationCenter() {
         <p className="max-w-sm text-sm text-muted-foreground">
           Sign in to view your personal MealMate updates and notification history.
         </p>
-        <Button onClick={() => navigate({ to: "/auth" })}>Sign in</Button>
+        <Button className="min-h-11 rounded-full px-6" onClick={() => navigate({ to: "/auth" })}>
+          Sign in
+        </Button>
       </div>
     );
   }
@@ -93,14 +96,18 @@ export function NotificationCenter() {
             MealMate
           </p>
           <h1 className="mt-1 font-display text-3xl">Notifications</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="tabular-nums mt-1 text-sm text-muted-foreground">
             {notifications.data?.unreadCount
               ? `${notifications.data.unreadCount} unread update${notifications.data.unreadCount === 1 ? "" : "s"}`
               : "You’re all caught up."}
           </p>
         </div>
         {(notifications.data?.unreadCount ?? 0) > 0 && (
-          <Button variant="outline" onClick={() => void markAllRead()}>
+          <Button
+            variant="outline"
+            className="min-h-11 rounded-full px-4"
+            onClick={() => void markAllRead()}
+          >
             <CheckCheck data-icon="inline-start" />
             Mark all read
           </Button>
@@ -108,17 +115,29 @@ export function NotificationCenter() {
       </header>
 
       {notifications.isLoading ? (
-        <div className="flex min-h-48 items-center justify-center">
-          <Loader2
-            aria-label="Loading notifications"
-            className="animate-spin text-muted-foreground"
-          />
+        <div className="flex flex-col gap-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="rounded-2xl border border-border bg-card p-4 sm:p-5 space-y-3">
+              <div className="flex gap-3">
+                <Skeleton className="skeleton-shimmer size-10 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="skeleton-shimmer h-4 w-28 rounded-md" />
+                  <Skeleton className="skeleton-shimmer h-5 w-3/4 rounded-lg" />
+                  <Skeleton className="skeleton-shimmer h-4 w-full rounded-md" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : notifications.isError ? (
         <div className="rounded-2xl border border-border p-6 text-center">
           <p className="font-medium">Could not load your notifications</p>
           <p className="mt-1 text-sm text-muted-foreground">Check your connection and try again.</p>
-          <Button className="mt-4" variant="outline" onClick={() => void notifications.refetch()}>
+          <Button
+            className="mt-4 min-h-11 rounded-full px-5"
+            variant="outline"
+            onClick={() => void notifications.refetch()}
+          >
             Retry
           </Button>
         </div>
@@ -173,7 +192,10 @@ export function NotificationCenter() {
                       />
                     )}
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                      <time className="text-xs text-muted-foreground" dateTime={item.createdAt}>
+                      <time
+                        className="tabular-nums text-xs text-muted-foreground"
+                        dateTime={item.createdAt}
+                      >
                         {new Date(item.createdAt).toLocaleString()}
                       </time>
                       <div className="flex items-center gap-1">
@@ -181,6 +203,7 @@ export function NotificationCenter() {
                           type="button"
                           variant="ghost"
                           size="sm"
+                          className="min-h-11 rounded-lg px-3"
                           onClick={() => void toggleRead(item)}
                         >
                           {isUnread ? "Mark read" : "Mark unread"}
@@ -189,6 +212,7 @@ export function NotificationCenter() {
                           type="button"
                           variant="outline"
                           size="sm"
+                          className="min-h-11 rounded-lg px-3"
                           onClick={() => void open(item)}
                         >
                           Open <ChevronRight data-icon="inline-end" />

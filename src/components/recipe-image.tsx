@@ -71,10 +71,7 @@ function RecipePhoto({
       ) : (
         <>
           {loaded !== src && (
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 bg-foreground/5 motion-safe:animate-pulse"
-            />
+            <div aria-hidden="true" className="skeleton-shimmer absolute inset-0" />
           )}
           <img
             key={src}
@@ -94,6 +91,7 @@ function RecipePhoto({
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
             decoding="async"
+            referrerPolicy="no-referrer"
             ref={(img) => {
               if (img?.complete && img.naturalWidth > 0) setLoaded(src);
             }}

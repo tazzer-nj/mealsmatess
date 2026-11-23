@@ -205,7 +205,9 @@ function SettingsPage() {
         return (data as { currency?: string; locale?: string } | null) ?? null;
       }
       const account = await getMyAccountSettings().catch(() => null);
-      return account ? { currency: account.currency ?? undefined, locale: account.locale ?? undefined } : null;
+      return account
+        ? { currency: account.currency ?? undefined, locale: account.locale ?? undefined }
+        : null;
     },
   });
 

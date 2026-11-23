@@ -43,13 +43,13 @@ export function GamificationCard() {
     return (
       <div className="space-y-3 rounded-3xl border border-border bg-card p-5">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-14 w-14 rounded-full" />
+          <Skeleton className="skeleton-shimmer h-14 w-14 rounded-full" />
           <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-2 w-full rounded-full" />
+            <Skeleton className="skeleton-shimmer h-4 w-32" />
+            <Skeleton className="skeleton-shimmer h-2 w-full rounded-full" />
           </div>
         </div>
-        <Skeleton className="h-20 w-full rounded-2xl" />
+        <Skeleton className="skeleton-shimmer h-20 w-full rounded-2xl" />
       </div>
     );
   }
@@ -66,7 +66,7 @@ export function GamificationCard() {
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
             <h2 className="truncate font-display text-2xl leading-tight">{level.name}</h2>
-            <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
+            <span className="tabular-nums shrink-0 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
               {formatXp(data.totalXp)} XP
             </span>
           </div>
@@ -76,7 +76,7 @@ export function GamificationCard() {
               style={{ width: `${Math.round(level.progress * 100)}%` }}
             />
           </div>
-          <p className="mt-1.5 text-xs text-muted-foreground">
+          <p className="tabular-nums mt-1.5 text-xs text-muted-foreground">
             {level.nextMin
               ? `${formatXp(level.xpToNext)} XP to ${level.nextName}`
               : "Top level reached"}
@@ -96,7 +96,9 @@ export function GamificationCard() {
             className="recipe-card-lift flex flex-col items-center gap-1 rounded-2xl border border-transparent bg-muted/50 px-2 py-3 text-center hover:border-primary/20 hover:bg-muted/80"
           >
             <s.icon className="h-4 w-4 text-primary" />
-            <span className="motion-number font-display text-xl leading-none">{s.value}</span>
+            <span className="motion-number tabular-nums font-display text-xl leading-none">
+              {s.value}
+            </span>
             <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               {s.label}
             </span>
@@ -109,13 +111,13 @@ export function GamificationCard() {
         <div className="flex items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-ember/15 via-primary/10 to-ember/15 p-4">
           <div>
             <p className="text-sm font-bold">Elite reward unlocked</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="tabular-nums text-xs text-muted-foreground">
               50,000 XP earns you 30 days of Premium, once, ever.
             </p>
           </div>
           <Button
             size="sm"
-            className="rounded-full"
+            className="tap-spring min-h-11 rounded-full px-5"
             disabled={claim.isPending}
             onClick={() => claim.mutate()}
           >
@@ -159,7 +161,7 @@ export function GamificationCard() {
                         </p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{c.description}</p>
                       </div>
-                      <span className="shrink-0 rounded-full bg-ember/15 px-2 py-0.5 text-[10px] font-bold text-ember">
+                      <span className="tabular-nums shrink-0 rounded-full bg-ember/15 px-2 py-0.5 text-[10px] font-bold text-ember">
                         +{c.xpReward} XP
                       </span>
                     </div>
@@ -173,7 +175,7 @@ export function GamificationCard() {
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <span className="text-[10px] font-semibold text-muted-foreground">
+                      <span className="tabular-nums text-[10px] font-semibold text-muted-foreground">
                         {c.progress}/{c.goal}
                       </span>
                     </div>
@@ -225,7 +227,7 @@ export function GamificationCard() {
               .map((e: { label: string; points: number }, i: number) => (
                 <li key={i} className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">{e.label}</span>
-                  <span className="font-semibold text-primary">+{e.points}</span>
+                  <span className="tabular-nums font-semibold text-primary">+{e.points}</span>
                 </li>
               ))}
           </ul>

@@ -294,17 +294,17 @@ export function VisualExplainer({ data }: { data: VisualExplanation }) {
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <div className="min-w-0">
           <p className="truncate font-display text-lg leading-tight">{data.title}</p>
-          <p className="text-xs capitalize text-muted-foreground">
+          <p className="tabular-nums text-xs capitalize text-muted-foreground">
             {data.kind} • {scenes.length} scenes • {Math.round(totalMs / 1000)}s
           </p>
         </div>
-        <div className="flex items-center gap-1 rounded-full border border-border p-0.5">
+        <div className="flex items-center gap-1 rounded-full border border-border p-1">
           {(["16:9", "9:16"] as Aspect[]).map((a) => (
             <button
               key={a}
               type="button"
               onClick={() => setAspect(a)}
-              className={`rounded-full px-3 py-1 text-xs transition-colors ${
+              className={`tap-spring min-h-9 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                 aspect === a ? "bg-ink text-background" : "text-muted-foreground hover:bg-muted"
               }`}
             >
@@ -329,6 +329,7 @@ export function VisualExplainer({ data }: { data: VisualExplanation }) {
         <Button
           size="sm"
           variant="secondary"
+          className="min-h-10 rounded-xl px-3"
           onClick={() => {
             startRef.current = performance.now();
             setPlaying((p) => !p);
@@ -337,22 +338,39 @@ export function VisualExplainer({ data }: { data: VisualExplanation }) {
           {playing ? <Pause className="mr-1 h-4 w-4" /> : <Play className="mr-1 h-4 w-4" />}
           {playing ? "Pause" : "Play"}
         </Button>
-        <Button size="sm" variant="ghost" onClick={restart} aria-label="Restart">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-10 w-10 rounded-xl"
+          onClick={restart}
+          aria-label="Restart"
+        >
           <RotateCcw className="h-4 w-4" />
         </Button>
         <Button
           size="sm"
           variant="ghost"
+          className="h-10 w-10 rounded-xl"
           onClick={() => setMuted((m) => !m)}
           aria-label={muted ? "Unmute narration" : "Mute narration"}
         >
           {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
         </Button>
         <span className="flex-1" />
-        <Button size="sm" variant="outline" onClick={downloadImages}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="min-h-10 rounded-xl px-3"
+          onClick={downloadImages}
+        >
           <Images className="mr-1 h-4 w-4" /> Images
         </Button>
-        <Button size="sm" onClick={recordVideo} disabled={recording}>
+        <Button
+          size="sm"
+          className="min-h-10 rounded-xl px-3.5"
+          onClick={recordVideo}
+          disabled={recording}
+        >
           {recording ? (
             <Loader2 className="mr-1 h-4 w-4 animate-spin" />
           ) : (
@@ -373,7 +391,7 @@ export function VisualExplainer({ data }: { data: VisualExplanation }) {
               startRef.current = performance.now();
               setPlaying(true);
             }}
-            className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+            className={`tap-spring min-h-9 rounded-full border px-3 py-1.5 text-xs transition-colors ${
               i === index
                 ? "border-transparent bg-primary text-primary-foreground"
                 : "border-border hover:bg-muted"
