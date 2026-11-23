@@ -99,7 +99,7 @@ describe("ThemeGallery UI & live preview", () => {
       const logoImg = screen.getByRole("img", { name: `${theme.name} logo` });
       expect(logoImg).toHaveAttribute("src", theme.mascotImage);
     }
-    expect(screen.getByText("Default Kitchen Themes")).toBeInTheDocument();
+    expect(screen.getByText("Default (Black & White)")).toBeInTheDocument();
     expect(screen.getByText("Logo Themes")).toBeInTheDocument();
   });
 
@@ -112,10 +112,10 @@ describe("ThemeGallery UI & live preview", () => {
 
     await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalled());
 
-    const midnightKitchenCard = screen.getByRole("radio", { name: /Midnight Kitchen theme/i });
-    fireEvent.click(midnightKitchenCard);
+    const blackCard = screen.getByRole("radio", { name: /Default Black theme/i });
+    fireEvent.click(blackCard);
 
-    expect(screen.getByText("Previewing Midnight Kitchen")).toBeInTheDocument();
+    expect(screen.getByText("Previewing Default Black")).toBeInTheDocument();
     expect(document.documentElement.dataset["appTheme"]).toBe("midnight-black");
     expect(mockSaveMyTheme).not.toHaveBeenCalled();
 
@@ -125,9 +125,9 @@ describe("ThemeGallery UI & live preview", () => {
 
     expect(mockSaveMyTheme).toHaveBeenCalledWith({ data: { themeId: "midnight-black" } });
     await waitFor(() =>
-      expect(screen.getByText("Active theme: Midnight Kitchen")).toBeInTheDocument(),
+      expect(screen.getByText("Active theme: Default Black")).toBeInTheDocument(),
     );
-    expect(screen.queryByText("Previewing Midnight Kitchen")).not.toBeInTheDocument();
+    expect(screen.queryByText("Previewing Default Black")).not.toBeInTheDocument();
   });
 
   it("distinguishes locked logo themes and allows unlocking when unsubscribed", async () => {

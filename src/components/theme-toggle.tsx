@@ -18,9 +18,9 @@ const OPTIONS: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
 ];
 
 export function ThemeToggle() {
-  const { mode, colorScheme, setMode } = useTheme();
+  const { mode, displayTheme, setMode } = useTheme();
   const { isPremium } = usePremium();
-  const Icon = colorScheme === "dark" ? Moon : Sun;
+  const Icon = displayTheme.colorScheme === "dark" ? Moon : Sun;
 
   return (
     <DropdownMenu>

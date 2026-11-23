@@ -5,7 +5,8 @@ import { getMyPreferences } from "@/lib/preferences.functions";
 import { getIntroCompletion } from "@/lib/billing.functions";
 import { adminIsAdmin } from "@/lib/premium.functions";
 import { isHardcodedAdminEmail } from "@/lib/admin-emails";
-import { readLocalFreeMode } from "@/lib/freemium";
+import { readClientProfilePreferences } from "@/lib/client-profile-prefs";
+import { hasSeenTour } from "@/lib/preferences";
 
 export type FlowState =
   | "loading"
@@ -15,53 +16,125 @@ export type FlowState =
   | "app_tour_required"
   | "application_ready";
 
+const FLOW_CACHE_PREFIX = "mealmate.flow-progress.v1:";
+const ADMIN_HINT_PREFIX = "mealmate.admin-hint.v1:";
+
+type CachedFlowProgress = {
+  onboardingCompleted: boolean;
+  tourCompleted: boolean;
+  cachedAt: number;
+};
+
+const FLOW_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function readFlowProgressCache(userId: string | undefined): CachedFlowProgress | undefined {
+  if (!userId || typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(`${FLOW_CACHE_PREFIX}${userId}`);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as CachedFlowProgress;
+    if (
+      typeof parsed?.onboardingCompleted !== "boolean" ||
+      typeof parsed?.tourCompleted !== "boolean" ||
+      Date.now() - Number(parsed.cachedAt || 0) > FLOW_CACHE_TTL_MS
+    ) {
+      return undefined;
+    }
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeFlowProgressCache(
+  userId: string | undefined,
+  data: { onboardingCompleted: boolean; tourCompleted: boolean },
+) {
+  if (!userId || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      `${FLOW_CACHE_PREFIX}${userId}`,
+      JSON.stringify({ ...data, cachedAt: Date.now() } satisfies CachedFlowProgress),
+    );
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function readAdminHint(userId: string | undefined): boolean {
+  if (!userId || typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(`${ADMIN_HINT_PREFIX}${userId}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeAdminHint(userId: string | undefined, isAdmin: boolean) {
+  if (!userId || typeof window === "undefined") return;
+  try {
+    if (isAdmin) {
+      window.localStorage.setItem(`${ADMIN_HINT_PREFIX}${userId}`, "1");
+    } else {
+      window.localStorage.removeItem(`${ADMIN_HINT_PREFIX}${userId}`);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export function useFlowController() {
   const { user, loading: sessionLoading } = useSession();
   const userId = user?.id;
   const emailAdmin = isHardcodedAdminEmail(user?.email);
   const access = usePremium();
+  const adminHint = readAdminHint(userId);
 
   const adminQuery = useQuery({
     queryKey: ["admin-flow-access", userId],
-    queryFn: () => adminIsAdmin().catch(() => ({ isAdmin: false })),
+    queryFn: async () => {
+      const res = await adminIsAdmin().catch(() => ({ isAdmin: false }));
+      writeAdminHint(userId, Boolean(res?.isAdmin));
+      return res;
+    },
     enabled: !!userId && !emailAdmin,
+    initialData: adminHint ? { isAdmin: true } : undefined,
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
 
   const isAdmin = Boolean(userId && (emailAdmin || adminQuery.data?.isAdmin));
+  const cachedProgress = !isAdmin ? readFlowProgressCache(userId) : undefined;
 
   const userProgress = useQuery({
     queryKey: ["user-flow-progress", userId],
     queryFn: async () => {
       if (!userId) return null;
       const [remotePrefs, introCompleted] = await Promise.all([
-        getMyPreferences().catch(() => null),
-        getIntroCompletion().catch(() => false),
+        getMyPreferences().catch(() => readClientProfilePreferences(userId)),
+        getIntroCompletion().catch(() => hasSeenTour()),
       ]);
-      const freeModeEntered =
-        Boolean((remotePrefs as { free_mode_entered?: boolean } | null)?.free_mode_entered) ||
-        readLocalFreeMode(userId);
-      return {
+      const result = {
         onboardingCompleted: Boolean(remotePrefs?.onboarding_completed),
         tourCompleted: Boolean(introCompleted),
-        freeModeEntered,
       };
+      writeFlowProgressCache(userId, result);
+      return result;
     },
     enabled: !!userId && !isAdmin,
+    initialData: cachedProgress
+      ? {
+          onboardingCompleted: cachedProgress.onboardingCompleted,
+          tourCompleted: cachedProgress.tourCompleted,
+        }
+      : undefined,
+    initialDataUpdatedAt: cachedProgress?.cachedAt,
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
 
   if (sessionLoading) {
-    return {
-      state: "loading" as FlowState,
-      user,
-      access,
-      progress: null,
-      isAdmin: false,
-      isFreeTier: false,
-    };
+    return { state: "loading" as FlowState, user, access, progress: null, isAdmin: false };
   }
 
   if (!user) {
@@ -71,7 +144,6 @@ export function useFlowController() {
       access,
       progress: null,
       isAdmin: false,
-      isFreeTier: false,
     };
   }
 
@@ -80,40 +152,26 @@ export function useFlowController() {
       state: "application_ready" as FlowState,
       user,
       access: { ...access, isPremium: true, loading: false, error: null },
-      progress: {
-        onboardingCompleted: true,
-        tourCompleted: true,
-        isPremium: true,
-        freeModeEntered: false,
-      },
+      progress: { onboardingCompleted: true, tourCompleted: true, isPremium: true },
       isAdmin: true,
-      isFreeTier: false,
     };
   }
 
-  if (adminQuery.isPending || userProgress.isPending || access.loading) {
-    return {
-      state: "loading" as FlowState,
-      user,
-      access,
-      progress: null,
-      isAdmin: false,
-      isFreeTier: false,
-    };
+  // Only wait for userProgress and real subscription check; adminQuery runs non-blockingly in background.
+  if (userProgress.isPending || access.loading) {
+    return { state: "loading" as FlowState, user, access, progress: null, isAdmin: false };
   }
 
   const onboardingCompleted = Boolean(userProgress.data?.onboardingCompleted);
   const tourCompleted = Boolean(userProgress.data?.tourCompleted);
-  const freeModeEntered = Boolean(userProgress.data?.freeModeEntered) || readLocalFreeMode(userId);
   const isPremium = Boolean(access.isPremium);
-  const isFreeTier = !isPremium && freeModeEntered;
 
   let state: FlowState;
   if (!onboardingCompleted) {
     state = "onboarding_required";
-  } else if (!isPremium && !freeModeEntered) {
+  } else if (!isPremium) {
     state = "paywall_required";
-  } else if (isPremium && !tourCompleted) {
+  } else if (!tourCompleted) {
     state = "app_tour_required";
   } else {
     state = "application_ready";
@@ -123,8 +181,7 @@ export function useFlowController() {
     state,
     user,
     access,
-    progress: { onboardingCompleted, tourCompleted, isPremium, freeModeEntered },
+    progress: { onboardingCompleted, tourCompleted, isPremium },
     isAdmin: false,
-    isFreeTier,
   };
 }

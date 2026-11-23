@@ -18,8 +18,6 @@ import {
 } from "lucide-react";
 import { scanKitchen, scanDish, type ScannedDish, generateRecipe } from "@/lib/ai.functions";
 import { useSession } from "@/hooks/use-session";
-import { usePremium } from "@/hooks/use-premium";
-import { PremiumFeatureLock } from "@/components/premium-feature-lock";
 import { firebaseData } from "@/lib/firebase-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,7 +103,6 @@ function isoLocal(d: Date) {
 
 function ScanPage() {
   const { user, loading } = useSession();
-  const { isPremium, loading: premiumLoading } = usePremium();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -318,16 +315,6 @@ function ScanPage() {
       ]
     : [];
 
-  if (!loading && !premiumLoading && user && !isPremium) {
-    return (
-      <PremiumFeatureLock
-        featureLabel="AI Kitchen Scanner"
-        title="Snap your fridge or meal"
-        description="Detect ingredients from photos, estimate dish nutrition, and cook instantly with your 3-day free trial."
-      />
-    );
-  }
-
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 bg-background px-4 py-8 text-foreground">
       {/* Header */}
@@ -444,8 +431,8 @@ function ScanPage() {
 
             {/* Laser scanning sweep animation when busy */}
             {busy && (
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]">
-                <div className="absolute inset-x-0 h-1 animate-[bounce_1.5s_infinite] bg-gradient-to-r from-transparent via-white to-transparent shadow-[0_0_15px_3px_rgba(255,255,255,0.7)]" />
+              <div className="absolute inset-0 overflow-hidden bg-black/40 backdrop-blur-[1px]">
+                <div className="scan-sweep-beam absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-transparent via-primary to-transparent shadow-[0_0_18px_4px_var(--periwinkle)]" />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="flex items-center gap-2.5 rounded-full border border-white/20 bg-black/80 px-4 py-2 text-xs font-medium text-white shadow-xl backdrop-blur-md">
                     <Loader2 className="h-4 w-4 animate-spin text-white" />
@@ -466,7 +453,7 @@ function ScanPage() {
                   type="button"
                   onClick={() => setPreviewExpanded(true)}
                   aria-label="Expand image preview"
-                  className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/75 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md transition-colors hover:bg-black"
+                  className="absolute bottom-3 right-3 flex min-h-11 items-center gap-1.5 rounded-full border border-white/20 bg-black/75 px-4 text-xs font-medium text-white shadow-md backdrop-blur-md transition-colors hover:bg-black"
                 >
                   <Expand className="h-3.5 w-3.5" />
                   Preview
@@ -474,7 +461,7 @@ function ScanPage() {
                 <button
                   type="button"
                   onClick={reset}
-                  className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/75 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md transition-colors hover:bg-black"
+                  className="absolute right-3 top-3 flex min-h-11 items-center gap-1.5 rounded-full border border-white/20 bg-black/75 px-4 text-xs font-medium text-white shadow-md backdrop-blur-md transition-colors hover:bg-black"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   Retake
@@ -509,7 +496,7 @@ function ScanPage() {
 
       {/* Dish Results Display */}
       {dish && (
-        <section className="mt-6 rounded-3xl border border-border bg-card p-6 text-foreground">
+        <section className="motion-reveal mt-6 rounded-3xl border border-border bg-card p-6 text-foreground">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-2xl font-medium tracking-tight text-foreground">{dish.name}</h2>
@@ -517,7 +504,7 @@ function ScanPage() {
                 {[dish.cuisine, dish.portion].filter(Boolean).join(" · ")}
               </p>
             </div>
-            <span className="shrink-0 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium text-foreground">
+            <span className="shrink-0 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium tabular-nums text-foreground">
               {Math.round(dish.confidence * 100)}% match
             </span>
           </div>
@@ -532,7 +519,7 @@ function ScanPage() {
               <Flame className="h-6 w-6" />
             </div>
             <div>
-              <div className="text-2xl font-semibold leading-none text-foreground">
+              <div className="text-2xl font-semibold leading-none tabular-nums text-foreground">
                 {dish.calories ?? 0}{" "}
                 <span className="text-xs font-normal text-muted-foreground">kcal</span>
               </div>
@@ -550,7 +537,7 @@ function ScanPage() {
                 <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {m.label}
                 </dt>
-                <dd className="mt-1 text-base font-semibold text-foreground">
+                <dd className="mt-1 text-base font-semibold tabular-nums text-foreground">
                   {m.value ?? 0}
                   <span className="text-xs font-normal text-muted-foreground">
                     {m.value != null ? m.unit : "g"}
@@ -652,10 +639,10 @@ function ScanPage() {
 
       {/* Ingredient Results & Correction Editor */}
       {items && (
-        <section className="mt-6 rounded-3xl border border-border bg-card p-6 text-foreground">
+        <section className="motion-reveal mt-6 rounded-3xl border border-border bg-card p-6 text-foreground">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-medium tracking-tight text-foreground">
+              <h2 className="text-xl font-medium tracking-tight tabular-nums text-foreground">
                 Detected Ingredients ({items.length})
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -675,19 +662,19 @@ function ScanPage() {
                   value={item.name}
                   onChange={(e) => updateItem(item.id, "name", e.target.value)}
                   placeholder="Ingredient name"
-                  className="h-9 border-none bg-transparent px-2 text-sm text-foreground focus-visible:ring-0"
+                  className="h-10 border-none bg-transparent px-2 text-sm text-foreground focus-visible:ring-0"
                 />
                 <Input
                   value={item.quantity}
                   onChange={(e) => updateItem(item.id, "quantity", e.target.value)}
                   placeholder="Qty"
-                  className="h-9 rounded-lg border border-border bg-card px-2 text-center text-xs text-foreground focus-visible:ring-1"
+                  className="h-10 rounded-lg border border-border bg-card px-2 text-center text-xs text-foreground focus-visible:ring-1"
                 />
                 <button
                   type="button"
                   onClick={() => removeItem(item.id)}
                   aria-label={`Remove ${item.name}`}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -707,7 +694,7 @@ function ScanPage() {
                   addItem();
                 }
               }}
-              className="h-9 border-none bg-transparent px-2 text-sm text-foreground focus-visible:ring-0"
+              className="h-10 border-none bg-transparent px-2 text-sm text-foreground focus-visible:ring-0"
             />
             <Input
               value={newItemQty}
@@ -719,13 +706,13 @@ function ScanPage() {
                   addItem();
                 }
               }}
-              className="h-9 rounded-lg border border-border bg-card px-2 text-center text-xs text-foreground focus-visible:ring-1"
+              className="h-10 rounded-lg border border-border bg-card px-2 text-center text-xs text-foreground focus-visible:ring-1"
             />
             <button
               type="button"
               onClick={addItem}
               disabled={!newItemName.trim()}
-              className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-opacity disabled:opacity-30"
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-opacity disabled:opacity-30"
               aria-label="Add item"
             >
               <Plus className="h-4 w-4" />

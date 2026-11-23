@@ -33,5 +33,6 @@ export async function uploadRecipePhoto(path: string, bytes: Uint8Array, content
 
 export async function deleteRecipePhoto(url: string) {
   if (memoryPhotoStore.delete(url)) return;
+  if (!hasVercelBlobConfig()) return;
   await del(url);
 }

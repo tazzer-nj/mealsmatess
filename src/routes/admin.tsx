@@ -3,7 +3,6 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity,
-  BarChart3,
   Crown,
   DollarSign,
   Download,
@@ -40,14 +39,6 @@ import {
   adminListUsers,
   getAdminAnalytics,
 } from "@/lib/admin-analytics.functions";
-import { adminListFeedbackReports, adminUpdateFeedbackStatus } from "@/lib/feedback.functions";
-import {
-  FEEDBACK_CATEGORIES,
-  FEEDBACK_STATUSES,
-  type FeedbackCategory,
-  type FeedbackReport,
-  type FeedbackStatus,
-} from "@/lib/feedback";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RecipeImageBackfillCard } from "@/components/recipe-image-tools";
@@ -73,9 +64,6 @@ const AiDiagnosticsTab = lazy(() =>
 );
 const FlagsTab = lazy(() =>
   import("@/components/admin/flags-tab").then((m) => ({ default: m.FlagsTab })),
-);
-const UserInsightsTab = lazy(() =>
-  import("@/components/admin/user-insights-tab").then((m) => ({ default: m.UserInsightsTab })),
 );
 
 // Charts pull in the charting library — load them only when a chart renders.
@@ -322,10 +310,6 @@ function AdminPage() {
             <Activity className="mr-2 size-4" />
             Overview
           </TabsTrigger>
-          <TabsTrigger value="insights">
-            <BarChart3 className="mr-2 size-4" />
-            User Insights
-          </TabsTrigger>
           <TabsTrigger value="users">
             <Users className="mr-2 size-4" />
             Users
@@ -346,7 +330,6 @@ function AdminPage() {
           <TabsTrigger value="grant">Grant</TabsTrigger>
           <TabsTrigger value="restaurants">Restaurants</TabsTrigger>
           <TabsTrigger value="announce">Announce</TabsTrigger>
-          <TabsTrigger value="feedback">Feedback</TabsTrigger>
           <TabsTrigger value="audit">Audit</TabsTrigger>
         </TabsList>
 
@@ -358,17 +341,6 @@ function AdminPage() {
           <div className="mt-4">
             <RecipeImageBackfillCard />
           </div>
-        </TabsContent>
-        <TabsContent value="insights" className="mt-4">
-          <Suspense
-            fallback={
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            }
-          >
-            <UserInsightsTab />
-          </Suspense>
         </TabsContent>
         <TabsContent value="users" className="mt-4">
           <UsersTab
@@ -443,9 +415,6 @@ function AdminPage() {
           >
             <AnnouncementsTab />
           </Suspense>
-        </TabsContent>
-        <TabsContent value="feedback" className="mt-4">
-          <FeedbackTab />
         </TabsContent>
         <TabsContent value="audit" className="mt-4">
           <AuditTab />
@@ -1220,196 +1189,6 @@ function GrantTab() {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">Find user IDs in the Users tab.</p>
-    </div>
-  );
-}
-
-function FeedbackTab() {
-  const qc = useQueryClient();
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-feedback"],
-    queryFn: () => adminListFeedbackReports(),
-    staleTime: 30_000,
-  });
-  const [categoryFilter, setCategoryFilter] = useState<"all" | FeedbackCategory>("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | FeedbackStatus>("all");
-  const [drafts, setDrafts] = useState<
-    Record<string, { status: FeedbackStatus; adminNote: string }>
-  >({});
-  const [savingId, setSavingId] = useState<string | null>(null);
-
-  const reports = useMemo(() => (data ?? []) as FeedbackReport[], [data]);
-  const filtered = useMemo(() => {
-    return reports.filter((r) => {
-      if (categoryFilter !== "all" && r.category !== categoryFilter) return false;
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      return true;
-    });
-  }, [reports, categoryFilter, statusFilter]);
-
-  async function saveReport(report: FeedbackReport) {
-    const draft = drafts[report.id] ?? {
-      status: report.status,
-      adminNote: report.admin_note ?? "",
-    };
-    setSavingId(report.id);
-    try {
-      await adminUpdateFeedbackStatus({
-        data: {
-          reportId: report.id,
-          status: draft.status,
-          adminNote: draft.adminNote,
-        },
-      });
-      toast.success(`Updated ${report.reference_id}`);
-      await qc.invalidateQueries({ queryKey: ["admin-feedback"] });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not update report");
-    } finally {
-      setSavingId(null);
-    }
-  }
-
-  if (isLoading) return <Loader2 className="h-5 w-5 animate-spin" />;
-
-  return (
-    <div className="space-y-4 rounded-xl border border-border/60 bg-card p-5 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h3 className="font-display text-lg">Customer feedback &amp; issue reports</h3>
-          <p className="text-xs text-muted-foreground tabular-nums">
-            {reports.length} total · {reports.filter((r) => r.status === "received").length}{" "}
-            awaiting triage
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Select
-            value={categoryFilter}
-            onValueChange={(v) => setCategoryFilter(v as "all" | FeedbackCategory)}
-          >
-            <SelectTrigger className="w-[155px]">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
-              {FEEDBACK_CATEGORIES.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as "all" | FeedbackStatus)}
-          >
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {FEEDBACK_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s.replace("_", " ")}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {filtered.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          No feedback reports match this filter.
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((r) => {
-            const draft = drafts[r.id] ?? {
-              status: r.status,
-              adminNote: r.admin_note ?? "",
-            };
-            const dirty = draft.status !== r.status || draft.adminNote !== (r.admin_note ?? "");
-            return (
-              <div
-                key={r.id}
-                className="space-y-2.5 rounded-xl border border-border/60 bg-background/40 p-4"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span className="font-mono font-semibold text-foreground">
-                        {r.reference_id}
-                      </span>
-                      <span>·</span>
-                      <span>{r.category}</span>
-                      <span>·</span>
-                      <span>{format(new Date(r.created_at), "MMM d, HH:mm")}</span>
-                      {r.user_email && (
-                        <>
-                          <span>·</span>
-                          <span>{r.user_email}</span>
-                        </>
-                      )}
-                      {r.route_context && (
-                        <>
-                          <span>·</span>
-                          <span className="font-mono">{r.route_context}</span>
-                        </>
-                      )}
-                    </div>
-                    <h4 className="mt-1 font-medium text-foreground">{r.title}</h4>
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
-                      {r.description}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center">
-                  <Select
-                    value={draft.status}
-                    onValueChange={(v) =>
-                      setDrafts((prev) => ({
-                        ...prev,
-                        [r.id]: { ...draft, status: v as FeedbackStatus },
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="h-11 w-full sm:w-[140px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FEEDBACK_STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s.replace("_", " ")}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    className="h-11 flex-1"
-                    placeholder="Admin response or triage note..."
-                    value={draft.adminNote}
-                    onChange={(e) =>
-                      setDrafts((prev) => ({
-                        ...prev,
-                        [r.id]: { ...draft, adminNote: e.target.value },
-                      }))
-                    }
-                  />
-                  <Button
-                    size="sm"
-                    className="h-11 shrink-0 px-4"
-                    disabled={savingId === r.id || !dirty}
-                    onClick={() => void saveReport(r)}
-                  >
-                    {savingId === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

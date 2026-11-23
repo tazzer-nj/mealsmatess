@@ -63,23 +63,9 @@ describe("shared MealMate AI engine", () => {
     vi.stubEnv("AI_GATEWAY_API_KEY", "");
     vi.stubEnv("VERCEL_OIDC_TOKEN", "");
     vi.stubEnv("VERCEL", "");
-    vi.stubEnv("GEMINI_API_KEY", "");
-    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", "");
     await expect(
       generateAiText({ feature: "test.unconfigured", prompt: "Reply." }),
     ).rejects.toThrow(/not configured/i);
-  });
-
-  it("reports Google Gemini API when GEMINI_API_KEY is configured", () => {
-    vi.stubEnv("LOVABLE_API_KEY", "");
-    vi.stubEnv("AI_GATEWAY_API_KEY", "");
-    vi.stubEnv("VERCEL_OIDC_TOKEN", "");
-    vi.stubEnv("VERCEL", "");
-    vi.stubEnv("GEMINI_API_KEY", "test-gemini-key");
-    const config = getAiProviderConfiguration();
-    expect(config.configured).toBe(true);
-    expect(config.textProvider).toBe("Google Gemini API");
-    expect(config.textModel).toBe("gemini-4-hydrogen");
   });
 
   it("returns generated text through the shared model wrapper", async () => {

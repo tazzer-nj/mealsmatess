@@ -22,11 +22,10 @@ import { sendEmailVerification } from "firebase/auth";
 import { isHardcodedAdminEmail } from "@/lib/admin-emails";
 import { adminIsAdmin } from "@/lib/premium.functions";
 import {
-  captureInitialAttribution,
-  detectClientCountry,
-  detectClientPlatform,
-  dispatchAnalyticsEvent,
-} from "@/lib/analytics-events";
+  extractAuthErrorMessage,
+  getAuthErrorMessage,
+  getFirebaseErrorCode,
+} from "@/lib/auth-errors";
 
 async function resolvePostAuthRoute(email?: string | null): Promise<"/" | "/onboarding"> {
   if (isHardcodedAdminEmail(email)) return "/";
@@ -46,67 +45,64 @@ async function ensureUserProfile(user: {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-}): Promise<{ isNewUser: boolean }> {
+}) {
   const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
-  if (snap.exists()) {
-    const existing = snap.data() as Record<string, unknown>;
-    // Never overwrite user-edited onboarding goal/displayName or server-managed preference docs.
-    if ("preferences" in existing || existing["goal"] || existing["displayName"]) {
-      return { isNewUser: false };
+  const path = `users/${user.uid}`;
+  const safeEmail = (user.email ?? "").slice(0, 254);
+  const safeDisplayName = (user.displayName || user.email?.split("@")[0] || "Chef").slice(0, 100);
+  const safePhotoUrl = user.photoURL && user.photoURL.length <= 2048 ? user.photoURL : "";
+
+  try {
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      const existing = snap.data() as Record<string, unknown>;
+      // Never overwrite user-edited onboarding goal/displayName or server-managed preference docs.
+      if ("preferences" in existing || existing["goal"] || existing["displayName"]) {
+        return;
+      }
+      await setDoc(
+        userRef,
+        {
+          id: user.uid,
+          email: safeEmail,
+          displayName: safeDisplayName,
+          photoURL: safePhotoUrl,
+          goal: "healthy_cooking",
+        },
+        { merge: true },
+      );
+      return;
     }
+
     await setDoc(
       userRef,
       {
         id: user.uid,
-        email: user.email ?? "",
-        displayName: user.displayName || user.email?.split("@")[0] || "Chef",
-        photoURL: user.photoURL ?? "",
+        email: safeEmail,
+        displayName: safeDisplayName,
+        photoURL: safePhotoUrl,
         goal: "healthy_cooking",
+        createdAt: new Date().toISOString(),
       },
       { merge: true },
     );
-    return { isNewUser: false };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("Missing or insufficient permissions")) {
+      const errInfo = {
+        error: message,
+        operationType: "write",
+        path,
+        authInfo: {
+          userId: auth.currentUser?.uid ?? null,
+          email: auth.currentUser?.email ?? null,
+          emailVerified: auth.currentUser?.emailVerified ?? null,
+        },
+      };
+      console.error("Firestore Error: ", JSON.stringify(errInfo));
+    }
+    throw error;
   }
-
-  const nowIso = new Date().toISOString();
-  const utm = captureInitialAttribution();
-  await setDoc(
-    userRef,
-    {
-      id: user.uid,
-      email: user.email ?? "",
-      displayName: user.displayName || user.email?.split("@")[0] || "Chef",
-      photoURL: user.photoURL ?? "",
-      goal: "healthy_cooking",
-      platform: detectClientPlatform(),
-      country: detectClientCountry(),
-      createdAt: nowIso,
-    },
-    { merge: true },
-  );
-
-  // Best-effort initial UTM/referrer capture before Page 7 self-reported attribution.
-  if (utm && (utm.utm_source || utm.referrer)) {
-    void setDoc(
-      doc(db, "user_acquisition_sources", user.uid),
-      {
-        id: user.uid,
-        user_id: user.uid,
-        utm_source: utm.utm_source,
-        utm_medium: utm.utm_medium,
-        utm_campaign: utm.utm_campaign,
-        referrer: utm.referrer,
-        platform: detectClientPlatform(),
-        country: detectClientCountry(),
-        captured_at: utm.captured_at || nowIso,
-        updated_at: nowIso,
-      },
-      { merge: true },
-    ).catch(() => undefined);
-  }
-
-  return { isNewUser: true };
 }
 
 export const Route = createFileRoute("/auth")({
@@ -123,33 +119,6 @@ export const Route = createFileRoute("/auth")({
     s["mode"] === "signup" ? { mode: "signup" } : s["mode"] === "signin" ? { mode: "signin" } : {},
   component: AuthLayout,
 });
-
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (!err) return fallback;
-  if (typeof err === "string") return err;
-  if (err instanceof Error && err.message) return err.message;
-  if (typeof err === "object" && typeof (err as { message?: unknown }).message === "string") {
-    return (err as { message: string }).message;
-  }
-  return fallback;
-}
-
-function getGoogleSignInErrorMessage(error: unknown): string {
-  const code =
-    error && typeof error === "object" && "code" in error
-      ? (error as { code?: unknown }).code
-      : undefined;
-
-  if (code === "auth/popup-closed-by-user") return "";
-  if (code === "auth/unauthorized-domain" || code === "auth/internal-error") {
-    return "Google sign-in is currently unavailable in this browser session. Please continue with your email and password.";
-  }
-
-  return extractErrorMessage(
-    error,
-    "Google sign-in is unavailable right now. Please continue with your email and password.",
-  );
-}
 
 export function AuthLayout() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -201,8 +170,8 @@ function AuthPage() {
   const [heroFailed, setHeroFailed] = useState(false);
 
   useEffect(() => {
-    if (search.mode && search.mode !== view) {
-      setView(search.mode);
+    if (search.mode) {
+      setView((prev) => (search.mode && search.mode !== prev ? search.mode : prev));
     }
   }, [search.mode]);
 
@@ -212,15 +181,7 @@ function AuthPage() {
       .then(async (result) => {
         if (!active || !result?.user) return;
         try {
-          const { isNewUser } = await ensureUserProfile(result.user);
-          if (isNewUser) {
-            void dispatchAnalyticsEvent({
-              userId: result.user.uid,
-              eventName: "signup_completed",
-              dedupeKey: "signup",
-              metadata: { provider: "google_redirect" },
-            });
-          }
+          await ensureUserProfile(result.user);
           toast.success("Welcome to MealMate!");
           const dest = await resolvePostAuthRoute(result.user.email);
           if (active) navigate({ to: dest, replace: true });
@@ -230,17 +191,12 @@ function AuthPage() {
         }
       })
       .catch((error) => {
-        const message = extractErrorMessage(error, "").toLowerCase();
-        if (
-          error?.code === "auth/popup-closed-by-user" ||
-          message.includes("missing initial state") ||
-          message.includes("sessionstorage") ||
-          message.includes("storage-partitioned")
-        ) {
-          return;
-        }
+        const code = getFirebaseErrorCode(error);
+        if (code === "auth/no-auth-event" || code === "auth/missing-initial-state") return;
+        const msg = getAuthErrorMessage(error, "google");
+        if (!msg) return;
         console.error("[Auth] Google redirect error:", error);
-        toast.error(extractErrorMessage(error, "Google sign-in is unavailable."));
+        toast.error(extractAuthErrorMessage(error, msg));
       });
     return () => {
       active = false;
@@ -274,6 +230,97 @@ function AuthPage() {
     setShowConfirmPassword(false);
   }
 
+  async function signInWithWhop() {
+    if (busy) return;
+    setBusy(true);
+    clearErrors();
+    try {
+      const response = await fetch("/api/auth/whop?mode=json", {
+        method: "GET",
+        credentials: "include",
+      });
+      const data = (await response.json().catch(() => null)) as {
+        url?: string;
+        error?: string;
+      } | null;
+
+      if (!response.ok || !data?.url) {
+        throw new Error(data?.error || "Whop sign-in is temporarily unavailable.");
+      }
+
+      const inIframe = typeof window !== "undefined" && window.self !== window.top;
+      if (!inIframe) {
+        window.location.assign(data.url);
+        return;
+      }
+
+      const popup = window.open(
+        data.url,
+        "mealmate-whop-oauth",
+        "width=520,height=720,scrollbars=yes,resizable=yes",
+      );
+      if (!popup) {
+        window.location.assign(data.url);
+        return;
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        let settled = false;
+        const cleanup = () => {
+          window.removeEventListener("message", onMessage);
+          window.clearInterval(pollClosed);
+          window.clearTimeout(timeoutId);
+        };
+        const onMessage = (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return;
+          const payload = event.data as {
+            type?: string;
+            ok?: boolean;
+            error?: string | null;
+          } | null;
+          if (!payload || payload.type !== "MEALMATE_WHOP_AUTH") return;
+          settled = true;
+          cleanup();
+          if (payload.ok) {
+            resolve();
+          } else {
+            reject(new Error(payload.error || "Whop sign-in was cancelled."));
+          }
+        };
+        const pollClosed = window.setInterval(() => {
+          if (popup.closed && !settled) {
+            settled = true;
+            cleanup();
+            resolve();
+          }
+        }, 400);
+        const timeoutId = window.setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            cleanup();
+            reject(new Error("Whop sign-in timed out. Please try again."));
+          }
+        }, 120_000);
+        window.addEventListener("message", onMessage);
+      });
+
+      const { refreshSessionUser } = await import("@/hooks/use-session");
+      const refreshed = await refreshSessionUser();
+      if (refreshed) {
+        toast.success("Welcome to MealMate!");
+        const emailValue = "email" in refreshed ? refreshed.email : null;
+        const dest = await resolvePostAuthRoute(emailValue);
+        navigate({ to: dest, replace: true });
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Could not complete Whop sign-in.";
+      setFormError(msg);
+      toast.error(msg);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function signInWithGoogle() {
     if (busy) return;
     setBusy(true);
@@ -282,15 +329,7 @@ function AuthPage() {
       const cred = await signInWithFirebaseGoogle();
       if (cred?.user) {
         try {
-          const { isNewUser } = await ensureUserProfile(cred.user);
-          if (isNewUser) {
-            void dispatchAnalyticsEvent({
-              userId: cred.user.uid,
-              eventName: "signup_completed",
-              dedupeKey: "signup",
-              metadata: { provider: "google" },
-            });
-          }
+          await ensureUserProfile(cred.user);
         } catch (dbErr) {
           console.warn("[Auth] Could not create Firestore profile:", dbErr);
         }
@@ -300,15 +339,11 @@ function AuthPage() {
         return;
       }
     } catch (error) {
-      if (error instanceof Error && "code" in error && error.code === "auth/popup-closed-by-user") {
-        return;
-      }
+      const errMsg = getAuthErrorMessage(error, "google");
+      if (!errMsg) return;
       console.error("[Auth] Google sign-in error:", error);
-      const errMsg = getGoogleSignInErrorMessage(error);
-      if (errMsg) {
-        setFormError(errMsg);
-        toast.error(errMsg);
-      }
+      setFormError(errMsg);
+      toast.error(errMsg);
     } finally {
       setBusy(false);
     }
@@ -329,8 +364,8 @@ function AuthPage() {
       await sendFirebasePasswordReset(normalizedEmail);
       setResetSent(true);
       toast.success("Password reset email sent. Check your inbox.");
-    } catch {
-      const msg = "Could not send the reset email. Please verify your email address and try again.";
+    } catch (error) {
+      const msg = getAuthErrorMessage(error, "reset");
       setFormError(msg);
       toast.error(msg);
     } finally {
@@ -375,12 +410,6 @@ function AuthPage() {
             } catch (fsErr) {
               console.warn("[Auth] Could not initialize firestore user profile:", fsErr);
             }
-            void dispatchAnalyticsEvent({
-              userId: cred.user.uid,
-              eventName: "signup_completed",
-              dedupeKey: "signup",
-              metadata: { provider: "email" },
-            });
             try {
               await sendEmailVerification(cred.user);
               toast.message("Verification link sent. Check your inbox to activate your account.");
@@ -392,10 +421,7 @@ function AuthPage() {
             return;
           }
         } catch (fbErr: unknown) {
-          const code =
-            fbErr && typeof fbErr === "object" && "code" in fbErr
-              ? (fbErr as { code?: string }).code
-              : undefined;
+          const code = getFirebaseErrorCode(fbErr);
           if (code === "auth/email-already-in-use") {
             toast.error("An account with this email already exists. Sign in instead.");
             setView("signin");
@@ -407,49 +433,26 @@ function AuthPage() {
         }
         toast.success("Welcome to MealMate!");
       } else {
-        try {
-          const cred = await signInWithFirebaseEmail(normalizedEmail, password);
-          if (cred?.user) {
-            toast.success("Welcome back!");
-            const dest = await resolvePostAuthRoute(cred.user.email);
-            navigate({ to: dest, replace: true });
-            return;
+        const cred = await signInWithFirebaseEmail(normalizedEmail, password);
+        if (cred?.user) {
+          try {
+            await ensureUserProfile(cred.user);
+          } catch (fsErr) {
+            console.warn("[Auth] Could not verify firestore user profile:", fsErr);
           }
-        } catch (fbErr: unknown) {
-          const code =
-            fbErr && typeof fbErr === "object" && "code" in fbErr
-              ? (fbErr as { code?: string }).code
-              : undefined;
-          if (
-            code === "auth/user-not-found" ||
-            code === "auth/invalid-credential" ||
-            code === "auth/wrong-password"
-          ) {
-            throw new Error("Invalid email or password.");
-          }
-          throw fbErr;
+          toast.success("Welcome back!");
+          const dest = await resolvePostAuthRoute(cred.user.email);
+          navigate({ to: dest, replace: true });
+          return;
         }
       }
     } catch (err) {
       console.error("[Auth] submit error:", err);
-      const message = extractErrorMessage(err, "Authentication failed").toLowerCase();
-      const friendly =
-        message.includes("invalid login credentials") ||
-        message.includes("invalid email or password") ||
-        message.includes("auth/wrong-password") ||
-        message.includes("auth/user-not-found")
-          ? "Invalid email or password."
-          : message.includes("email not confirmed")
-            ? "Please verify your email before signing in."
-            : message.includes("already registered") || message.includes("already exists")
-              ? "An account with this email already exists. Sign in instead."
-              : message.includes("pwned") || message.includes("weak")
-                ? "That password is too weak. Choose a stronger password."
-                : message.includes("rate limit") || message.includes("too-many-requests")
-                  ? "Too many attempts. Please wait a minute and try again."
-                  : "Unable to sign in right now. Please check your details and try again.";
-      setFormError(friendly);
-      toast.error(friendly);
+      const friendly = getAuthErrorMessage(err, view === "signup" ? "signup" : "signin");
+      if (friendly) {
+        setFormError(friendly);
+        toast.error(friendly);
+      }
     } finally {
       setBusy(false);
     }
@@ -494,17 +497,27 @@ function AuthPage() {
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={signInWithGoogle}
+                    onClick={signInWithWhop}
                     className="flex h-12 w-full items-center justify-center gap-2.5 whitespace-nowrap rounded-xl bg-foreground px-4 text-[14px] font-medium text-background transition-all hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--periwinkle)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {busy ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
-                        <GoogleMark />
-                        <span>Continue with Google</span>
+                        <span>Continue with Whop</span>
+                        <ArrowRight className="h-4 w-4" />
                       </>
                     )}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={signInWithGoogle}
+                    className="flex h-12 w-full items-center justify-center gap-2.5 whitespace-nowrap rounded-xl border border-border bg-secondary px-4 text-[14px] font-medium text-foreground transition-colors hover:border-foreground/25 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--periwinkle)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <GoogleMark />
+                    <span>Continue with Google</span>
                   </button>
 
                   <button
@@ -779,6 +792,16 @@ function AuthPage() {
                   >
                     <GoogleMark />
                     <span>Continue with Google</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={signInWithWhop}
+                    className="flex h-11 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-border bg-secondary px-4 text-[14px] font-medium text-foreground transition-colors hover:border-foreground/25 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--periwinkle)] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <span>Continue with Whop</span>
+                    <ArrowRight className="h-4 w-4" />
                   </button>
                 </form>
               </div>

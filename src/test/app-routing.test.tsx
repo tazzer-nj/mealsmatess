@@ -30,6 +30,7 @@ const ROUTE_SMOKE_PATHS = [
   "/partner/dashboard",
   "/planner",
   "/premium",
+  "/premium/complete",
   "/profile",
   "/recipe/smoke-recipe",
   "/recipes",
@@ -42,11 +43,16 @@ const ROUTE_SMOKE_PATHS = [
   "/welcome",
   "/legal/privacy",
   "/legal/terms",
+  "/api/auth/whop",
+  "/api/auth/callback",
+  "/api/auth/session",
+  "/api/auth/logout",
   "/api/mia",
   "/api/recipe-image",
   "/api/public/announcements-cron",
   "/api/public/firebase-messaging-config",
   "/api/public/webhooks/revenuecat",
+  "/api/webhooks/whop",
 ];
 
 describe("App routing", () => {

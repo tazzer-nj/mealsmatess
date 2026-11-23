@@ -22,6 +22,10 @@ import { toast } from "sonner";
 import { firebaseData } from "@/lib/firebase-data";
 import { auth, sendPasswordReset } from "@/lib/firebase";
 import { saveUserProfile } from "@/lib/profile-avatar";
+import { getMyAccountSettings, saveMyAccountSettings } from "@/lib/account.functions";
+import { isHardcodedAdminEmail } from "@/lib/admin-emails";
+import i18n, { APP_LANGUAGES, normalizeAppLanguage } from "@/lib/i18n";
+import { MotionReveal } from "@/components/motion";
 import {
   Dialog,
   DialogContent,
@@ -91,19 +95,7 @@ const CURRENCIES: { code: string; symbol: string; name: string }[] = [
   { code: "NZD", symbol: "NZ$", name: "New Zealand Dollar" },
 ];
 
-const LANGUAGES: { code: string; name: string }[] = [
-  { code: "en", name: "English" },
-  { code: "zu", name: "isiZulu" },
-  { code: "af", name: "Afrikaans" },
-  { code: "xh", name: "isiXhosa" },
-  { code: "st", name: "Sesotho" },
-  { code: "tn", name: "Setswana" },
-  { code: "nso", name: "Sepedi" },
-  { code: "ve", name: "Tshivenda" },
-  { code: "ts", name: "Xitsonga" },
-  { code: "ss", name: "Siswati" },
-  { code: "nr", name: "isiNdebele" },
-];
+const LANGUAGES = APP_LANGUAGES;
 
 // Best-effort region → currency map for first-launch defaults.
 const REGION_CURRENCY: Record<string, string> = {
@@ -136,10 +128,15 @@ function detectCurrency(): string {
 }
 
 function SettingsPage() {
-  const { user } = useSession();
+  const { user, firebaseUser } = useSession();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editProfileOpen, setEditProfileOpen] = useState(false);
+
+  const isAdminUser = isHardcodedAdminEmail(user?.email);
+  const isWhopUser = user?.provider === "whop";
+  const isGoogleUser =
+    !isWhopUser && Boolean(firebaseUser?.providerData?.some((p) => p.providerId === "google.com"));
 
   const notificationPreferences = useQuery({
     queryKey: ["notification-preferences", user?.id],
@@ -197,13 +194,18 @@ function SettingsPage() {
   const { data: prefs } = useQuery({
     queryKey: ["profile-prefs", user?.id],
     enabled: !!user,
+    staleTime: 60_000,
     queryFn: async () => {
-      const { data } = await firebaseData
-        .from("profiles")
-        .select("currency, locale")
-        .eq("id", user!.id)
-        .maybeSingle();
-      return (data as { currency?: string; locale?: string } | null) ?? null;
+      if (auth.currentUser) {
+        const { data } = await firebaseData
+          .from("profiles")
+          .select("currency, locale")
+          .eq("id", user!.id)
+          .maybeSingle();
+        return (data as { currency?: string; locale?: string } | null) ?? null;
+      }
+      const account = await getMyAccountSettings().catch(() => null);
+      return account ? { currency: account.currency ?? undefined, locale: account.locale ?? undefined } : null;
     },
   });
 
@@ -213,7 +215,7 @@ function SettingsPage() {
     const storedCur = window.localStorage.getItem("mealmate-currency");
     const storedLang = window.localStorage.getItem("mealmate-lang");
     setCurrency(prefs?.currency ?? storedCur ?? detectCurrency());
-    setLang(prefs?.locale ?? storedLang ?? "en");
+    setLang(normalizeAppLanguage(prefs?.locale ?? storedLang ?? "en"));
   }, [prefs]);
 
   async function saveCurrency(next: string) {
@@ -221,33 +223,50 @@ function SettingsPage() {
     window.localStorage.setItem("mealmate-currency", next);
     window.dispatchEvent(new CustomEvent("mealmate-currency-changed", { detail: next }));
     if (!user) return;
-    const { error } = await firebaseData
-      .from("profiles")
-      .update({ currency: next } as never)
-      .eq("id", user.id);
-    if (error) {
-      toast.error("Couldn't save currency", { description: error.message });
-      return;
+    try {
+      if (auth.currentUser) {
+        const { error } = await firebaseData
+          .from("profiles")
+          .update({ currency: next } as never)
+          .eq("id", user.id);
+        if (error) throw error;
+      } else {
+        await saveMyAccountSettings({ data: { currency: next } });
+      }
+      queryClient.invalidateQueries({ queryKey: ["profile-prefs", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["currency"] });
+    } catch (error) {
+      toast.error("Couldn't save currency", {
+        description: error instanceof Error ? error.message : undefined,
+      });
     }
-    queryClient.invalidateQueries({ queryKey: ["profile-prefs", user.id] });
-    queryClient.invalidateQueries({ queryKey: ["currency"] });
   }
 
   async function saveLanguage(next: string) {
-    setLang(next);
-    window.localStorage.setItem("mealmate-lang", next);
-    window.dispatchEvent(new CustomEvent("mealmate-lang-changed", { detail: next }));
+    const normalized = normalizeAppLanguage(next);
+    setLang(normalized);
+    window.localStorage.setItem("mealmate-lang", normalized);
+    window.localStorage.setItem("mealmate_lang", normalized);
+    window.dispatchEvent(new CustomEvent("mealmate-lang-changed", { detail: normalized }));
+    void i18n.changeLanguage(normalized).catch(() => undefined);
     if (!user) return;
-    const { error } = await firebaseData
-      .from("profiles")
-      .update({ locale: next } as never)
-      .eq("id", user.id);
-    if (error) {
-      toast.error("Couldn't save language", { description: error.message });
-      return;
+    try {
+      if (auth.currentUser) {
+        const { error } = await firebaseData
+          .from("profiles")
+          .update({ locale: normalized } as never)
+          .eq("id", user.id);
+        if (error) throw error;
+      } else {
+        await saveMyAccountSettings({ data: { locale: normalized } });
+      }
+      queryClient.invalidateQueries({ queryKey: ["profile-prefs", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["locale"] });
+    } catch (error) {
+      toast.error("Couldn't save language", {
+        description: error instanceof Error ? error.message : undefined,
+      });
     }
-    queryClient.invalidateQueries({ queryKey: ["profile-prefs", user.id] });
-    queryClient.invalidateQueries({ queryKey: ["locale"] });
   }
 
   async function signOut() {
@@ -259,7 +278,7 @@ function SettingsPage() {
   }
 
   async function share() {
-    const url = "https://mealmate.app";
+    const url = "https://mealsmates.site";
     const shareData = {
       title: "MealMate",
       text: "Cook smarter with MealMate: recipes, planner, and AI in your kitchen.",
@@ -315,13 +334,19 @@ function SettingsPage() {
       icon: Star,
       to: "/premium",
     },
-    {
-      label: "Admin dashboard",
-      description: "Subscribers, promos, revenue (admin only)",
-      icon: Shield,
-      to: "/admin",
-    },
+    ...(isAdminUser
+      ? [
+          {
+            label: "Admin dashboard",
+            description: "Subscribers, promos, revenue (admin only)",
+            icon: Shield,
+            to: "/admin",
+          },
+        ]
+      : []),
   ];
+
+  const canResetPassword = !isWhopUser && !isGoogleUser && Boolean(user?.email);
 
   const accountItems: Item[] = [
     {
@@ -329,12 +354,16 @@ function SettingsPage() {
       description: user?.email ?? "Not signed in",
       icon: Mail,
     },
-    {
-      label: "Change password",
-      description: "We'll email you a secure reset link",
-      icon: Lock,
-      onClick: resetPassword,
-    },
+    ...(canResetPassword
+      ? [
+          {
+            label: "Change password",
+            description: "We'll email you a secure reset link",
+            icon: Lock,
+            onClick: resetPassword,
+          },
+        ]
+      : []),
   ];
 
   const supportItems: Item[] = [
@@ -348,7 +377,7 @@ function SettingsPage() {
       label: "Contact support",
       description: "Get in touch with the team",
       icon: Mail,
-      href: "mailto:support@mealmate.app",
+      href: "mailto:support@mealsmates.site",
     },
   ];
 
@@ -385,9 +414,9 @@ function SettingsPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 overflow-x-hidden bg-background px-3.5 pb-28 pt-6 text-foreground sm:px-4 sm:pt-8">
-      <div className="rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:shadow-sm sm:p-5">
+      <MotionReveal className="rounded-2xl border border-border bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:shadow-sm sm:p-5">
         <div className="flex items-center justify-between gap-3.5 sm:gap-4">
-          <div className="flex items-center gap-3.5 sm:gap-4">
+          <div className="flex min-w-0 items-center gap-3.5 sm:gap-4">
             {user?.photoURL ? (
               <img
                 src={user.photoURL}
@@ -400,7 +429,7 @@ function SettingsPage() {
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <h1 className="text-2xl font-medium tracking-tight text-foreground">
+              <h1 className="truncate text-2xl font-medium tracking-tight text-foreground">
                 {user?.displayName || "Profile"}
               </h1>
               <p className="truncate text-sm text-muted-foreground">
@@ -410,20 +439,19 @@ function SettingsPage() {
           </div>
           <Button
             variant="outline"
-            size="sm"
             onClick={() => setEditProfileOpen(true)}
-            className="tap-spring rounded-xl border-border bg-secondary text-xs font-medium text-foreground hover:bg-muted"
+            className="tap-spring min-h-11 shrink-0 rounded-xl border-border bg-secondary px-3.5 text-xs font-medium text-foreground hover:bg-muted"
           >
             Edit Profile
           </Button>
         </div>
-      </div>
+      </MotionReveal>
       <EditProfileDialog open={editProfileOpen} onOpenChange={setEditProfileOpen} />
 
       {/* XP, levels, streaks & challenges */}
-      <div className="mt-6">
+      <MotionReveal delay={40} className="mt-6">
         <GamificationCard />
-      </div>
+      </MotionReveal>
 
       <ThemePicker />
       <Section title="Profile & Controls" items={profileItems} />
@@ -486,7 +514,7 @@ function SettingsPage() {
             trailing: (
               <div onClick={(e) => e.stopPropagation()} className="shrink-0">
                 <Select value={currency} onValueChange={saveCurrency}>
-                  <SelectTrigger className="h-9 w-[112px] rounded-xl border-border bg-secondary text-xs text-foreground sm:w-[140px]">
+                  <SelectTrigger className="h-11 w-[118px] rounded-xl border-border bg-secondary text-xs text-foreground sm:w-[146px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent
@@ -510,7 +538,7 @@ function SettingsPage() {
             trailing: (
               <div onClick={(e) => e.stopPropagation()} className="shrink-0">
                 <Select value={lang} onValueChange={saveLanguage}>
-                  <SelectTrigger className="h-9 w-[122px] rounded-xl border-border bg-secondary text-xs text-foreground sm:w-[150px]">
+                  <SelectTrigger className="h-11 w-[126px] rounded-xl border-border bg-secondary text-xs text-foreground sm:w-[156px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent
@@ -539,12 +567,16 @@ function SettingsPage() {
             icon: Shield,
             to: "/legal/privacy",
           },
-          {
-            label: "Change password",
-            description: "Send a secure reset link to your email",
-            icon: UserCog,
-            onClick: resetPassword,
-          },
+          ...(canResetPassword
+            ? [
+                {
+                  label: "Change password",
+                  description: "Send a secure reset link to your email",
+                  icon: UserCog,
+                  onClick: resetPassword,
+                },
+              ]
+            : []),
         ]}
       />
 
@@ -657,9 +689,9 @@ function ActionCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex flex-col items-start gap-2 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-[var(--periwinkle)] hover:bg-secondary"
+      className="tap-spring group flex min-h-11 flex-col items-start gap-2 rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-[var(--periwinkle)] hover:bg-secondary"
     >
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-secondary text-foreground">
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-secondary text-foreground">
         <Icon className="h-[18px] w-[18px]" />
       </span>
       <span className="text-sm font-medium text-foreground">{label}</span>
@@ -688,7 +720,7 @@ function EditProfileDialog({
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!auth.currentUser) {
+    if (!user?.id) {
       toast.error("You must be signed in to update your profile.");
       return;
     }
@@ -697,6 +729,7 @@ function EditProfileDialog({
       await saveUserProfile({
         displayName: displayName.trim() || null,
         photoURL: photoURL.trim() || null,
+        userId: user.id,
       });
       toast.success("Profile updated successfully!");
       onOpenChange(false);

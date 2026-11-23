@@ -311,10 +311,20 @@ const ACCOUNT_ACCESS_CACHE_MS = 45_000;
 const inFlightAccountAccess = new Map<string, Promise<PremiumAccess>>();
 const verifiedAccessCache = new Map<string, { expiresAt: number; access: PremiumAccess }>();
 
+export function invalidateVerifiedAccessCache(userId: string) {
+  verifiedAccessCache.delete(userId);
+}
+
 export async function verifyAccountAccess(
   userId: string,
   token?: string,
-  claims?: { email?: string | null; admin?: unknown; isAdmin?: unknown; role?: unknown },
+  claims?: {
+    email?: string | null;
+    admin?: unknown;
+    isAdmin?: unknown;
+    role?: unknown;
+    whopUserId?: unknown;
+  },
 ): Promise<PremiumAccess> {
   if (await safeIsAdminAccount(userId, claims)) {
     return adminPremiumAccess();
@@ -331,43 +341,78 @@ export async function verifyAccountAccess(
 
   const run = (async (): Promise<PremiumAccess> => {
     const db = getFirebaseAdminFirestore();
-    const linkRef = db.collection("billing_links").doc(userId);
-    const link = await linkRef.get();
-    let access = await verifyRevenueCatCustomer(String(link.data()?.customerId ?? userId));
-    if (!access.isPremium && !link.exists && token) {
-      const session = await readPurchaseSession(token);
-      if (session && (!session.owner || session.owner === userId)) {
-        const purchased = await verifyRevenueCatCustomer(session.customerId);
-        if (purchased.isPremium) {
-          await db.runTransaction(async (tx) => {
-            const [claim, existing] = await Promise.all([
-              tx.get(sessionRef(token)),
-              tx.get(linkRef),
-            ]);
-            const data = claim.data();
-            if (
-              !data ||
-              Number(data.expiresAt) <= Date.now() ||
-              data.customerId !== session.customerId ||
-              (data.owner && data.owner !== userId) ||
-              (existing.exists && existing.data()?.customerId !== session.customerId)
-            )
-              throw new Error(
-                "This purchase is already linked to an account. Sign in with that account to restore it.",
-              );
-            tx.set(sessionRef(token), { owner: userId }, { merge: true });
-            tx.set(linkRef, { customerId: session.customerId });
-          });
-          access = purchased;
+    const hasRcKey = Boolean((process.env["REVENUECAT_SECRET_API_KEY"] ?? "").trim());
+    const hasWhopKey = Boolean((process.env["WHOP_API_KEY"] ?? "").trim());
+
+    let access = denied();
+    let source: "revenuecat" | "whop" = hasWhopKey && !hasRcKey ? "whop" : "revenuecat";
+    let rcError: unknown = null;
+
+    if (hasRcKey || (!hasWhopKey && !userId.startsWith("whop_"))) {
+      try {
+        const linkRef = db.collection("billing_links").doc(userId);
+        const link = await linkRef.get();
+        access = await verifyRevenueCatCustomer(String(link.data()?.customerId ?? userId));
+        if (!access.isPremium && !link.exists && token) {
+          const session = await readPurchaseSession(token);
+          if (session && (!session.owner || session.owner === userId)) {
+            const purchased = await verifyRevenueCatCustomer(session.customerId);
+            if (purchased.isPremium) {
+              await db.runTransaction(async (tx) => {
+                const [claim, existing] = await Promise.all([
+                  tx.get(sessionRef(token)),
+                  tx.get(linkRef),
+                ]);
+                const data = claim.data();
+                if (
+                  !data ||
+                  Number(data.expiresAt) <= Date.now() ||
+                  data.customerId !== session.customerId ||
+                  (data.owner && data.owner !== userId) ||
+                  (existing.exists && existing.data()?.customerId !== session.customerId)
+                )
+                  throw new Error(
+                    "This purchase is already linked to an account. Sign in with that account to restore it.",
+                  );
+                tx.set(sessionRef(token), { owner: userId }, { merge: true });
+                tx.set(linkRef, { customerId: session.customerId });
+              });
+              access = purchased;
+            }
+          }
         }
+      } catch (err) {
+        rcError = err;
       }
     }
+
+    if (!access.isPremium) {
+      try {
+        const { verifyWhopAccess } = await import("@/server/whop");
+        const whopAccess = await verifyWhopAccess(userId, claims);
+        if (whopAccess.isPremium) {
+          access = whopAccess;
+          source = "whop";
+          rcError = null;
+        }
+      } catch (whopErr) {
+        if (!hasRcKey && !hasWhopKey) throw rcError ?? whopErr;
+      }
+    }
+
+    if (rcError) {
+      throw rcError;
+    }
+    if (!hasRcKey && !hasWhopKey && !access.isPremium) {
+      throw new Error("Subscription verification is temporarily unavailable. Please try again.");
+    }
+
     await db
       .collection("premium_access")
       .doc(userId)
       .set({
         valid_until: Timestamp.fromMillis(access.verifiedUntil),
-        source: "revenuecat",
+        source,
         entitlement: ENTITLEMENT,
       });
     if (!process.env["VITEST"] && access.isPremium && access.verifiedUntil > Date.now()) {
@@ -392,7 +437,13 @@ export async function verifyAccountAccess(
 }
 export async function requireActivePremium(
   userId: string,
-  claims?: { email?: string | null; admin?: unknown; isAdmin?: unknown; role?: unknown },
+  claims?: {
+    email?: string | null;
+    admin?: unknown;
+    isAdmin?: unknown;
+    role?: unknown;
+    whopUserId?: unknown;
+  },
 ) {
   const access = await verifyAccountAccess(userId, undefined, claims);
   if (!access.isPremium)

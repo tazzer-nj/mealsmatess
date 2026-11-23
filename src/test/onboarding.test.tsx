@@ -11,11 +11,6 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   save: vi.fn(),
   navigate: vi.fn(),
-  verifyPremium: vi.fn(),
-  getIntroCompletion: vi.fn(),
-  dispatchAnalyticsEvent: vi.fn(),
-  saveStructuredState: vi.fn(),
-  saveStructuredFallback: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -30,28 +25,6 @@ vi.mock("@/hooks/use-session", () => ({
 vi.mock("@/lib/preferences.functions", () => ({
   getMyPreferences: mocks.get,
   saveMyPreferences: mocks.save,
-}));
-
-vi.mock("@/lib/billing.functions", () => ({
-  verifyMyPremium: mocks.verifyPremium,
-  getIntroCompletion: mocks.getIntroCompletion,
-}));
-
-vi.mock("@/lib/analytics-events", () => ({
-  captureInitialAttribution: () => null,
-  detectClientCountry: () => "ZA",
-  detectClientPlatform: () => "web",
-  dispatchAnalyticsEvent: mocks.dispatchAnalyticsEvent,
-  saveStructuredOnboardingClientFallback: mocks.saveStructuredFallback,
-}));
-
-vi.mock("@/lib/analytics-events.functions", () => ({
-  saveStructuredOnboardingState: mocks.saveStructuredState,
-}));
-
-vi.mock("@/lib/queries", () => ({
-  trendingRecipesQuery: () => ({ queryKey: ["trending"], queryFn: async () => [] }),
-  southAfricanFavoritesQuery: () => ({ queryKey: ["sa-favs"], queryFn: async () => [] }),
 }));
 
 vi.mock("@/components/mealmate-logo", () => ({ MealMateLogo: () => <span>MealMate</span> }));
@@ -76,127 +49,110 @@ beforeEach(async () => {
   mocks.get.mockResolvedValue(null);
   mocks.save.mockResolvedValue({ ok: true });
   mocks.navigate.mockResolvedValue(undefined);
-  mocks.verifyPremium.mockResolvedValue({ isPremium: false });
-  mocks.getIntroCompletion.mockResolvedValue(false);
-  mocks.dispatchAnalyticsEvent.mockResolvedValue(undefined);
-  mocks.saveStructuredState.mockResolvedValue({ ok: true });
-  mocks.saveStructuredFallback.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
   cleanup();
 });
 
-describe("onboarding 8-page flow", () => {
-  it("walks through all 8 pages, shows real processing + results screen, and completes to /premium for free users", async () => {
+describe("onboarding account flow", () => {
+  it("walks through preferred name, household, goals, diet, allergies, cuisines, skill, discovery and completes to /premium", async () => {
     renderWithQuery(<Page />);
-
-    // Page 1: Welcome & Food Goals
-    await screen.findByRole("heading", { name: "Let's make eating better easier." });
-    fireEvent.click(screen.getByRole("button", { name: "Eat healthier." }));
-    fireEvent.click(screen.getByRole("button", { name: "Save money on food." }));
+    // Step 1: Welcome & Name
+    await screen.findByRole("heading", { name: "Personalize your kitchen" });
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
 
-    // Page 2: Understanding Their Problems
-    await screen.findByRole("heading", { name: "What's making eating well difficult?" });
-    fireEvent.click(screen.getByRole("button", { name: "I never know what to cook." }));
+    // Step 2: Goals
+    await screen.findByRole("heading", { name: "Set your cooking goals" });
+    fireEvent.click(screen.getByRole("button", { name: "Eat healthier & balanced" }));
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
 
-    // Page 3: Health & Fitness Goals
-    await screen.findByRole("heading", { name: "What are you working towards?" });
-    fireEvent.click(screen.getByRole("button", { name: "Build healthier eating habits." }));
-    fireEvent.click(screen.getByRole("button", { name: "Under 18" }));
-    await screen.findByText(/Balanced nutrition active:/i);
+    // Step 3: Dietary
+    await screen.findByRole("heading", { name: "Dietary preferences" });
+    fireEvent.click(screen.getByRole("button", { name: "Vegetarian" }));
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
 
-    // Page 4: Current Eating Habits
-    await screen.findByRole("heading", { name: "Let's understand your routine." });
-    fireEvent.click(screen.getByRole("button", { name: "I have a consistent routine" }));
-    fireEvent.click(screen.getByRole("button", { name: "Every day" }));
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
-
-    // Page 5: Preferences, Allergies & Restrictions
-    await screen.findByRole("heading", { name: "What do you enjoy eating?" });
-    fireEvent.click(screen.getByRole("button", { name: "South African food" }));
+    // Step 4: Allergies
+    await screen.findByRole("heading", { name: "Allergies & intolerances" });
     fireEvent.click(screen.getByRole("button", { name: "Peanuts" }));
-    fireEvent.click(screen.getByRole("button", { name: "Halal" }));
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
 
-    // Page 6: Cooking Lifestyle & ZAR budget
-    await screen.findByRole("heading", { name: "Let's make cooking fit your life." });
-    fireEvent.click(screen.getByRole("button", { name: "15–30 minutes" }));
+    // Step 5: Cuisines
+    await screen.findByRole("heading", { name: "Favourite flavours" });
+    fireEvent.click(screen.getByRole("button", { name: "South African" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+
+    // Step 6: Skill & pace
+    await screen.findByRole("heading", { name: "Skill level & pace" });
     fireEvent.click(screen.getByText("Beginner"));
-    fireEvent.click(screen.getByRole("button", { name: "R1,000–R2,500 / month" }));
     fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
 
-    // Page 7: How Did You Discover MealMate?
-    await screen.findByRole("heading", { name: "How did you hear about us?" });
+    // Step 7: Discovery attribution & Blueprint
+    await screen.findByRole("heading", { name: "How did you discover MealMate?" });
     fireEvent.click(screen.getByRole("button", { name: "TikTok" }));
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
 
-    // Page 8: Summary & Build My MealMate Experience CTA
-    await screen.findByRole("heading", { name: "Your MealMate journey starts here." });
-    const buildBtn = screen.getByRole("button", { name: /Build My MealMate Experience/i });
-    fireEvent.click(buildBtn);
+    // Complete Setup CTA
+    const finish = screen.getByRole("button", { name: /Complete Setup/i });
+    fireEvent.click(finish);
 
     await waitFor(() =>
       expect(mocks.save).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          goals: ["Eat healthier.", "Save money on food."],
-          challenges: ["I never know what to cook."],
-          balanced_nutrition_safeguard: true,
-          dietary_restrictions: ["Halal"],
+          goal: "Eat healthier & balanced",
+          dietary_restrictions: ["Vegetarian"],
           allergies: ["Peanuts"],
-          budget_range_zar: "R1,000–R2,500 / month",
-          acquisition: expect.objectContaining({ self_reported_source: "TikTok" }),
+          favorite_foods: ["South African"],
+          cooking_level: "Beginner",
+          discovery_source: "TikTok",
           onboarding_completed: true,
         }),
       }),
     );
 
-    // Personalised Results screen appears after processing steps finish
-    await screen.findByRole("heading", { name: "Your MealMate experience is ready." });
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({ to: "/premium", replace: true }),
+    );
     expect(readOnboardingDraft("account-a")).toBeNull();
+  });
 
-    // Continue from Results checks entitlement and navigates to /premium
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+  it("completes cleanly when skipping the final discovery attribution step", async () => {
+    saveOnboardingDraft("account-a", 6, {
+      ...EMPTY_PREFERENCES,
+      preferred_name: "Chef Thabo",
+      discovery_source: "YouTube",
+    });
+    renderWithQuery(<Page />);
+
+    await screen.findByRole("heading", { name: "How did you discover MealMate?" });
+    fireEvent.click(screen.getByRole("button", { name: /Skip/i }));
+
+    await waitFor(() =>
+      expect(mocks.save).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          discovery_source: null,
+          onboarding_completed: true,
+        }),
+      }),
+    );
     await waitFor(() =>
       expect(mocks.navigate).toHaveBeenCalledWith({ to: "/premium", replace: true }),
     );
   });
 
-  it("skips paywall (/premium) and routes active premium users straight to /welcome", async () => {
-    mocks.verifyPremium.mockResolvedValue({ isPremium: true });
-    mocks.getIntroCompletion.mockResolvedValue(false);
-    mocks.get.mockResolvedValue({ ...EMPTY_PREFERENCES, onboarding_completed: true });
-
-    renderWithQuery(<Page />);
-
-    await waitFor(() =>
-      expect(mocks.navigate).toHaveBeenCalledWith({ to: "/welcome", replace: true }),
-    );
-    expect(mocks.save).not.toHaveBeenCalled();
-  });
-
-  it("keeps failed completion retryable on the Processing screen and prevents duplicate submissions", async () => {
-    saveOnboardingDraft("account-a", 7, EMPTY_PREFERENCES);
+  it("keeps failed completion retryable and prevents duplicate submissions", async () => {
+    saveOnboardingDraft("account-a", 6, EMPTY_PREFERENCES);
     mocks.save.mockRejectedValueOnce(new Error("Connection interrupted"));
     renderWithQuery(<Page />);
 
-    const finish = await screen.findByRole("button", { name: /Build My MealMate Experience/i });
+    const finish = await screen.findByRole("button", { name: /Complete Setup/i });
     fireEvent.click(finish);
     fireEvent.click(finish);
 
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1));
-    await screen.findByRole("alert");
     expect(mocks.navigate).not.toHaveBeenCalled();
 
     mocks.save.mockResolvedValueOnce({ ok: true });
-    const retryBtn = screen.getAllByRole("button", { name: /Try again/i })[0]!;
-    fireEvent.click(retryBtn);
-
-    await screen.findByRole("heading", { name: "Your MealMate experience is ready." });
-    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+    fireEvent.click(finish);
     await waitFor(() =>
       expect(mocks.navigate).toHaveBeenCalledWith({ to: "/premium", replace: true }),
     );
@@ -205,18 +161,101 @@ describe("onboarding 8-page flow", () => {
   it("resumes only the current account's draft", async () => {
     saveOnboardingDraft("account-b", 4, { ...EMPTY_PREFERENCES, allergies: ["Milk"] });
     renderWithQuery(<Page />);
-    await screen.findByRole("heading", { name: "Let's make eating better easier." });
+    await screen.findByRole("heading", { name: "Personalize your kitchen" });
     expect(readOnboardingDraft("account-b")?.preferences.allergies).toEqual(["Milk"]);
   });
 
-  it("auto-saves partially filled answers on page close and restores step and selections", async () => {
+  it("sends completed accounts to /premium without replaying setup", async () => {
+    mocks.get.mockResolvedValue({ ...EMPTY_PREFERENCES, onboarding_completed: true });
+    renderWithQuery(<Page />);
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledWith({ to: "/premium", replace: true }),
+    );
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+
+  it("saves household size, goals, and preferences to Firestore at each step and resumes from remote step", async () => {
     renderWithQuery(<Page />);
 
-    await screen.findByRole("heading", { name: "Let's make eating better easier." });
+    // Step 0: Household size + preferred name saved before moving to Step 1
+    await screen.findByRole("heading", { name: "Personalize your kitchen" });
+    fireEvent.click(screen.getByRole("button", { name: "3 to 4 people (family)" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+
+    await waitFor(() =>
+      expect(mocks.save).toHaveBeenNthCalledWith(1, {
+        data: expect.objectContaining({
+          preferred_name: "Chef Thabo",
+          household_size: "3 to 4 people (family)",
+          meals_per_day: "3 to 4 people (family)",
+          onboarding_step: 1,
+          onboarding_completed: false,
+        }),
+      }),
+    );
+
+    // Step 1: Goal saved before moving to Step 2
+    await screen.findByRole("heading", { name: "Set your cooking goals" });
+    fireEvent.click(screen.getByRole("button", { name: "Save time" }));
+    fireEvent.click(screen.getByRole("button", { name: /Continue/i }));
+
+    await waitFor(() =>
+      expect(mocks.save).toHaveBeenNthCalledWith(2, {
+        data: expect.objectContaining({
+          goal: "Save time",
+          household_size: "3 to 4 people (family)",
+          onboarding_step: 2,
+          onboarding_completed: false,
+        }),
+      }),
+    );
+
+    // Step 2: Skip clears dietary_restrictions and persists to Firestore
+    await screen.findByRole("heading", { name: "Dietary preferences" });
+    fireEvent.click(screen.getByRole("button", { name: "Halal" }));
+    fireEvent.click(screen.getByRole("button", { name: /Skip if none/i }));
+
+    await waitFor(() =>
+      expect(mocks.save).toHaveBeenNthCalledWith(3, {
+        data: expect.objectContaining({
+          goal: "Save time",
+          household_size: "3 to 4 people (family)",
+          dietary_restrictions: [],
+          onboarding_step: 3,
+          onboarding_completed: false,
+        }),
+      }),
+    );
+
+    await screen.findByRole("heading", { name: "Allergies & intolerances" });
+
+    // Unmount and simulate returning on a fresh device from saved Firestore state
+    cleanup();
+    localStorage.clear();
+    mocks.save.mockClear();
+    mocks.get.mockResolvedValueOnce({
+      ...EMPTY_PREFERENCES,
+      goal: "Save time",
+      household_size: "3 to 4 people (family)",
+      meals_per_day: "3 to 4 people (family)",
+      onboarding_step: 3,
+      onboarding_completed: false,
+    });
+
+    renderWithQuery(<Page />);
+    await screen.findByRole("heading", { name: "Allergies & intolerances" });
+  });
+
+  it("auto-saves partially filled answers on page close and restores current step and partial fields upon re-authentication", async () => {
+    renderWithQuery(<Page />);
+
+    // Step 0: User edits preferred name and household size, then closes/refreshes before clicking Continue
+    await screen.findByRole("heading", { name: "Personalize your kitchen" });
     const nameInput = screen.getByLabelText(/What should MealMate call you\?/i);
     fireEvent.change(nameInput, { target: { value: "Thabo M." } });
     fireEvent.click(screen.getByRole("button", { name: "5+ people (large feast)" }));
 
+    // Simulate closing/backgrounding tab before Continue
     fireEvent(window, new Event("pagehide"));
 
     await waitFor(() =>
@@ -224,12 +263,15 @@ describe("onboarding 8-page flow", () => {
         data: expect.objectContaining({
           preferred_name: "Thabo M.",
           household_size: "5+ people (large feast)",
+          meals_per_day: "5+ people (large feast)",
           onboarding_step: 0,
           onboarding_completed: false,
         }),
       }),
     );
 
+    // Now simulate re-authenticating on a fresh session (localStorage has an older stale step 0 draft,
+    // while Firestore holds newer step 2 + preferred_name + household_size + goal + partial Halal selection)
     cleanup();
     mocks.save.mockClear();
     saveOnboardingDraft("account-a", 0, {
@@ -240,22 +282,29 @@ describe("onboarding 8-page flow", () => {
       ...EMPTY_PREFERENCES,
       preferred_name: "Thabo M.",
       household_size: "5+ people (large feast)",
-      goals: ["Plan my meals."],
-      challenges: ["I waste groceries."],
-      onboarding_step: 1,
+      meals_per_day: "5+ people (large feast)",
+      goal: "Plan weekly meals",
+      dietary_restrictions: ["Halal"],
+      onboarding_step: 2,
       onboarding_completed: false,
       updated_at: "2026-11-13T18:50:00.000Z",
     });
 
     renderWithQuery(<Page />);
 
-    await screen.findByRole("heading", { name: "What's making eating well difficult?" });
+    // Restores exact Firestore step 2 (Dietary preferences) and partial Halal selection
+    await screen.findByRole("heading", { name: "Dietary preferences" });
+    expect(screen.getByRole("button", { name: "Halal" }).getAttribute("aria-pressed")).toBe("true");
+
+    // Stepping back confirms Step 0 & Step 1 answers were also restored from Firestore
+    fireEvent.click(screen.getByRole("button", { name: "Previous step" }));
+    await screen.findByRole("heading", { name: "Set your cooking goals" });
     expect(
-      screen.getByRole("button", { name: "I waste groceries." }).getAttribute("aria-pressed"),
+      screen.getByRole("button", { name: "Plan weekly meals" }).getAttribute("aria-pressed"),
     ).toBe("true");
 
     fireEvent.click(screen.getByRole("button", { name: "Previous step" }));
-    await screen.findByRole("heading", { name: "Let's make eating better easier." });
+    await screen.findByRole("heading", { name: "Personalize your kitchen" });
     expect(
       (screen.getByLabelText(/What should MealMate call you\?/i) as HTMLInputElement).value,
     ).toBe("Thabo M.");
@@ -264,10 +313,10 @@ describe("onboarding 8-page flow", () => {
     ).toBe("true");
   });
 
-  it("switches onboarding page headings across EN, ZU, and AF while saving canonical English values", async () => {
+  it("renders a language selection dropdown in the onboarding footer and translates onboarding text while preserving canonical values", async () => {
     const { container } = renderWithQuery(<Page />);
 
-    await screen.findByRole("heading", { name: "Let's make eating better easier." });
+    await screen.findByRole("heading", { name: "Personalize your kitchen" });
 
     const footer = container.querySelector("footer.onboarding-actions");
     expect(footer).not.toBeNull();
@@ -278,13 +327,24 @@ describe("onboarding 8-page flow", () => {
     expect(languageSelect.value).toBe("en");
     expect(languageSelect.options.length).toBe(11);
 
+    // Initially no language-change re-fade before user interaction
+    const fadeNodesInitial = container.querySelectorAll(".onboarding-lang-fade");
+    expect(fadeNodesInitial.length).toBeGreaterThan(0);
+    expect(fadeNodesInitial[0]?.getAttribute("data-lang-fade")).toBeNull();
+
     // Switch to isiZulu
     fireEvent.change(languageSelect, { target: { value: "zu" } });
 
-    await screen.findByRole("heading", { name: "Masenze ukudla kahle kube lula." });
+    await screen.findByRole("heading", { name: "Hlela ikhishi lakho" });
     expect(localStorage.getItem("mealmate-lang")).toBe("zu");
     expect(screen.getByRole("button", { name: /Qhubeka/i })).toBeTruthy();
+    expect(screen.getByLabelText(/I-MealMate kufanele ikubize ngokuthini\?/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Abantu abayi-3 to 4 (umndeni)" })).toBeTruthy();
+    expect(container.querySelector(".onboarding-lang-fade")?.getAttribute("data-lang-fade")).toBe(
+      "a",
+    );
 
+    // Selecting translated chip stores canonical value in Firestore
     fireEvent.click(screen.getByRole("button", { name: "Abantu abayi-3 to 4 (umndeni)" }));
     fireEvent.click(screen.getByRole("button", { name: /Qhubeka/i }));
 
@@ -292,26 +352,34 @@ describe("onboarding 8-page flow", () => {
       expect(mocks.save).toHaveBeenCalledWith({
         data: expect.objectContaining({
           household_size: "3 to 4 people (family)",
+          meals_per_day: "3 to 4 people (family)",
           onboarding_step: 1,
         }),
       }),
     );
 
-    await screen.findByRole("heading", { name: "Yini eyenza ukudla kahle kube nzima?" });
+    // Step 1 heading & goals should also be displayed in isiZulu
+    await screen.findByRole("heading", { name: "Beka izinhloso zakho zokupheka" });
 
     // Switch to Afrikaans
     const zuSelect = within(footer as HTMLElement).getByRole("combobox", { name: /Ulimi/i });
     fireEvent.change(zuSelect, { target: { value: "af" } });
 
-    await screen.findByRole("heading", { name: "Wat maak gesonde eet moeilik?" });
+    await screen.findByRole("heading", { name: "Stel jou kookdoelwitte" });
     expect(localStorage.getItem("mealmate-lang")).toBe("af");
     expect(screen.getByRole("button", { name: /Gaan voort/i })).toBeTruthy();
+    expect(container.querySelector(".onboarding-lang-fade")?.getAttribute("data-lang-fade")).toBe(
+      "b",
+    );
 
     // Switch back to English
     const afSelect = within(footer as HTMLElement).getByRole("combobox", { name: /Taal/i });
     fireEvent.change(afSelect, { target: { value: "en" } });
 
-    await screen.findByRole("heading", { name: "What's making eating well difficult?" });
+    await screen.findByRole("heading", { name: "Set your cooking goals" });
     expect(localStorage.getItem("mealmate-lang")).toBe("en");
+    expect(container.querySelector(".onboarding-lang-fade")?.getAttribute("data-lang-fade")).toBe(
+      "a",
+    );
   });
 });

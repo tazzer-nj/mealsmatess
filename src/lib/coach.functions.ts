@@ -1,5 +1,4 @@
 import { aiProfile } from "@/lib/ai-profile";
-import { buildMiaPersonalisationContext } from "@/lib/personalisation";
 import { preferenceSummary } from "@/lib/preferences";
 import { createServerFn } from "@tanstack/react-start";
 import { requireAiCredit } from "@/lib/ai-credits.server";
@@ -94,15 +93,9 @@ export const nutritionCoach = createServerFn({ method: "POST" })
       .maybeSingle();
     const profile = aiProfile(savedProfile);
 
-    const safeguardNote = profile?.preferences.balanced_nutrition_safeguard
-      ? "YOUTH NUTRITION SAFEGUARD ACTIVE: Focus strictly on balanced nourishment, energy, regular meals, and cooking habits. NEVER suggest calorie deficits, weight-loss targets, or restrictive dieting."
-      : "";
-
     const summary = [
       profileSummary(profile as Profile | null),
-      profile ? buildMiaPersonalisationContext(profile.preferences, []) : "",
       profile ? preferenceSummary(profile.preferences) : "",
-      safeguardNote,
     ]
       .filter(Boolean)
       .join("\n");

@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MiaThoughtBubble } from "@/components/mia-thought-bubble";
 import { AuthMiaStage } from "@/components/auth-mia-stage";
 import { MiaLoadingCard } from "@/components/mia-loading-card";
+import { Capacitor } from "@capacitor/core";
 import { SplashScreen } from "@/components/splash-screen";
 import { Route as ScanRoute } from "@/routes/scan";
 
@@ -97,7 +98,12 @@ describe("Mia animated thought bubble and page fixes", () => {
     expect(container.querySelector('[data-mia-thought-tail="left"]')).toBeInTheDocument();
   });
 
-  it("uses local mascot image on SplashScreen without broken /__l5e assets", () => {
+  it("skips artificial splash overlay on web and uses local mascot image on native without broken /__l5e assets", () => {
+    const webRender = render(<SplashScreen />);
+    expect(webRender.container.firstChild).toBeNull();
+    webRender.unmount();
+
+    vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
     const { container } = render(<SplashScreen />);
     const img = container.querySelector("img");
     expect(img).toHaveAttribute("src", "/mascots/mascot-classic.png");

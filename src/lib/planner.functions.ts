@@ -7,13 +7,6 @@ import { z } from "zod";
 import { requirePremium } from "@/lib/premium-middleware";
 import { loadFirebaseAdmin } from "@/lib/firebase-admin-access";
 import { enforceRateLimit, trackEvent } from "@/lib/security.server";
-import {
-  DEFAULT_SHOPPING_CATEGORIES,
-  categorizeGroceryItem,
-  combineQuantities,
-  consolidateIngredients,
-  normalizeItemKey,
-} from "@/lib/grocery-categorizer";
 
 const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snack"] as const;
 
@@ -78,26 +71,15 @@ export const generatePersonalizedPlan = createServerFn({ method: "POST" })
       dates.push(date.toISOString().slice(0, 10));
     }
 
-    const safeguard = profile?.preferences.balanced_nutrition_safeguard === true;
-    const safeguardLine = safeguard
-      ? "- Youth safeguard ACTIVE: Balanced, nourishing everyday meals ONLY — never prescribe weight-loss or calorie-deficit targets."
-      : "";
-    const budgetText =
-      profile?.preferences.budget_range_zar ??
-      (profile?.budget_per_day ? `$${profile.budget_per_day}/day` : "flexible");
-
     const prompt = `Build a ${data.days}-day meal plan for meals: ${data.meals.join(", ")}.
 User profile:
 - Saved preferences: ${profile ? preferenceSummary(profile.preferences) : "none specified"}
 - Goal: ${profile?.goal ?? "general wellness"}
 - Activity: ${profile?.activity_level ?? "moderate"}
-- Allergies (strictly exclude): ${(profile?.allergies ?? []).join(", ") || "none"}
+- Allergies: ${(profile?.allergies ?? []).join(", ") || "none"}
 - Dietary preferences: ${(profile?.dietary_preferences ?? []).join(", ") || "none"}
-- Disliked foods: ${(profile?.preferences.disliked_foods ?? []).join(", ") || "none"}
-- Preferred cooking time: ${profile?.preferences.cooking_time ?? "flexible"}
-- Food budget: ${budgetText}
-- Household size: ${profile?.preferences.household_size ?? profile?.family_size ?? 1}
-${safeguardLine}
+- Daily budget: ${profile?.budget_per_day ? `$${profile.budget_per_day}` : "flexible"}
+- Family size: ${profile?.family_size ?? 1}
 
 Prefer varied, culturally diverse dishes including South African options. Reply ONLY as JSON:
 {"plan":[{"day":1,"meal_type":"Breakfast","name":"...","calories":450,"short_reason":"..."}]}
@@ -188,15 +170,8 @@ export const buildGroceryFromPlan = createServerFn({ method: "POST" })
       .lte("plan_date", data.to);
     if (error) throw new Error(error.message);
 
-    const { data: profileRow } = await firebase
-      .from("profiles")
-      .select("preferences")
-      .eq("id", context.userId)
-      .maybeSingle();
-    const prefs = aiProfile(profileRow)?.preferences;
-    const overrides = prefs?.shopping?.category_overrides ?? {};
-
-    const rawIngredients: { name: string; quantity?: string | null }[] = [];
+    // aggregate ingredients by name
+    const map = new Map<string, { quantity: string | null; sources: Set<string> }>();
     for (const p of plans ?? []) {
       const rec = (p as { recipes?: { ingredients?: unknown; name?: string } | null }).recipes;
       const ings = Array.isArray(rec?.ingredients)
@@ -204,69 +179,36 @@ export const buildGroceryFromPlan = createServerFn({ method: "POST" })
         : [];
       for (const ing of ings) {
         if (!ing?.name) continue;
-        rawIngredients.push({ name: ing.name, quantity: ing.quantity ?? null });
+        const k = ing.name.trim().toLowerCase();
+        const cur = map.get(k) ?? { quantity: null, sources: new Set() };
+        if (ing.quantity)
+          cur.quantity = cur.quantity ? `${cur.quantity} + ${ing.quantity}` : ing.quantity;
+        if (rec?.name) cur.sources.add(rec.name);
+        map.set(k, cur);
       }
     }
 
-    const consolidated = consolidateIngredients(rawIngredients, { overrides });
-    const { data: existing } = await firebase
-      .from("grocery_items")
-      .select("id,name,quantity")
-      .eq("checked", false);
-    const existingByKey = new Map<string, { id: string; quantity: string | null }>();
-    for (const item of (existing ?? []) as {
-      id: string;
-      name: string;
-      quantity?: string | null;
-    }[]) {
-      existingByKey.set(normalizeItemKey(item.name).replace(/s$/, ""), {
-        id: item.id,
-        quantity: item.quantity ?? null,
-      });
-    }
+    const rows = Array.from(map.entries()).map(([name, v]) => {
+      const cat = Array.from(v.sources).slice(0, 3).join(", ");
+      return {
+        user_id: context.userId,
+        name,
+        ...(v.quantity ? { quantity: v.quantity } : {}),
+        ...(cat ? { category: cat } : {}),
+      };
+    });
 
-    const rowsToInsert: {
-      user_id: string;
-      name: string;
-      quantity: string | null;
-      category: string;
-    }[] = [];
-
-    for (const ing of consolidated) {
-      const key = normalizeItemKey(ing.name).replace(/s$/, "");
-      const match = existingByKey.get(key);
-      const category = categorizeGroceryItem(ing.name, {
-        explicitCategory: ing.category,
-        overrides,
-      });
-      if (match) {
-        const mergedQty = combineQuantities(match.quantity, ing.quantity);
-        await firebase
-          .from("grocery_items")
-          .update({ quantity: mergedQty, category })
-          .eq("id", match.id);
-      } else {
-        rowsToInsert.push({
-          user_id: context.userId,
-          name: ing.name,
-          quantity: ing.quantity,
-          category,
-        });
-      }
-    }
-
-    if (rowsToInsert.length > 0) {
-      const { error: insErr } = await firebase.from("grocery_items").insert(rowsToInsert);
-      if (insErr) throw new Error(insErr.message);
-    }
+    if (rows.length === 0) return { inserted: 0 };
+    const { error: insErr } = await firebase.from("grocery_items").insert(rows);
+    if (insErr) throw new Error(insErr.message);
     void trackEvent({
       user_id: context.userId,
       kind: "planner",
       name: "planner.autogrocery",
       success: true,
-      metadata: { inserted: rowsToInsert.length, consolidated: consolidated.length },
+      metadata: { inserted: rows.length },
     });
-    return { inserted: consolidated.length };
+    return { inserted: rows.length };
   });
 
 // One-click: AI plan → persist meals → build aggregated grocery list.
@@ -325,7 +267,7 @@ Profile:
 
 For EACH meal, include a compact ingredient list scaled for the family size.
 Use short pantry-friendly names ("chicken breast", "olive oil", "spinach").
-Group category as one of: ${DEFAULT_SHOPPING_CATEGORIES.join(", ")}.
+Group category as one of: Produce, Meat, Dairy, Pantry, Grains, Frozen, Bakery, Spices, Other.
 
 Reply ONLY as strict JSON with this exact shape:
 {"plan":[{"day":1,"meal_type":"Breakfast","name":"...","calories":450,"ingredients":[{"name":"eggs","quantity":"4","category":"Dairy"}]}]}
@@ -352,7 +294,19 @@ Days: 1..${data.days}. One entry per meal per day.`;
                     z.object({
                       name: z.string().trim().min(1).max(120),
                       quantity: z.string().max(80).optional(),
-                      category: z.string().max(60).optional(),
+                      category: z
+                        .enum([
+                          "Produce",
+                          "Meat",
+                          "Dairy",
+                          "Pantry",
+                          "Grains",
+                          "Frozen",
+                          "Bakery",
+                          "Spices",
+                          "Other",
+                        ])
+                        .optional(),
                     }),
                   )
                   .min(1)
@@ -386,70 +340,57 @@ Days: 1..${data.days}. One entry per meal per day.`;
       plan_date: dates[Math.max(0, Math.min(m.day - 1, dates.length - 1))] ?? fromISO,
       meal_type: m.meal_type,
       custom_name: m.name,
-      recipe_id: null as string | null,
     }));
     if (planRows.length > 0) {
       const { error: pErr } = await firebase.from("meal_plans").insert(planRows);
       if (pErr) throw new Error(pErr.message);
     }
 
-    const overrides = profile?.preferences.shopping?.category_overrides ?? {};
-    const consolidated = consolidateIngredients(
-      suggestions.flatMap((m) =>
-        (m.ingredients ?? []).map((ing) => ({
-          name: ing.name,
-          quantity: ing.quantity ?? null,
+    // Aggregate ingredients into grocery items.
+    const map = new Map<
+      string,
+      { name: string; quantity: string | null; category: string | null }
+    >();
+    for (const m of suggestions) {
+      for (const ing of m.ingredients ?? []) {
+        if (!ing?.name) continue;
+        const k = ing.name.trim().toLowerCase();
+        const cur = map.get(k) ?? {
+          name: ing.name.trim(),
+          quantity: null,
           category: ing.category ?? null,
-        })),
-      ),
-      { overrides },
-    );
-
-    const { data: existing } = await firebase
-      .from("grocery_items")
-      .select("id,name,quantity")
-      .eq("checked", false);
-    const existingByKey = new Map<string, { id: string; quantity: string | null }>();
-    for (const r of (existing ?? []) as { id: string; name: string; quantity?: string | null }[]) {
-      existingByKey.set(normalizeItemKey(r.name).replace(/s$/, ""), {
-        id: r.id,
-        quantity: r.quantity ?? null,
-      });
-    }
-
-    const rowsToInsert: {
-      user_id: string;
-      name: string;
-      quantity: string | null;
-      category: string;
-    }[] = [];
-    let mergedCount = 0;
-
-    for (const item of consolidated) {
-      const k = normalizeItemKey(item.name).replace(/s$/, "");
-      const match = existingByKey.get(k);
-      if (match) {
-        mergedCount++;
-        const mergedQty = combineQuantities(match.quantity, item.quantity);
-        await firebase
-          .from("grocery_items")
-          .update({ quantity: mergedQty, category: item.category })
-          .eq("id", match.id);
-      } else {
-        rowsToInsert.push({
-          user_id: userId,
-          name: item.name,
-          quantity: item.quantity,
-          category: item.category,
-        });
+        };
+        if (ing.quantity) {
+          cur.quantity = cur.quantity ? `${cur.quantity} + ${ing.quantity}` : ing.quantity;
+        }
+        if (!cur.category && ing.category) cur.category = ing.category;
+        map.set(k, cur);
       }
     }
 
+    // Skip items the user already has unchecked in their list.
+    const { data: existing } = await firebase
+      .from("grocery_items")
+      .select("name")
+      .eq("checked", false);
+    const have = new Set(
+      ((existing ?? []) as { name: string }[]).map((r) => r.name.trim().toLowerCase()),
+    );
+
+    const rows = Array.from(map.entries())
+      .filter(([k]) => !have.has(k))
+      .map(([, v]) => ({
+        user_id: userId,
+        name: v.name,
+        ...(v.quantity ? { quantity: v.quantity } : {}),
+        ...(v.category ? { category: v.category } : {}),
+      }));
+
     let inserted = 0;
-    if (rowsToInsert.length > 0) {
-      const { error: gErr } = await firebase.from("grocery_items").insert(rowsToInsert);
+    if (rows.length > 0) {
+      const { error: gErr } = await firebase.from("grocery_items").insert(rows);
       if (gErr) throw new Error(gErr.message);
-      inserted = rowsToInsert.length;
+      inserted = rows.length;
     }
 
     void trackEvent({
@@ -472,7 +413,7 @@ Days: 1..${data.days}. One entry per meal per day.`;
     return {
       meals: planRows.length,
       groceries: inserted,
-      skipped: mergedCount,
+      skipped: map.size - inserted,
       from: fromISO,
       to: toISO,
     };

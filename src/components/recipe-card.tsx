@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Clock, Flame, Heart } from "lucide-react";
 import { RecipeImage } from "@/components/recipe-image";
-import { mealTagPillClass } from "@/lib/tag-styles";
 
 export interface RecipeCardData {
   slug: string;
@@ -67,14 +66,16 @@ export function TrendingCard({
           }}
           aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
           aria-pressed={isFavorite}
-          className="tap-spring absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-foreground backdrop-blur transition-transform hover:scale-110 active:scale-90"
+          className="tap-spring absolute right-1.5 top-1.5 flex h-11 w-11 items-center justify-center rounded-full text-foreground"
         >
-          <Heart
-            className={isFavorite ? "heart-pop h-4 w-4 fill-primary text-primary" : "h-4 w-4"}
-          />
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-background/90 backdrop-blur transition-transform hover:scale-110 active:scale-90">
+            <Heart
+              className={isFavorite ? "heart-pop h-4 w-4 fill-primary text-primary" : "h-4 w-4"}
+            />
+          </span>
         </button>
         {(recipe.cooking_time_minutes || recipe.calories) && (
-          <div className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-ink/80 px-2.5 py-1 text-[11px] font-medium text-cream backdrop-blur">
+          <div className="tabular-nums absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-ink/80 px-2.5 py-1 text-[11px] font-medium text-cream backdrop-blur">
             {recipe.cooking_time_minutes ? (
               <span className="inline-flex items-center gap-1">
                 <Clock className="h-3 w-3" />
@@ -91,30 +92,21 @@ export function TrendingCard({
         )}
       </Link>
       <h3 className="mt-2 line-clamp-2 font-display text-base leading-tight">{recipe.name}</h3>
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        {recipe.category && (
-          <span
-            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${mealTagPillClass(recipe.category)}`}
-          >
-            {recipe.category}
+      {recipe.difficulty && (
+        <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
+          {recipe.difficulty}
+          <span className="flex items-center gap-0.5">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className={`h-1.5 w-1.5 rounded-full ${
+                  i < dots ? "bg-primary" : "bg-muted-foreground/30"
+                }`}
+              />
+            ))}
           </span>
-        )}
-        {recipe.difficulty && (
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
-            {recipe.difficulty}
-            <span className="flex items-center gap-0.5">
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    i < dots ? "bg-primary" : "bg-muted-foreground/30"
-                  }`}
-                />
-              ))}
-            </span>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -142,14 +134,7 @@ export function RecipeCard({
         />
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          {recipe.category && (
-            <span
-              className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${mealTagPillClass(recipe.category)}`}
-            >
-              {recipe.category}
-            </span>
-          )}
+        <div className="tabular-nums flex items-center gap-2 text-xs text-muted-foreground">
           {recipe.cuisine && <span>{recipe.cuisine}</span>}
           {recipe.cooking_time_minutes ? (
             <span className="inline-flex items-center gap-1">
@@ -160,11 +145,11 @@ export function RecipeCard({
         </div>
         <h3 className="font-display text-xl leading-tight">{recipe.name}</h3>
         {recipe.diet_tags && recipe.diet_tags.length > 0 && (
-          <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
+          <div className="mt-auto flex flex-wrap gap-1 pt-1">
             {recipe.diet_tags.slice(0, 3).map((t) => (
               <span
                 key={t}
-                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${mealTagPillClass(t)}`}
+                className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground"
               >
                 {t}
               </span>

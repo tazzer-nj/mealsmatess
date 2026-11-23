@@ -93,7 +93,7 @@ function PartnerPage() {
         <p className="max-w-sm text-sm text-muted-foreground">
           You can check the progress of your application in your restaurant workspace.
         </p>
-        <Button asChild className="rounded-full">
+        <Button asChild className="min-h-11 rounded-full">
           <Link to="/partner/dashboard">View application status</Link>
         </Button>
       </main>
@@ -111,7 +111,7 @@ function PartnerPage() {
       {user && (
         <div className="md3-surface mt-4 flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card p-4">
           <p className="text-sm">Already a partner?</p>
-          <Button asChild size="sm" variant="outline" className="rounded-full">
+          <Button asChild size="sm" variant="outline" className="min-h-11 rounded-full px-4">
             <Link to="/partner/dashboard">Open dashboard</Link>
           </Button>
         </div>
@@ -120,7 +120,7 @@ function PartnerPage() {
       {!user ? (
         <div className="md3-surface mt-6 rounded-3xl border border-dashed border-border p-8 text-center">
           <p className="text-sm">Sign in to apply as a restaurant partner.</p>
-          <Button asChild size="sm" className="mt-4 rounded-full">
+          <Button asChild size="sm" className="mt-4 min-h-11 rounded-full px-5">
             <Link to="/auth">Sign in</Link>
           </Button>
         </div>
@@ -195,7 +195,7 @@ function PartnerPage() {
               />
             </div>
           </div>
-          <Button type="submit" disabled={busy} className="w-full rounded-full">
+          <Button type="submit" disabled={busy} className="min-h-11 w-full rounded-full">
             {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Submit application
           </Button>

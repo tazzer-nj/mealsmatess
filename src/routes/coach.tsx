@@ -6,8 +6,7 @@ import { toast } from "sonner";
 import { Loader2, Send, HeartPulse, ChevronRight } from "lucide-react";
 import { nutritionCoach, getCoachContext } from "@/lib/coach.functions";
 import { useSession } from "@/hooks/use-session";
-import { usePremium } from "@/hooks/use-premium";
-import { PremiumFeatureLock } from "@/components/premium-feature-lock";
+import { MotionReveal } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -44,11 +43,10 @@ const STARTERS = [
 
 function CoachPage() {
   const { user, loading } = useSession();
-  const { isPremium, loading: premiumLoading } = usePremium();
   const { data: ctx, isLoading: ctxLoading } = useQuery({
     queryKey: ["coach-context"],
     queryFn: () => getCoachContext(),
-    enabled: !!user && isPremium,
+    enabled: !!user,
   });
   const [turns, setTurns] = useState<Turn[]>([]);
   const [input, setInput] = useState("");
@@ -79,12 +77,12 @@ function CoachPage() {
     }
   }
 
-  if (loading) {
+  if (!user && loading) {
     return (
       <main className="mx-auto w-full max-w-2xl flex-1 bg-background px-4 py-10">
-        <Skeleton className="h-8 w-56 bg-card" />
-        <Skeleton className="mt-3 h-4 w-72 bg-card" />
-        <Skeleton className="mt-8 h-24 w-full rounded-2xl bg-card" />
+        <Skeleton className="skeleton-shimmer h-8 w-56 bg-card" />
+        <Skeleton className="skeleton-shimmer mt-3 h-4 w-72 bg-card" />
+        <Skeleton className="skeleton-shimmer mt-8 h-24 w-full rounded-2xl bg-card" />
       </main>
     );
   }
@@ -103,7 +101,7 @@ function CoachPage() {
         </p>
         <Link
           to="/auth"
-          className="mt-6 inline-flex items-center gap-2 rounded-xl bg-foreground px-5 py-2.5 text-sm font-medium text-background"
+          className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-foreground px-5 py-2.5 text-sm font-medium text-background"
         >
           Sign in
         </Link>
@@ -111,85 +109,83 @@ function CoachPage() {
     );
   }
 
-  if (!premiumLoading && !isPremium) {
-    return (
-      <PremiumFeatureLock
-        featureLabel="AI Nutrition Coach"
-        title="Personalised nutrition coaching"
-        description="Get daily guidance tuned to your allergies, fitness goals, and household budget with a 3-day free trial."
-      />
-    );
-  }
-
   const missing = ctx?.missing ?? [];
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-x-hidden bg-background px-3.5 py-6 text-foreground sm:px-4 sm:py-8">
-      <header className="flex items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground">
-          <HeartPulse className="h-5 w-5 text-[var(--periwinkle)]" />
-        </span>
-        <div className="min-w-0">
-          <h1 className="text-2xl font-medium tracking-tight text-foreground">Nutrition Coach</h1>
-          <p className="text-sm text-muted-foreground">
-            Personalized advice for your goals, allergies, and daily budget.
-          </p>
-        </div>
-      </header>
+      <MotionReveal>
+        <header className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card text-foreground">
+            <HeartPulse className="h-5 w-5 text-[var(--periwinkle)]" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-medium tracking-tight text-foreground">Nutrition Coach</h1>
+            <p className="text-sm text-muted-foreground">
+              Personalized advice for your goals, allergies, and daily budget.
+            </p>
+          </div>
+        </header>
+      </MotionReveal>
 
       {/* Profile summary / missing chips */}
       {ctxLoading ? (
-        <Skeleton className="mt-6 h-16 w-full rounded-2xl bg-card" />
+        <Skeleton className="skeleton-shimmer mt-6 h-16 w-full rounded-2xl bg-card" />
       ) : ctx ? (
-        <section className="mt-6 rounded-2xl border border-border bg-card p-4">
-          <div className="flex flex-wrap gap-1.5">
-            {ctx.profile?.goal && (
-              <Chip label={`Goal · ${ctx.profile.goal.replace(/[_-]+/g, " ")}`} />
+        <MotionReveal delay={30}>
+          <section className="mt-6 rounded-2xl border border-border bg-card p-4">
+            <div className="flex flex-wrap gap-1.5">
+              {ctx.profile?.goal && (
+                <Chip label={`Goal · ${ctx.profile.goal.replace(/[_-]+/g, " ")}`} />
+              )}
+              {ctx.profile?.activity_level && (
+                <Chip label={`Activity · ${ctx.profile.activity_level.replace(/[_-]+/g, " ")}`} />
+              )}
+              {ctx.profile?.dietary_preferences?.slice(0, 3).map((d) => (
+                <Chip key={d} label={d} />
+              ))}
+              {ctx.profile?.allergies?.slice(0, 3).map((a) => (
+                <Chip key={a} label={`No ${a}`} tone="warn" />
+              ))}
+              {ctx.profile?.budget_per_day && (
+                <Chip
+                  label={`Budget · ${ctx.profile.budget_per_day} ${ctx.profile.currency ?? "USD"}/day`}
+                  tabular
+                />
+              )}
+            </div>
+            {missing.length > 0 && (
+              <Link
+                to="/settings"
+                className="mt-3 flex min-h-11 items-center justify-between rounded-xl border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <span>Add your {missing.slice(0, 3).join(", ")} for sharper advice.</span>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+              </Link>
             )}
-            {ctx.profile?.activity_level && (
-              <Chip label={`Activity · ${ctx.profile.activity_level.replace(/[_-]+/g, " ")}`} />
-            )}
-            {ctx.profile?.dietary_preferences?.slice(0, 3).map((d) => (
-              <Chip key={d} label={d} />
-            ))}
-            {ctx.profile?.allergies?.slice(0, 3).map((a) => (
-              <Chip key={a} label={`No ${a}`} tone="warn" />
-            ))}
-            {ctx.profile?.budget_per_day && (
-              <Chip
-                label={`Budget · ${ctx.profile.budget_per_day} ${ctx.profile.currency ?? "USD"}/day`}
-              />
-            )}
-          </div>
-          {missing.length > 0 && (
-            <Link
-              to="/settings"
-              className="mt-3 flex items-center justify-between rounded-xl border border-border bg-secondary px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <span>Add your {missing.slice(0, 3).join(", ")} for sharper advice.</span>
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Link>
-          )}
-        </section>
+          </section>
+        </MotionReveal>
       ) : null}
 
       {/* Conversation */}
       <section className="mt-6 flex-1 space-y-4">
         {turns.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-border bg-card p-5">
-            <p className="text-sm font-medium text-foreground">Try asking:</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {STARTERS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => ask(s)}
-                  className="rounded-xl border border-border bg-secondary px-3.5 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:border-[var(--periwinkle)] hover:text-foreground"
-                >
-                  {s}
-                </button>
-              ))}
+          <MotionReveal delay={60}>
+            <div className="rounded-2xl border border-dashed border-border bg-card p-5">
+              <p className="text-sm font-medium text-foreground">Try asking:</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {STARTERS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => ask(s)}
+                    className="tap-spring min-h-11 rounded-xl border border-border bg-secondary px-3.5 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:border-[var(--periwinkle)] hover:text-foreground"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          </MotionReveal>
         )}
 
         {turns.map((t, i) =>
@@ -223,7 +219,7 @@ function CoachPage() {
           e.preventDefault();
           ask(input);
         }}
-        className="sticky bottom-[calc(var(--app-nav-h,4.25rem)+8px)] mt-6 flex gap-2 rounded-2xl border border-border bg-card p-1.5"
+        className="sticky bottom-[calc(var(--app-nav-h,4.25rem)+var(--keyboard-inset,0px)+8px)] mt-6 flex gap-2 rounded-2xl border border-border bg-card p-1.5 shadow-sm"
       >
         <label htmlFor="coach-input" className="sr-only">
           Ask your nutrition coach
@@ -253,13 +249,21 @@ function CoachPage() {
   );
 }
 
-function Chip({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "warn" }) {
+function Chip({
+  label,
+  tone = "neutral",
+  tabular = false,
+}: {
+  label: string;
+  tone?: "neutral" | "warn";
+  tabular?: boolean;
+}) {
   return (
     <span
       className={
         tone === "warn"
-          ? "inline-flex items-center rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive"
-          : "inline-flex items-center rounded-lg border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground"
+          ? `inline-flex items-center rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive ${tabular ? "tabular-nums" : ""}`
+          : `inline-flex items-center rounded-lg border border-border bg-secondary px-2.5 py-1 text-xs font-medium text-muted-foreground ${tabular ? "tabular-nums" : ""}`
       }
     >
       {label}

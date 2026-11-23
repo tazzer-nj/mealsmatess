@@ -20,6 +20,11 @@ before(async () => {
       entitlement: "premium",
       valid_until: Timestamp.fromMillis(Date.now() + 300_000),
     });
+    await setDoc(doc(db, "premium_access/whop_paid"), {
+      source: "whop",
+      entitlement: "premium",
+      valid_until: Timestamp.fromMillis(Date.now() + 300_000),
+    });
     await setDoc(doc(db, "premium_access/expired"), {
       source: "revenuecat",
       entitlement: "premium",
@@ -48,11 +53,16 @@ test("anonymous, unpaid, expired, and manual grants cannot read recipes", async 
   await assertSucceeds(
     getDocs(collection(env.authenticatedContext("paid").firestore(), "recipes")),
   );
+  await assertSucceeds(
+    getDocs(collection(env.authenticatedContext("whop_paid").firestore(), "recipes")),
+  );
 });
 test("clients cannot forge access leases, checkout ownership, or account binding", async () => {
   const db = env.authenticatedContext("unpaid").firestore();
   for (const path of [
     "premium_access/unpaid",
+    "whop_entitlements/unpaid",
+    "whop_users/user_fake",
     "billing_links/unpaid",
     "billing_sessions/guessed",
     "intro_completion/unpaid",

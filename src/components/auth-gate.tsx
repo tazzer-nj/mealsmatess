@@ -1,3 +1,4 @@
+import { useHubSurface } from "@/components/hub/hub-context";
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Loader2, MailWarning } from "lucide-react";
@@ -6,6 +7,7 @@ import { auth } from "@/lib/firebase";
 import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { reload, sendEmailVerification } from "firebase/auth";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
 import { isHardcodedAdminEmail } from "@/lib/admin-emails";
@@ -66,8 +68,16 @@ export function AuthGate({
 
   if (loading) {
     return (
-      <main className="flex flex-1 items-center justify-center py-24">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-5 px-4 pt-6 pb-20">
+        <div className="flex items-center justify-between">
+          <Skeleton className="skeleton-shimmer h-9 w-40 rounded-xl" />
+          <Skeleton className="skeleton-shimmer h-9 w-20 rounded-full" />
+        </div>
+        <Skeleton className="skeleton-shimmer h-14 w-full rounded-full" />
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton className="skeleton-shimmer h-36 rounded-3xl" />
+          <Skeleton className="skeleton-shimmer h-36 rounded-3xl" />
+        </div>
       </main>
     );
   }
@@ -91,8 +101,9 @@ function RedirectToAuth() {
     void navigate({ to: "/auth", replace: true });
   }, [navigate]);
   return (
-    <main className="flex flex-1 items-center justify-center py-24">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-5 px-4 pt-10 pb-20">
+      <Skeleton className="skeleton-shimmer mx-auto h-10 w-44 rounded-xl" />
+      <Skeleton className="skeleton-shimmer mx-auto h-64 w-full max-w-md rounded-2xl" />
     </main>
   );
 }

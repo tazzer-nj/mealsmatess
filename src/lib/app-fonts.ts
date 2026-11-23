@@ -52,24 +52,3 @@ export function isAppFontId(value: unknown): value is AppFontId {
     value === "fraunces"
   );
 }
-
-const OPTIONAL_FONT_STYLESHEETS: Record<Exclude<AppFontId, "editorial">, string> = {
-  jakarta:
-    "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
-  outfit: "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap",
-  dm: "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&display=swap",
-  fraunces:
-    "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&display=swap",
-};
-
-export function ensureAppFontLoaded(fontId: AppFontId) {
-  if (typeof document === "undefined" || fontId === "editorial") return;
-  const href = OPTIONAL_FONT_STYLESHEETS[fontId];
-  const id = `mealmate-font-${fontId}`;
-  if (!href || document.getElementById(id)) return;
-  const link = document.createElement("link");
-  link.id = id;
-  link.rel = "stylesheet";
-  link.href = href;
-  document.head.appendChild(link);
-}

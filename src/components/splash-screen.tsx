@@ -1,44 +1,35 @@
+import { Capacitor } from "@capacitor/core";
 import { useEffect, useState } from "react";
 
 const KEY = "mealmate.splash.shown";
 
-/** Branded launch splash: once per app launch (session), never on in-app navigation. */
+/** Instant non-blocking native launch transition; web skips artificial splash delays completely. */
 export function SplashScreen() {
-  const [phase, setPhase] = useState<"hidden" | "show" | "leave">("hidden");
+  const [phase, setPhase] = useState<"hidden" | "leave">("hidden");
 
   useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
     try {
       if (sessionStorage.getItem(KEY)) return;
+      sessionStorage.setItem(KEY, "1");
     } catch {
       return;
     }
-    setPhase("show");
-    const t1 = window.setTimeout(() => setPhase("leave"), 70);
-    const t2 = window.setTimeout(() => {
-      setPhase("hidden");
-      try {
-        sessionStorage.setItem(KEY, "1");
-      } catch {
-        return;
-      }
-    }, 180);
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-    };
+    setPhase("leave");
+    const timer = window.setTimeout(() => setPhase("hidden"), 140);
+    return () => window.clearTimeout(timer);
   }, []);
 
   if (phase === "hidden") return null;
   return (
-    <div className="splash-screen pointer-events-none" data-leaving={phase === "leave"} aria-hidden>
+    <div className="splash-screen pointer-events-none" data-leaving="true" aria-hidden>
       <img
         src="/mascots/mascot-classic.png"
         alt=""
-        width={112}
-        height={112}
+        width={96}
+        height={96}
         className="splash-logo"
       />
-      <p className="splash-tagline">Discover. Plan. Eat better.</p>
     </div>
   );
 }

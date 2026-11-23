@@ -1,23 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import {
-  AlertCircle,
-  Check,
-  Crown,
-  Info,
-  Loader2,
-  Lock,
-  Moon,
-  RotateCcw,
-  Sparkles,
-  Sun,
-} from "lucide-react";
-import {
-  FREE_THEMES,
-  PREMIUM_THEMES,
-  getMealMateThemeTokens,
-  type MealMateTheme,
-  type ThemeColorScheme,
-} from "@/lib/themes";
+import { AlertCircle, Check, Crown, Info, Loader2, Lock, RotateCcw, Sparkles } from "lucide-react";
+import { FREE_THEMES, PREMIUM_THEMES, type MealMateTheme } from "@/lib/themes";
 import { useTheme } from "@/components/theme-provider";
 import { usePremium } from "@/hooks/use-premium";
 import { useUpgradeModal } from "@/components/upgrade-modal";
@@ -26,25 +9,21 @@ import { cn } from "@/lib/utils";
 
 function ThemeMiniPreview({
   theme,
-  schemeOverride,
   active,
   previewing,
   locked,
 }: {
   theme: MealMateTheme;
-  schemeOverride?: ThemeColorScheme;
   active: boolean;
   previewing: boolean;
   locked: boolean;
 }) {
-  const effectiveScheme = schemeOverride ?? theme.colorScheme;
-  const t = getMealMateThemeTokens(theme, effectiveScheme);
+  const t = theme.tokens;
   return (
     <div
       className="relative aspect-[16/11] w-full overflow-hidden rounded-xl border transition-transform duration-200"
       style={{
         backgroundColor: t.background,
-        backgroundImage: `radial-gradient(ellipse 90% 50% at 50% -10%, ${t.periwinkleSoft}, transparent 75%)`,
         borderColor: previewing || active ? t.periwinkle : t.border,
       }}
       aria-hidden="true"
@@ -64,23 +43,16 @@ function ThemeMiniPreview({
             style={{ backgroundColor: t.foreground }}
           />
         </div>
-        <div className="flex items-center gap-0.5">
-          <span
-            className="h-1.5 w-1.5 rounded-full border"
-            style={{ backgroundColor: t.background, borderColor: t.border }}
-          />
-          <span
-            className="h-1.5 w-1.5 rounded-full border"
-            style={{ backgroundColor: t.card, borderColor: t.border }}
-          />
-          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: t.primary }} />
-        </div>
+        <span
+          className="h-1.5 w-3 rounded-full"
+          style={{ backgroundColor: t.mutedForeground, opacity: 0.45 }}
+        />
       </div>
 
       {/* Mini MealMate content body with prominent mascot image preview */}
       <div className="p-2 pb-5">
         <div
-          className="flex items-center gap-2 rounded-lg border p-1.5 shadow-xs"
+          className="flex items-center gap-2 rounded-lg border p-1.5"
           style={{
             backgroundColor: t.card,
             borderColor: t.border,
@@ -139,7 +111,7 @@ function ThemeMiniPreview({
           className="h-1 w-3 rounded-full"
           style={{ backgroundColor: t.mutedForeground, opacity: 0.5 }}
         />
-        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: t.periwinkle }} />
+        <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: t.periwinkle }} />
         <span
           className="h-1 w-3 rounded-full"
           style={{ backgroundColor: t.mutedForeground, opacity: 0.5 }}
@@ -156,7 +128,7 @@ function ThemeMiniPreview({
           className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-md shadow-sm"
           style={{
             backgroundColor: t.periwinkle,
-            color: effectiveScheme === "dark" ? t.background : "#ffffff",
+            color: theme.colorScheme === "dark" ? t.background : "#ffffff",
           }}
         >
           <Check className="h-3 w-3 stroke-[2.5]" />
@@ -167,7 +139,7 @@ function ThemeMiniPreview({
           className="absolute right-1.5 top-1.5 rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
           style={{
             backgroundColor: t.periwinkle,
-            color: effectiveScheme === "dark" ? t.background : "#ffffff",
+            color: theme.colorScheme === "dark" ? t.background : "#ffffff",
           }}
         >
           Preview
@@ -184,22 +156,17 @@ function ThemeMiniPreview({
 
 function ThemeCard({
   theme,
-  schemeOverride,
   active,
   previewing,
   locked,
   onSelect,
 }: {
   theme: MealMateTheme;
-  schemeOverride?: ThemeColorScheme;
   active: boolean;
   previewing: boolean;
   locked: boolean;
   onSelect: (theme: MealMateTheme) => void;
 }) {
-  const effectiveScheme = schemeOverride ?? theme.colorScheme;
-  const t = getMealMateThemeTokens(theme, effectiveScheme);
-
   return (
     <button
       type="button"
@@ -208,7 +175,7 @@ function ThemeCard({
       aria-label={`${theme.name} theme${active ? " (active)" : ""}${previewing ? " (previewing)" : ""}${locked ? " (Premium)" : ""}`}
       onClick={() => onSelect(theme)}
       className={cn(
-        "group flex min-w-0 flex-col rounded-2xl border bg-card p-2 text-left shadow-[var(--shadow-card)] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]",
+        "group flex min-w-0 flex-col rounded-2xl border bg-card p-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]",
         previewing
           ? "border-[var(--periwinkle)] ring-2 ring-[var(--periwinkle-soft)]"
           : active
@@ -216,13 +183,7 @@ function ThemeCard({
             : "border-border hover:border-foreground/30",
       )}
     >
-      <ThemeMiniPreview
-        theme={theme}
-        schemeOverride={schemeOverride}
-        active={active}
-        previewing={previewing}
-        locked={locked}
-      />
+      <ThemeMiniPreview theme={theme} active={active} previewing={previewing} locked={locked} />
 
       <div className="mt-2 flex min-w-0 items-center justify-between gap-2 px-0.5">
         <img
@@ -235,20 +196,13 @@ function ThemeCard({
           className="h-6 w-6 shrink-0 rounded-lg border border-border/70 object-cover"
         />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-1.5">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <span
-                className="h-2 w-2 shrink-0 rounded-full"
-                style={{ backgroundColor: t.periwinkle }}
-                aria-hidden="true"
-              />
-              <span className="truncate text-xs font-semibold text-foreground">{theme.name}</span>
-            </div>
-            {!theme.premium && (
-              <span className="shrink-0 rounded-md border border-border bg-secondary px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {effectiveScheme === "dark" ? "Dark" : "Light"}
-              </span>
-            )}
+          <div className="flex items-center gap-1.5">
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: theme.tokens.periwinkle }}
+              aria-hidden="true"
+            />
+            <span className="truncate text-xs font-semibold text-foreground">{theme.name}</span>
           </div>
           <p className="mt-0.5 truncate text-[10px] leading-tight text-muted-foreground">
             {theme.subtitle}
@@ -265,7 +219,6 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
     activeThemeId,
     previewThemeId,
     displayTheme,
-    colorScheme,
     isPreviewing,
     loadingAccount,
     saveStatus,
@@ -275,7 +228,6 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
     cancelPreview,
     applyTheme,
     retrySave,
-    setMode,
   } = useTheme();
 
   const { isPremium } = usePremium();
@@ -318,54 +270,18 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {activeTheme.premium && !isPreviewing && (
-              <div
-                className="inline-flex rounded-xl border border-border bg-secondary p-0.5"
-                role="group"
-                aria-label="Theme tone"
-              >
-                <button
-                  type="button"
-                  onClick={() => setMode("light")}
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors",
-                    colorScheme === "light"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Sun className="h-3 w-3" />
-                  Light
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode("dark")}
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors",
-                    colorScheme === "dark"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Moon className="h-3 w-3" />
-                  Dark
-                </button>
-              </div>
-            )}
-            {saveStatus === "saving" && (
-              <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-[var(--periwinkle)]">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Saving…
-              </span>
-            )}
-            {saveStatus === "saved" && !isPreviewing && (
-              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--positive)]">
-                <Check className="h-3.5 w-3.5" />
-                Saved
-              </span>
-            )}
-          </div>
+          {saveStatus === "saving" && (
+            <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-[var(--periwinkle)]">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Saving…
+            </span>
+          )}
+          {saveStatus === "saved" && !isPreviewing && (
+            <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-[var(--positive)]">
+              <Check className="h-3.5 w-3.5" />
+              Saved
+            </span>
+          )}
         </div>
 
         {/* Unauthenticated Warning */}
@@ -491,11 +407,11 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
         </div>
       )}
 
-      {/* Default Kitchen Themes */}
+      {/* Default Black & White Themes */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between px-0.5">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Default Kitchen Themes
+            Default (Black &amp; White)
           </h3>
           <span className="text-[11px] text-muted-foreground">{FREE_THEMES.length} included</span>
         </div>
@@ -554,7 +470,6 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
             <ThemeCard
               key={theme.id}
               theme={theme}
-              schemeOverride={displayTheme.id === theme.id ? colorScheme : undefined}
               active={activeThemeId === theme.id}
               previewing={previewThemeId === theme.id && previewThemeId !== activeThemeId}
               locked={!isPremium}

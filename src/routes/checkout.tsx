@@ -76,7 +76,7 @@ function CheckoutPage() {
         <p className="text-sm text-muted-foreground">
           Browse nearby restaurants and add a few dishes.
         </p>
-        <Button asChild className="rounded-full">
+        <Button asChild className="min-h-11 rounded-full">
           <Link to="/restaurants">Find restaurants</Link>
         </Button>
       </main>
@@ -84,7 +84,7 @@ function CheckoutPage() {
   }
 
   return (
-    <main className="flex-1 space-y-6 px-4 pb-10 pt-2">
+    <main className="flex-1 space-y-6 px-4 pb-[calc(var(--app-nav-h,4rem)+var(--keyboard-inset,0px)+1.5rem)] pt-2">
       <header>
         <h1 className="font-display text-3xl leading-tight">Checkout</h1>
         <p className="text-sm text-muted-foreground">From {cart.restaurant_name}</p>
@@ -97,30 +97,34 @@ function CheckoutPage() {
             <li key={line.menu_item_id} className="flex items-center gap-3">
               <div className="min-w-0 flex-1">
                 <p className="line-clamp-1 text-sm font-medium">{line.name}</p>
-                <p className="text-xs text-muted-foreground">{money(line.unit_price, currency)}</p>
+                <p className="tabular-nums text-xs text-muted-foreground">
+                  {money(line.unit_price, currency)}
+                </p>
               </div>
               <div className="flex items-center gap-1">
                 <Button
                   size="icon"
                   variant="secondary"
-                  className="h-8 w-8 rounded-full"
+                  className="tap-spring h-11 w-11 rounded-full"
                   aria-label={`Decrease ${line.name}`}
                   onClick={() => setQuantity(line.menu_item_id, line.quantity - 1)}
                 >
                   <Minus className="h-3.5 w-3.5" />
                 </Button>
-                <span className="w-6 text-center text-sm">{line.quantity}</span>
+                <span className="tabular-nums w-6 text-center text-sm font-medium">
+                  {line.quantity}
+                </span>
                 <Button
                   size="icon"
                   variant="secondary"
-                  className="h-8 w-8 rounded-full"
+                  className="tap-spring h-11 w-11 rounded-full"
                   aria-label={`Increase ${line.name}`}
                   onClick={() => setQuantity(line.menu_item_id, line.quantity + 1)}
                 >
                   <Plus className="h-3.5 w-3.5" />
                 </Button>
               </div>
-              <span className="w-20 text-right text-sm font-medium">
+              <span className="tabular-nums w-20 text-right text-sm font-medium">
                 {money(line.unit_price * line.quantity, currency)}
               </span>
             </li>
@@ -150,7 +154,7 @@ function CheckoutPage() {
         />
       </section>
 
-      <section className="md3-surface space-y-2 rounded-3xl border border-border/60 bg-card p-4 text-sm">
+      <section className="md3-surface tabular-nums space-y-2 rounded-3xl border border-border/60 bg-card p-4 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Subtotal</span>
           <span>{money(subtotal, currency)}</span>
@@ -172,7 +176,7 @@ function CheckoutPage() {
 
       {user ? (
         <Button
-          className="w-full rounded-full"
+          className="tap-spring tabular-nums min-h-12 w-full rounded-full"
           size="lg"
           disabled={busy || belowMin || address.trim().length < 4 || phone.trim().length < 5}
           onClick={handlePlace}
@@ -181,7 +185,7 @@ function CheckoutPage() {
           Place order · {money(total, currency)}
         </Button>
       ) : (
-        <Button asChild className="w-full rounded-full" size="lg">
+        <Button asChild className="min-h-12 w-full rounded-full" size="lg">
           <Link to="/auth">Sign in to place your order</Link>
         </Button>
       )}

@@ -50,93 +50,90 @@ export type MealMateTheme = {
   premium: boolean;
   mascotImage: string;
   tokens: MealMateThemeTokens;
-  lightTokens?: MealMateThemeTokens;
-  darkTokens?: MealMateThemeTokens;
 };
 
 export const THEME_V2_STORAGE_KEY = "mealmate-theme-v2";
-export const THEME_SCHEME_STORAGE_KEY = "mealmate-theme-scheme";
 export const LEGACY_APPEARANCE_STORAGE_KEY = "mealmate-theme";
 export const LEGACY_MASCOT_STORAGE_KEY = "mealmate.theme.v1";
 
 export const MEALMATE_THEMES: MealMateTheme[] = [
-  // ---- DEFAULT KITCHEN THEMES (2) ----
+  // ---- DEFAULT BLACK & WHITE (2) ----
   {
     id: "classic-light",
-    name: "Fresh Kitchen",
-    subtitle: "Warm ivory canvas, soft cream & fresh sage",
+    name: "Default White",
+    subtitle: "Clean white canvas & crisp black ink",
     colorScheme: "light",
     premium: false,
     mascotImage: "/mascots/mascot-classic.png",
     tokens: {
-      background: "#faf7f1",
-      foreground: "#1c221d",
-      card: "#ffffff",
-      cardForeground: "#1c221d",
-      popover: "#ffffff",
-      popoverForeground: "#1c221d",
-      primary: "#3b6644",
-      primaryForeground: "#fbfcf9",
-      secondary: "#f1ece2",
-      secondaryForeground: "#222923",
-      muted: "#ece6da",
-      mutedForeground: "#555e55",
-      accent: "#e5ede1",
-      accentForeground: "#1c221d",
-      periwinkle: "#4a7551",
-      periwinkleSoft: "rgba(74, 117, 81, 0.13)",
-      border: "#e3dcd0",
-      input: "#dbd3c5",
-      ring: "#4a7551",
-      positive: "#3d7a47",
-      negative: "#c8372d",
-      destructive: "#c8372d",
+      background: "oklch(0.992 0.003 95)",
+      foreground: "oklch(0.12 0 0)",
+      card: "oklch(0.975 0.005 95)",
+      cardForeground: "oklch(0.12 0 0)",
+      popover: "oklch(1 0 0)",
+      popoverForeground: "oklch(0.12 0 0)",
+      primary: "oklch(0.12 0 0)",
+      primaryForeground: "oklch(0.99 0 0)",
+      secondary: "oklch(0.94 0 0)",
+      secondaryForeground: "oklch(0.12 0 0)",
+      muted: "oklch(0.94 0 0)",
+      mutedForeground: "oklch(0.42 0 0)",
+      accent: "oklch(0.92 0 0)",
+      accentForeground: "oklch(0.12 0 0)",
+      periwinkle: "oklch(0.61 0.16 139)",
+      periwinkleSoft: "oklch(0.61 0.16 139 / 12%)",
+      border: "oklch(0.91 0.003 95)",
+      input: "oklch(0.89 0.003 95)",
+      ring: "oklch(0.25 0 0)",
+      positive: "oklch(0.61 0.16 139)",
+      negative: "#dc2626",
+      destructive: "#dc2626",
       destructiveForeground: "#ffffff",
-      navBackground: "rgba(252, 249, 243, 0.92)",
-      headerBackground: "rgba(250, 247, 241, 0.9)",
-      themeColor: "#faf7f1",
-      ink: "#1f3224",
-      ember: "#c77d32",
-      leaf: "#548256",
+      navBackground: "rgba(252, 252, 251, 0.94)",
+      headerBackground: "rgba(252, 252, 251, 0.94)",
+      themeColor: "#fcfcfb",
+      ink: "oklch(0.3 0.055 152)",
+      ember: "oklch(0.72 0.16 55)",
+      leaf: "oklch(0.61 0.16 139)",
     },
   },
   {
     id: "midnight-black",
-    name: "Midnight Kitchen",
-    subtitle: "Midnight black, forest green & refined emerald",
+    name: "Default Black",
+    subtitle: "True black surface & crisp white ink",
     colorScheme: "dark",
     premium: false,
     mascotImage: "/mascots/mascot-classic.png",
     tokens: {
-      background: "#070e0a",
-      foreground: "#f4f8f5",
-      card: "#0e1c14",
-      cardForeground: "#f4f8f5",
-      popover: "#12241a",
-      popoverForeground: "#f4f8f5",
-      primary: "#2ec47a",
-      primaryForeground: "#04140b",
-      secondary: "#15281d",
-      secondaryForeground: "#e8f2ec",
-      muted: "#13241a",
-      mutedForeground: "#9cb5a6",
-      accent: "#1a3325",
-      accentForeground: "#f4f8f5",
-      periwinkle: "#2ec47a",
-      periwinkleSoft: "rgba(46, 196, 122, 0.16)",
-      border: "rgba(116, 186, 146, 0.18)",
-      input: "rgba(116, 186, 146, 0.22)",
-      ring: "#34d399",
-      positive: "#34d399",
-      negative: "#f87171",
-      destructive: "#ef4444",
-      destructiveForeground: "#ffffff",
-      navBackground: "rgba(7, 15, 11, 0.92)",
-      headerBackground: "rgba(7, 14, 10, 0.9)",
-      themeColor: "#070e0a",
-      ink: "#e6f2ea",
-      ember: "#dba04a",
-      leaf: "#2ec47a",
+      background: "oklch(0.08 0 0)",
+      foreground: "oklch(0.98 0 0)",
+      card: "oklch(0.14 0 0)",
+      cardForeground: "oklch(0.98 0 0)",
+      popover: "oklch(0.14 0 0)",
+      popoverForeground: "oklch(0.98 0 0)",
+      primary: "oklch(0.98 0 0)",
+      primaryForeground: "oklch(0.08 0 0)",
+      secondary: "oklch(0.2 0 0)",
+      secondaryForeground: "oklch(0.98 0 0)",
+      muted: "oklch(0.2 0 0)",
+      mutedForeground: "oklch(0.72 0 0)",
+      accent: "oklch(0.24 0 0)",
+      accentForeground: "oklch(0.98 0 0)",
+      periwinkle: "oklch(0.72 0.16 140)",
+      periwinkleSoft: "oklch(0.72 0.16 140 / 16%)",
+      border: "oklch(1 0 0 / 12%)",
+      input: "oklch(1 0 0 / 15%)",
+      ring: "oklch(0.72 0.16 140)",
+      positive: "oklch(0.72 0.16 140)",
+      negative: "#ef4444",
+      destructive: "oklch(0.65 0.22 25)",
+      destructiveForeground: "oklch(0.98 0 0)",
+      navBackground: "rgba(10, 10, 10, 0.94)",
+      headerBackground: "rgba(10, 10, 10, 0.94)",
+      themeColor: "#0a0a0a",
+      ink: "oklch(0.95 0.015 125)",
+      ember: "oklch(0.75 0.15 55)",
+      leaf: "oklch(0.72 0.16 140)",
     },
   },
 
@@ -179,37 +176,6 @@ export const MEALMATE_THEMES: MealMateTheme[] = [
       ember: "oklch(0.72 0.16 55)",
       leaf: "oklch(0.61 0.16 139)",
     },
-    darkTokens: {
-      background: "oklch(0.14 0.025 145)",
-      foreground: "oklch(0.97 0.01 135)",
-      card: "oklch(0.19 0.03 145)",
-      cardForeground: "oklch(0.97 0.01 135)",
-      popover: "oklch(0.21 0.03 145)",
-      popoverForeground: "oklch(0.97 0.01 135)",
-      primary: "oklch(0.72 0.16 139)",
-      primaryForeground: "oklch(0.12 0.03 145)",
-      secondary: "oklch(0.24 0.035 142)",
-      secondaryForeground: "oklch(0.96 0.01 135)",
-      muted: "oklch(0.23 0.03 142)",
-      mutedForeground: "oklch(0.74 0.03 140)",
-      accent: "oklch(0.28 0.045 140)",
-      accentForeground: "oklch(0.97 0.01 135)",
-      periwinkle: "oklch(0.72 0.16 139)",
-      periwinkleSoft: "oklch(0.72 0.16 139 / 18%)",
-      border: "oklch(0.3 0.04 142)",
-      input: "oklch(0.34 0.04 142)",
-      ring: "oklch(0.72 0.16 139)",
-      positive: "oklch(0.72 0.16 139)",
-      negative: "#fb7185",
-      destructive: "#ef4444",
-      destructiveForeground: "#ffffff",
-      navBackground: "rgba(12, 22, 16, 0.92)",
-      headerBackground: "rgba(12, 22, 16, 0.92)",
-      themeColor: "#0c1610",
-      ink: "oklch(0.93 0.02 135)",
-      ember: "oklch(0.75 0.15 55)",
-      leaf: "oklch(0.72 0.16 139)",
-    },
   },
   {
     id: "sunset",
@@ -248,37 +214,6 @@ export const MEALMATE_THEMES: MealMateTheme[] = [
       ink: "oklch(0.28 0.06 45)",
       ember: "oklch(0.68 0.17 55)",
       leaf: "oklch(0.61 0.16 139)",
-    },
-    darkTokens: {
-      background: "oklch(0.17 0.03 40)",
-      foreground: "oklch(0.97 0.015 65)",
-      card: "oklch(0.22 0.04 40)",
-      cardForeground: "oklch(0.97 0.015 65)",
-      popover: "oklch(0.24 0.04 40)",
-      popoverForeground: "oklch(0.97 0.015 65)",
-      primary: "oklch(0.75 0.17 55)",
-      primaryForeground: "oklch(0.15 0.03 40)",
-      secondary: "oklch(0.27 0.05 45)",
-      secondaryForeground: "oklch(0.97 0.015 65)",
-      muted: "oklch(0.26 0.04 45)",
-      mutedForeground: "oklch(0.76 0.04 55)",
-      accent: "oklch(0.31 0.06 50)",
-      accentForeground: "oklch(0.97 0.015 65)",
-      periwinkle: "oklch(0.75 0.17 55)",
-      periwinkleSoft: "oklch(0.75 0.17 55 / 18%)",
-      border: "oklch(0.33 0.05 45)",
-      input: "oklch(0.37 0.05 45)",
-      ring: "oklch(0.75 0.17 55)",
-      positive: "#4ade80",
-      negative: "#fb7185",
-      destructive: "#ef4444",
-      destructiveForeground: "#ffffff",
-      navBackground: "rgba(26, 16, 10, 0.92)",
-      headerBackground: "rgba(26, 16, 10, 0.92)",
-      themeColor: "#1a100a",
-      ink: "oklch(0.94 0.02 65)",
-      ember: "oklch(0.75 0.17 55)",
-      leaf: "#4ade80",
     },
   },
   {
@@ -319,37 +254,6 @@ export const MEALMATE_THEMES: MealMateTheme[] = [
       ember: "oklch(0.7 0.15 275)",
       leaf: "#4ade80",
     },
-    lightTokens: {
-      background: "oklch(0.96 0.02 275)",
-      foreground: "oklch(0.18 0.05 275)",
-      card: "oklch(0.985 0.012 275)",
-      cardForeground: "oklch(0.18 0.05 275)",
-      popover: "oklch(0.995 0.01 275)",
-      popoverForeground: "oklch(0.18 0.05 275)",
-      primary: "oklch(0.54 0.18 275)",
-      primaryForeground: "oklch(0.99 0 0)",
-      secondary: "oklch(0.92 0.04 275)",
-      secondaryForeground: "oklch(0.2 0.05 275)",
-      muted: "oklch(0.93 0.03 275)",
-      mutedForeground: "oklch(0.45 0.05 275)",
-      accent: "oklch(0.91 0.05 275)",
-      accentForeground: "oklch(0.18 0.05 275)",
-      periwinkle: "oklch(0.54 0.18 275)",
-      periwinkleSoft: "oklch(0.54 0.18 275 / 14%)",
-      border: "oklch(0.87 0.04 275)",
-      input: "oklch(0.84 0.04 275)",
-      ring: "oklch(0.54 0.18 275)",
-      positive: "oklch(0.61 0.16 139)",
-      negative: "#d93424",
-      destructive: "#d93424",
-      destructiveForeground: "#ffffff",
-      navBackground: "rgba(241, 243, 252, 0.92)",
-      headerBackground: "rgba(241, 243, 252, 0.92)",
-      themeColor: "#f1f3fc",
-      ink: "oklch(0.28 0.07 275)",
-      ember: "oklch(0.54 0.18 275)",
-      leaf: "oklch(0.61 0.16 139)",
-    },
   },
   {
     id: "ocean-blue",
@@ -388,37 +292,6 @@ export const MEALMATE_THEMES: MealMateTheme[] = [
       ink: "oklch(0.28 0.06 235)",
       ember: "oklch(0.6 0.14 230)",
       leaf: "oklch(0.61 0.16 139)",
-    },
-    darkTokens: {
-      background: "oklch(0.16 0.04 240)",
-      foreground: "oklch(0.96 0.015 220)",
-      card: "oklch(0.21 0.05 238)",
-      cardForeground: "oklch(0.96 0.015 220)",
-      popover: "oklch(0.23 0.05 238)",
-      popoverForeground: "oklch(0.96 0.015 220)",
-      primary: "oklch(0.7 0.15 225)",
-      primaryForeground: "oklch(0.14 0.04 235)",
-      secondary: "oklch(0.26 0.05 235)",
-      secondaryForeground: "oklch(0.96 0.015 220)",
-      muted: "oklch(0.25 0.04 235)",
-      mutedForeground: "oklch(0.75 0.04 225)",
-      accent: "oklch(0.3 0.06 230)",
-      accentForeground: "oklch(0.96 0.015 220)",
-      periwinkle: "oklch(0.7 0.15 225)",
-      periwinkleSoft: "oklch(0.7 0.15 225 / 18%)",
-      border: "oklch(0.32 0.05 235)",
-      input: "oklch(0.36 0.05 235)",
-      ring: "oklch(0.7 0.15 225)",
-      positive: "#4ade80",
-      negative: "#fb7185",
-      destructive: "#ef4444",
-      destructiveForeground: "#ffffff",
-      navBackground: "rgba(12, 22, 34, 0.92)",
-      headerBackground: "rgba(12, 22, 34, 0.92)",
-      themeColor: "#0c1622",
-      ink: "oklch(0.93 0.02 220)",
-      ember: "oklch(0.7 0.15 225)",
-      leaf: "#4ade80",
     },
   },
   {
@@ -459,37 +332,6 @@ export const MEALMATE_THEMES: MealMateTheme[] = [
       ember: "oklch(0.74 0.13 138)",
       leaf: "oklch(0.74 0.13 138)",
     },
-    lightTokens: {
-      background: "oklch(0.97 0.025 135)",
-      foreground: "oklch(0.18 0.04 145)",
-      card: "oklch(0.985 0.018 135)",
-      cardForeground: "oklch(0.18 0.04 145)",
-      popover: "oklch(0.99 0.012 135)",
-      popoverForeground: "oklch(0.18 0.04 145)",
-      primary: "oklch(0.55 0.15 139)",
-      primaryForeground: "oklch(0.99 0 0)",
-      secondary: "oklch(0.93 0.045 135)",
-      secondaryForeground: "oklch(0.18 0.04 145)",
-      muted: "oklch(0.94 0.03 135)",
-      mutedForeground: "oklch(0.43 0.04 140)",
-      accent: "oklch(0.92 0.05 138)",
-      accentForeground: "oklch(0.18 0.04 145)",
-      periwinkle: "oklch(0.55 0.15 139)",
-      periwinkleSoft: "oklch(0.55 0.15 139 / 14%)",
-      border: "oklch(0.88 0.04 135)",
-      input: "oklch(0.85 0.04 135)",
-      ring: "oklch(0.55 0.15 139)",
-      positive: "oklch(0.55 0.15 139)",
-      negative: "#d93424",
-      destructive: "#d93424",
-      destructiveForeground: "#ffffff",
-      navBackground: "rgba(244, 249, 241, 0.92)",
-      headerBackground: "rgba(244, 249, 241, 0.92)",
-      themeColor: "#f4f9f1",
-      ink: "oklch(0.28 0.06 145)",
-      ember: "oklch(0.55 0.15 139)",
-      leaf: "oklch(0.55 0.15 139)",
-    },
   },
   {
     id: "obsidian",
@@ -528,37 +370,6 @@ export const MEALMATE_THEMES: MealMateTheme[] = [
       ink: "oklch(0.94 0.02 10)",
       ember: "oklch(0.7 0.17 12)",
       leaf: "#4ade80",
-    },
-    lightTokens: {
-      background: "oklch(0.97 0.02 10)",
-      foreground: "oklch(0.18 0.04 10)",
-      card: "oklch(0.985 0.015 10)",
-      cardForeground: "oklch(0.18 0.04 10)",
-      popover: "oklch(0.995 0.01 10)",
-      popoverForeground: "oklch(0.18 0.04 10)",
-      primary: "oklch(0.56 0.2 12)",
-      primaryForeground: "oklch(0.99 0 0)",
-      secondary: "oklch(0.93 0.04 10)",
-      secondaryForeground: "oklch(0.2 0.04 10)",
-      muted: "oklch(0.94 0.03 10)",
-      mutedForeground: "oklch(0.45 0.04 10)",
-      accent: "oklch(0.92 0.05 12)",
-      accentForeground: "oklch(0.2 0.04 10)",
-      periwinkle: "oklch(0.56 0.2 12)",
-      periwinkleSoft: "oklch(0.56 0.2 12 / 14%)",
-      border: "oklch(0.88 0.04 10)",
-      input: "oklch(0.85 0.04 10)",
-      ring: "oklch(0.56 0.2 12)",
-      positive: "oklch(0.61 0.16 139)",
-      negative: "#d93424",
-      destructive: "#d93424",
-      destructiveForeground: "#ffffff",
-      navBackground: "rgba(252, 242, 244, 0.92)",
-      headerBackground: "rgba(252, 242, 244, 0.92)",
-      themeColor: "#fcf2f4",
-      ink: "oklch(0.3 0.06 10)",
-      ember: "oklch(0.56 0.2 12)",
-      leaf: "oklch(0.61 0.16 139)",
     },
   },
 ];
@@ -605,30 +416,9 @@ export function normalizeThemeId(value: string | null | undefined): MealMateThem
   return LEGACY_THEME_MAP[cleaned] ?? "classic-light";
 }
 
-export function getMealMateThemeTokens(
-  theme: MealMateTheme,
-  colorScheme?: ThemeColorScheme,
-): MealMateThemeTokens {
-  if (colorScheme === "dark" && theme.darkTokens) return theme.darkTokens;
-  if (colorScheme === "light" && theme.lightTokens) return theme.lightTokens;
-  return theme.tokens;
-}
-
 export function getMealMateTheme(id: string | null | undefined): MealMateTheme {
-  const baseId = typeof id === "string" ? id.split(":")[0] : id;
-  const normalized = normalizeThemeId(baseId);
+  const normalized = normalizeThemeId(id);
   return MEALMATE_THEMES.find((t) => t.id === normalized) ?? MEALMATE_THEMES[0]!;
-}
-
-export function parseStoredThemeSelection(raw: string | null | undefined): {
-  themeId: MealMateThemeId;
-  scheme?: ThemeColorScheme;
-} | null {
-  if (!raw || typeof raw !== "string") return null;
-  const [rawId, rawScheme] = raw.trim().toLowerCase().split(":");
-  const themeId = normalizeThemeId(rawId);
-  const scheme = rawScheme === "light" || rawScheme === "dark" ? rawScheme : undefined;
-  return { themeId, scheme };
 }
 
 /**
@@ -637,19 +427,12 @@ export function parseStoredThemeSelection(raw: string | null | undefined): {
  */
 export function applyMealMateThemeToDom(
   themeId: MealMateThemeId,
-  options?: {
-    animate?: boolean;
-    legacyDatasetTheme?: string;
-    colorScheme?: ThemeColorScheme;
-  },
+  options?: { animate?: boolean; legacyDatasetTheme?: string },
 ) {
   if (typeof document === "undefined") return;
   const theme = getMealMateTheme(themeId);
-  const effectiveScheme: ThemeColorScheme = theme.premium
-    ? (options?.colorScheme ?? theme.colorScheme)
-    : theme.colorScheme;
   const root = document.documentElement;
-  const t = getMealMateThemeTokens(theme, effectiveScheme);
+  const t = theme.tokens;
 
   if (
     options?.animate &&
@@ -660,15 +443,15 @@ export function applyMealMateThemeToDom(
     window.setTimeout(() => root.classList.remove("theme-transition"), 320);
   }
 
-  const isDark = effectiveScheme === "dark";
+  const isDark = theme.colorScheme === "dark";
   root.classList.toggle("dark", isDark);
-  root.classList.toggle("dark-premium", theme.id === "midnight-pro" && isDark);
-  root.style.colorScheme = effectiveScheme;
+  root.classList.toggle("dark-premium", theme.id === "midnight-pro");
+  root.style.colorScheme = theme.colorScheme;
   root.dataset["appTheme"] = theme.id;
   root.dataset["mascot"] = MASCOT_ALIAS_MAP[theme.id] ?? "classic";
   root.dataset["theme"] =
     options?.legacyDatasetTheme ??
-    (theme.id === "midnight-pro" && isDark ? "dark-premium" : isDark ? "dark" : "light");
+    (theme.id === "midnight-pro" ? "dark-premium" : isDark ? "dark" : "light");
 
   const vars: Record<string, string> = {
     "--background": t.background,
@@ -718,12 +501,7 @@ export function applyMealMateThemeToDom(
     root.style.setProperty(key, val);
   }
 
-  let metaTheme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-  if (!metaTheme && document.head) {
-    metaTheme = document.createElement("meta");
-    metaTheme.name = "theme-color";
-    document.head.appendChild(metaTheme);
-  }
+  const metaTheme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (metaTheme) {
     metaTheme.content = t.themeColor;
   }
@@ -734,101 +512,43 @@ export function applyMealMateThemeToDom(
   if (metaStatus) {
     metaStatus.content = isDark ? "black-translucent" : "default";
   }
-
-  const metaNavButton = document.querySelector<HTMLMetaElement>(
-    'meta[name="msapplication-navbutton-color"]',
-  );
-  if (metaNavButton) {
-    metaNavButton.content = t.themeColor;
-  }
-
-  if (document.body) {
-    document.body.style.backgroundColor = t.background;
-  }
-
-  // Synchronize native Android status bar & navigation bar when hosted in Capacitor
-  if (typeof window !== "undefined") {
-    try {
-      const cap = (
-        window as unknown as {
-          Capacitor?: {
-            isNativePlatform?: () => boolean;
-            Plugins?: {
-              StatusBar?: {
-                setBackgroundColor?: (opts: { color: string }) => Promise<void>;
-                setStyle?: (opts: { style: "DARK" | "LIGHT" }) => Promise<void>;
-              };
-              NavigationBar?: {
-                setNavigationBarColor?: (opts: {
-                  color: string;
-                  darkButtons?: boolean;
-                }) => Promise<void>;
-              };
-            };
-          };
-        }
-      ).Capacitor;
-      if (cap?.isNativePlatform?.()) {
-        const sb = cap.Plugins?.StatusBar;
-        void sb?.setBackgroundColor?.({ color: t.themeColor })?.catch(() => undefined);
-        void sb?.setStyle?.({ style: isDark ? "DARK" : "LIGHT" })?.catch(() => undefined);
-        const nb = cap.Plugins?.NavigationBar;
-        void nb
-          ?.setNavigationBarColor?.({ color: t.themeColor, darkButtons: !isDark })
-          ?.catch(() => undefined);
-      }
-    } catch {
-      /* ignore native bridge errors */
-    }
-  }
-}
-
-function serializeBootTuple(scheme: ThemeColorScheme, tokens: MealMateThemeTokens) {
-  return [
-    scheme,
-    tokens.background,
-    tokens.foreground,
-    tokens.card,
-    tokens.cardForeground,
-    tokens.popover,
-    tokens.popoverForeground,
-    tokens.primary,
-    tokens.primaryForeground,
-    tokens.secondary,
-    tokens.secondaryForeground,
-    tokens.muted,
-    tokens.mutedForeground,
-    tokens.accent,
-    tokens.accentForeground,
-    tokens.periwinkle,
-    tokens.periwinkleSoft,
-    tokens.border,
-    tokens.input,
-    tokens.ring,
-    tokens.positive,
-    tokens.negative,
-    tokens.destructive,
-    tokens.destructiveForeground,
-    tokens.navBackground,
-    tokens.headerBackground,
-    tokens.themeColor,
-    tokens.ink,
-    tokens.ember,
-    tokens.leaf,
-  ];
 }
 
 const BOOT_MAP = Object.fromEntries(
-  MEALMATE_THEMES.map((theme) => [theme.id, serializeBootTuple(theme.colorScheme, theme.tokens)]),
-);
-
-const BOOT_SCHEME_MAP = Object.fromEntries(
-  MEALMATE_THEMES.filter((t) => t.premium).map((theme) => [
+  MEALMATE_THEMES.map((theme) => [
     theme.id,
-    {
-      light: serializeBootTuple("light", getMealMateThemeTokens(theme, "light")),
-      dark: serializeBootTuple("dark", getMealMateThemeTokens(theme, "dark")),
-    },
+    [
+      theme.colorScheme,
+      theme.tokens.background,
+      theme.tokens.foreground,
+      theme.tokens.card,
+      theme.tokens.cardForeground,
+      theme.tokens.popover,
+      theme.tokens.popoverForeground,
+      theme.tokens.primary,
+      theme.tokens.primaryForeground,
+      theme.tokens.secondary,
+      theme.tokens.secondaryForeground,
+      theme.tokens.muted,
+      theme.tokens.mutedForeground,
+      theme.tokens.accent,
+      theme.tokens.accentForeground,
+      theme.tokens.periwinkle,
+      theme.tokens.periwinkleSoft,
+      theme.tokens.border,
+      theme.tokens.input,
+      theme.tokens.ring,
+      theme.tokens.positive,
+      theme.tokens.negative,
+      theme.tokens.destructive,
+      theme.tokens.destructiveForeground,
+      theme.tokens.navBackground,
+      theme.tokens.headerBackground,
+      theme.tokens.themeColor,
+      theme.tokens.ink,
+      theme.tokens.ember,
+      theme.tokens.leaf,
+    ],
   ]),
 );
 
@@ -866,16 +586,12 @@ const BOOT_KEYS = [
  */
 export const THEME_BOOT_SCRIPT = `(function(){try{var m=${JSON.stringify(
   BOOT_MAP,
-)};var sm=${JSON.stringify(BOOT_SCHEME_MAP)};var lg=${JSON.stringify(
-  LEGACY_THEME_MAP,
-)};var ma=${JSON.stringify(MASCOT_ALIAS_MAP)};var ks=${JSON.stringify(
-  BOOT_KEYS,
-)};var k2=localStorage.getItem(${JSON.stringify(
+)};var lg=${JSON.stringify(LEGACY_THEME_MAP)};var ma=${JSON.stringify(
+  MASCOT_ALIAS_MAP,
+)};var ks=${JSON.stringify(BOOT_KEYS)};var k2=localStorage.getItem(${JSON.stringify(
   THEME_V2_STORAGE_KEY,
-)});var ks2=localStorage.getItem(${JSON.stringify(
-  THEME_SCHEME_STORAGE_KEY,
 )});var ap=localStorage.getItem(${JSON.stringify(
   LEGACY_APPEARANCE_STORAGE_KEY,
 )});var ms=localStorage.getItem(${JSON.stringify(
   LEGACY_MASCOT_STORAGE_KEY,
-)});var pick=k2&&m[k2]?k2:(k2&&lg[k2]?lg[k2]:null);if(!pick){var sysDark=window.matchMedia("(prefers-color-scheme: dark)").matches;if(ap==="dark-premium")pick="midnight-pro";else if(ap==="dark")pick="midnight-black";else if(ap==="light")pick="classic-light";else if(ms&&lg[ms])pick=lg[ms];else if(ms&&m[ms])pick=ms;else pick=sysDark?"midnight-black":"classic-light";}var d=(ks2==="light"||ks2==="dark")&&sm[pick]&&sm[pick][ks2]?sm[pick][ks2]:(m[pick]||m["classic-light"]);var r=document.documentElement;var dark=d[0]==="dark";r.classList.toggle("dark",dark);r.classList.toggle("dark-premium",pick==="midnight-pro"&&dark);r.style.colorScheme=d[0];r.dataset.appTheme=pick;r.dataset.mascot=ma[pick]||"classic";r.dataset.theme=pick==="midnight-pro"&&dark?"dark-premium":(dark?"dark":"light");for(var i=0;i<ks.length;i++){r.style.setProperty(ks[i],d[i+1]);}r.style.setProperty("--cream",d[3]);r.style.setProperty("--ink",d[27]);r.style.setProperty("--ember",d[28]);r.style.setProperty("--leaf",d[29]);r.style.setProperty("--market-hero","oklch(0.98 0.01 120)");r.style.setProperty("--brand",d[7]);r.style.setProperty("--brand-dark",d[7]);r.style.setProperty("--brand-foreground",d[8]);var mt=document.querySelector('meta[name="theme-color"]');if(mt)mt.setAttribute("content",d[26]);var msb=document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');if(msb)msb.setAttribute("content",dark?"black-translucent":"default");var f=localStorage.getItem("mealmate-font");r.dataset.font=(f==="editorial"||f==="jakarta"||f==="outfit"||f==="dm"||f==="fraunces")?f:"editorial";}catch(e){}})();`;
+)});var pick=k2&&m[k2]?k2:(k2&&lg[k2]?lg[k2]:null);if(!pick){var sysDark=window.matchMedia("(prefers-color-scheme: dark)").matches;if(ap==="dark-premium")pick="midnight-pro";else if(ap==="dark")pick="midnight-black";else if(ap==="light")pick="classic-light";else if(ms&&lg[ms])pick=lg[ms];else if(ms&&m[ms])pick=ms;else pick=sysDark?"midnight-black":"classic-light";}var d=m[pick]||m["classic-light"];var r=document.documentElement;var dark=d[0]==="dark";r.classList.toggle("dark",dark);r.classList.toggle("dark-premium",pick==="midnight-pro");r.style.colorScheme=d[0];r.dataset.appTheme=pick;r.dataset.mascot=ma[pick]||"classic";r.dataset.theme=pick==="midnight-pro"?"dark-premium":(dark?"dark":"light");for(var i=0;i<ks.length;i++){r.style.setProperty(ks[i],d[i+1]);}r.style.setProperty("--cream",d[3]);r.style.setProperty("--ink",d[27]);r.style.setProperty("--ember",d[28]);r.style.setProperty("--leaf",d[29]);r.style.setProperty("--market-hero","oklch(0.98 0.01 120)");r.style.setProperty("--brand",d[7]);r.style.setProperty("--brand-dark",d[7]);r.style.setProperty("--brand-foreground",d[8]);var mt=document.querySelector('meta[name="theme-color"]');if(mt)mt.setAttribute("content",d[26]);var f=localStorage.getItem("mealmate-font");r.dataset.font=(f==="editorial"||f==="jakarta"||f==="outfit"||f==="dm"||f==="fraunces")?f:"editorial";}catch(e){}})();`;

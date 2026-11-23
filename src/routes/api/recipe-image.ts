@@ -55,7 +55,12 @@ export const Route = createFileRoute("/api/recipe-image")({
             return Response.json({ error: "Recipe not found." }, { status: 404 });
           }
 
-          return Response.json(await requestRecipeImage(auth.user.userId, input.recipeId));
+          return Response.json(
+            await requestRecipeImage(auth.user.userId, input.recipeId),
+            auth.user.setCookieHeader
+              ? { headers: { "Set-Cookie": auth.user.setCookieHeader } }
+              : undefined,
+          );
         } catch (error) {
           return errorResponse(error);
         }

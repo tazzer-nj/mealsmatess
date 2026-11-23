@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { Crown, Check, Zap } from "lucide-react";
 import { usePremium } from "@/hooks/use-premium";
 import { useSession } from "@/hooks/use-session";
-import { readLocalFreeMode } from "@/lib/freemium";
 
 const PREMIUM_PERKS = [
   "Up to 100 Mia conversations & recipes a day (fair use)",
@@ -18,7 +17,6 @@ const PREMIUM_PERKS = [
 export function PlanStatusCard() {
   const { user } = useSession();
   const { isPremium, tier, trialActive, entitlement } = usePremium();
-  const isFreeMode = Boolean(user && !isPremium && readLocalFreeMode(user.id));
 
   if (!user) {
     return (
@@ -41,7 +39,7 @@ export function PlanStatusCard() {
 
   if (isPremium) {
     return (
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-400/25 bg-gradient-to-br from-[#0e2618] via-[#173d27] to-[#235739] p-5 text-[#f7fbf8] shadow-lg shadow-emerald-950/30">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 p-5 text-white shadow-lg shadow-orange-500/30">
         <div className="flex items-start justify-between gap-3">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest backdrop-blur">
@@ -66,27 +64,6 @@ export function PlanStatusCard() {
           ))}
         </ul>
       </div>
-    );
-  }
-
-  if (isFreeMode) {
-    return (
-      <Link
-        to="/premium"
-        className="flex items-center justify-between gap-3 rounded-3xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"
-      >
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            MealMate Free
-          </p>
-          <p className="mt-0.5 font-display text-xl leading-tight text-foreground">
-            Dining unlocked · 2 free Mia chats
-          </p>
-        </div>
-        <span className="shrink-0 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
-          Start 3-day trial
-        </span>
-      </Link>
     );
   }
 

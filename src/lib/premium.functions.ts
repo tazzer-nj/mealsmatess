@@ -13,43 +13,12 @@ export const FREE_LIMITS = {
 };
 export type FeatureKey = keyof typeof FREE_LIMITS;
 
-import { FREE_MIA_SEARCH_LIMIT, type MiaQuotaSnapshot } from "@/lib/freemium";
-
 // ---------- Entitlement ----------
 export const getMyEntitlement = createServerFn({ method: "GET" })
   .middleware([requireFirebaseAuth])
   .handler(async ({ context }) => {
     const { verifyAccountAccess } = await loadPremiumService();
     return verifyAccountAccess(context.userId, undefined, context.claims);
-  });
-
-export const getMyMiaQuota = createServerFn({ method: "POST" })
-  .middleware([requireFirebaseAuth])
-  .validator((v: unknown) =>
-    z
-      .object({
-        deviceFingerprint: z.string().max(256).optional(),
-      })
-      .optional()
-      .parse(v),
-  )
-  .handler(async ({ data, context }): Promise<MiaQuotaSnapshot> => {
-    const { firebaseAdmin } = await loadFirebaseAdmin();
-    const { data: result, error } = await firebaseAdmin.rpc("get_mia_quota", {
-      _user_id: context.userId,
-      _email: context.claims.email ?? null,
-      ...(data?.deviceFingerprint ? { _device_fingerprint: data.deviceFingerprint } : {}),
-    });
-    if (error || !result) {
-      return {
-        isPremium: false,
-        trialActive: false,
-        freeUsed: 0,
-        freeLimit: FREE_MIA_SEARCH_LIMIT,
-        freeRemaining: FREE_MIA_SEARCH_LIMIT,
-      };
-    }
-    return result as MiaQuotaSnapshot;
   });
 
 // ---------- Usage ----------

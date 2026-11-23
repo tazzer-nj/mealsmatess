@@ -211,59 +211,75 @@ export function normalizeAvatarInput(raw: string | null | undefined): string | n
 export async function saveUserProfile(input: {
   displayName?: string | null;
   photoURL?: string | null;
+  userId?: string | null;
 }): Promise<{ displayName: string | null; photoURL: string | null }> {
   const currentUser = auth.currentUser;
-  if (!currentUser) {
+  const resolvedUserId = currentUser?.uid ?? input.userId ?? null;
+  if (!resolvedUserId) {
     throw new Error("You must be signed in to update your profile.");
   }
 
   const nextDisplayName =
-    input.displayName !== undefined ? input.displayName?.trim() || null : currentUser.displayName;
+    input.displayName !== undefined
+      ? input.displayName?.trim() || null
+      : (currentUser?.displayName ?? null);
   let nextPhotoURL =
-    input.photoURL !== undefined ? normalizeAvatarInput(input.photoURL) : currentUser.photoURL;
+    input.photoURL !== undefined
+      ? normalizeAvatarInput(input.photoURL)
+      : (currentUser?.photoURL ?? null);
 
   if (nextPhotoURL?.startsWith("data:image/")) {
-    const uploadedUrl = await tryUploadAvatarToFirebaseStorage(currentUser.uid, nextPhotoURL);
+    const uploadedUrl = await tryUploadAvatarToFirebaseStorage(resolvedUserId, nextPhotoURL);
     if (uploadedUrl) {
       nextPhotoURL = uploadedUrl;
     }
   }
 
-  const canSyncPhotoToAuth =
-    nextPhotoURL === null || nextPhotoURL.length <= MAX_FIREBASE_AUTH_PHOTO_URL_LENGTH;
+  if (currentUser) {
+    const canSyncPhotoToAuth =
+      nextPhotoURL === null || nextPhotoURL.length <= MAX_FIREBASE_AUTH_PHOTO_URL_LENGTH;
 
-  try {
-    await updateProfile(currentUser, {
-      displayName: nextDisplayName,
-      ...(canSyncPhotoToAuth ? { photoURL: nextPhotoURL } : {}),
-    });
-  } catch (error) {
-    const code = (error as { code?: string }).code;
-    // If Firebase Auth still rejects photoURL (e.g. strict edge cases), retry with displayName only.
-    if (code === "auth/invalid-profile-attribute") {
-      await updateProfile(currentUser, { displayName: nextDisplayName });
-    } else {
-      throw error;
+    try {
+      await updateProfile(currentUser, {
+        displayName: nextDisplayName,
+        ...(canSyncPhotoToAuth ? { photoURL: nextPhotoURL } : {}),
+      });
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      // If Firebase Auth still rejects photoURL (e.g. strict edge cases), retry with displayName only.
+      if (code === "auth/invalid-profile-attribute") {
+        await updateProfile(currentUser, { displayName: nextDisplayName });
+      } else {
+        throw error;
+      }
     }
-  }
 
-  const nowIso = new Date().toISOString();
-  try {
-    await setDoc(
-      doc(db, "users", currentUser.uid),
-      {
-        id: currentUser.uid,
+    const nowIso = new Date().toISOString();
+    try {
+      await setDoc(
+        doc(db, "users", currentUser.uid),
+        {
+          id: currentUser.uid,
+          displayName: nextDisplayName ?? "",
+          photoURL: nextPhotoURL ?? "",
+          updatedAt: nowIso,
+        },
+        { merge: true },
+      );
+    } catch {
+      // Offline or preview-mode Firestore errors should not block local profile updates.
+    }
+  } else {
+    const { saveMyAccountSettings } = await import("@/lib/account.functions");
+    await saveMyAccountSettings({
+      data: {
         displayName: nextDisplayName ?? "",
         photoURL: nextPhotoURL ?? "",
-        updatedAt: nowIso,
       },
-      { merge: true },
-    );
-  } catch {
-    // Offline or preview-mode Firestore errors should not block local profile updates.
+    });
   }
 
-  notifyProfileUpdated(currentUser.uid, {
+  notifyProfileUpdated(resolvedUserId, {
     displayName: nextDisplayName,
     photoURL: nextPhotoURL,
   });

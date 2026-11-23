@@ -20,8 +20,6 @@ import {
 import { toast } from "sonner";
 import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
-import { usePremium } from "@/hooks/use-premium";
-import { PremiumFeatureLock } from "@/components/premium-feature-lock";
 import { myFavoritesQuery } from "@/lib/queries";
 import {
   importRecipeFromUrl,
@@ -86,7 +84,6 @@ type CookbookItem = {
 
 function CookbookPage() {
   const { user, loading } = useSession();
-  const { isPremium } = usePremium();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -97,11 +94,12 @@ function CookbookPage() {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<CookbookItem | null>(null);
   const [planning, setPlanning] = useState<CookbookItem | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<CookbookItem | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const { data: favorites, isLoading } = useQuery({
     ...myFavoritesQuery(),
-    enabled: !!user && isPremium,
+    enabled: !!user,
   });
 
   const items: CookbookItem[] = useMemo(() => {
@@ -114,7 +112,7 @@ function CookbookPage() {
   // Also pull user's own imports even if unfavorited
   const { data: owned } = useQuery({
     queryKey: ["cookbook", "owned", user?.id],
-    enabled: !!user && isPremium,
+    enabled: !!user,
     queryFn: async () => {
       const { data, error } = await firebaseData
         .from("recipes")
@@ -203,17 +201,22 @@ function CookbookPage() {
     if (!user) return;
     const owns = item.created_by === user.id;
     if (!owns) {
-      // Just unfavorite non-owned
       await toggleFavorite(item.id);
       return;
     }
-    if (!confirm(`Delete "${item.name}" from your Cookbook? This can't be undone.`)) return;
+    setConfirmDelete(item);
+  }
+
+  async function confirmDeleteOwnedRecipe() {
+    if (!confirmDelete) return;
+    const item = confirmDelete;
     setBusyId(item.id);
     try {
       await deleteImportedRecipe({ data: { id: item.id } });
       await queryClient.invalidateQueries({ queryKey: ["favorites"] });
       await queryClient.invalidateQueries({ queryKey: ["cookbook"] });
       toast.success("Recipe deleted");
+      setConfirmDelete(null);
     } catch (err) {
       toast.error("Couldn't delete", {
         description: err instanceof Error ? err.message : undefined,
@@ -270,15 +273,6 @@ function CookbookPage() {
     );
   }
 
-  if (user && !isPremium) {
-    return (
-      <PremiumFeatureLock
-        title="Personal Cookbook & Video Imports"
-        description="Save unlimited recipes and turn TikTok, Instagram, and YouTube cooking videos into step-by-step recipes with MealMate Premium."
-      />
-    );
-  }
-
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6 pb-24">
       <div className="flex items-start justify-between gap-3">
@@ -288,7 +282,7 @@ function CookbookPage() {
             Your saved and imported recipes, all in one place.
           </p>
         </div>
-        <Button onClick={() => setImportOpen(true)} className="shrink-0 rounded-full" size="sm">
+        <Button onClick={() => setImportOpen(true)} className="min-h-11 shrink-0 rounded-full px-4">
           <Plus className="mr-1 h-4 w-4" />
           Import
         </Button>
@@ -305,8 +299,10 @@ function CookbookPage() {
       </div>
 
       {isLoading ? (
-        <div className="mt-10 flex justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="mt-5 space-y-3" aria-label="Loading cookbook">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div key={idx} className="skeleton-shimmer h-32 rounded-2xl" />
+          ))}
         </div>
       ) : merged.length === 0 ? (
         <div className="mt-10 rounded-3xl border border-dashed border-border p-10 text-center">
@@ -316,7 +312,7 @@ function CookbookPage() {
             Paste a cooking video link from TikTok, Instagram Reels, YouTube Shorts, or Facebook
             Reels, and MealMate will turn it into a full recipe.
           </p>
-          <Button className="mt-5" onClick={() => setImportOpen(true)}>
+          <Button className="mt-5 min-h-11" onClick={() => setImportOpen(true)}>
             <Link2 className="mr-2 h-4 w-4" />
             Import your first recipe
           </Button>
@@ -326,7 +322,7 @@ function CookbookPage() {
           {merged.map((item) => (
             <li
               key={item.id}
-              className="group overflow-hidden rounded-2xl border border-border bg-card transition-shadow hover:shadow-md"
+              className="motion-reveal group overflow-hidden rounded-2xl border border-border bg-card transition-shadow hover:shadow-md"
             >
               <div className="flex gap-3 p-3">
                 <Link
@@ -342,7 +338,7 @@ function CookbookPage() {
                       {item.name}
                     </h3>
                   </Link>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs tabular-nums text-muted-foreground">
                     {item.cooking_time_minutes && (
                       <span className="inline-flex items-center gap-1">
                         <Clock className="h-3 w-3" />
@@ -470,6 +466,36 @@ function CookbookPage() {
           }}
         />
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete recipe?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &ldquo;{confirmDelete?.name}&rdquo; from your
+              Cookbook? This action can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDelete(null)}
+              disabled={busyId === confirmDelete?.id}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteOwnedRecipe}
+              disabled={busyId === confirmDelete?.id}
+            >
+              {busyId === confirmDelete?.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete recipe
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
@@ -488,7 +514,7 @@ function IconAction({
   disabled?: boolean;
 }) {
   const base =
-    "inline-flex h-8 w-8 items-center justify-center rounded-full border border-border transition-colors disabled:opacity-50";
+    "inline-flex h-11 w-11 items-center justify-center rounded-full border border-border transition-colors disabled:opacity-50";
   const color =
     variant === "danger"
       ? "text-destructive hover:bg-destructive/10"

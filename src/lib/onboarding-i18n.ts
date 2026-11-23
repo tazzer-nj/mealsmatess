@@ -21,7 +21,6 @@ export type OnboardingLocaleBundle = {
   previousStep: string;
   continue: string;
   completeSetup: string;
-  buildExperience?: string;
   saving: string;
   finishingSetup: string;
   pleaseWait: string;
@@ -31,11 +30,6 @@ export type OnboardingLocaleBundle = {
   finishError: string;
   saveError: string;
   steps: {
-    stepName: string;
-    title: string;
-    desc: string;
-  }[];
-  pages?: {
     stepName: string;
     title: string;
     desc: string;
@@ -54,6 +48,8 @@ export type OnboardingLocaleBundle = {
     flavoursHint: string;
     skillLabel: string;
     cookingTimeLabel: string;
+    discoveryLabel?: string;
+    discoveryHint?: string;
   };
   options: {
     household: Record<string, string>;
@@ -63,6 +59,7 @@ export type OnboardingLocaleBundle = {
     cuisines: Record<string, string>;
     skillLevels: Record<string, { label: string; desc: string }>;
     cookingTimes: Record<string, string>;
+    discoverySources?: Record<string, string>;
   };
 };
 
@@ -72,98 +69,50 @@ export const ONBOARDING_EN: OnboardingLocaleBundle = {
   progressAria: "Onboarding progress",
   previousStep: "Previous step",
   continue: "Continue",
-  completeSetup: "Build My MealMate Experience",
-  buildExperience: "Build My MealMate Experience",
+  completeSetup: "Complete Setup",
   saving: "Saving...",
-  finishingSetup: "Personalising...",
+  finishingSetup: "Finishing setup...",
   pleaseWait: "Please wait...",
   skipIfNone: "Skip if none",
   nameRequired: "Please enter your preferred name.",
-  preferencesSaved: "Experience personalised!",
+  preferencesSaved: "Preferences saved!",
   finishError: "Could not finish setup. Please try again.",
   saveError: "Could not save your preferences. Please try again.",
   steps: [
     {
+      stepName: "Welcome",
+      title: "Personalize your kitchen",
+      desc: "Let's make mealtime better. Tailor MealMate to your household, tastes, and rhythm.",
+    },
+    {
       stepName: "Goals",
-      title: "Let's make eating better easier.",
-      desc: "MealMate helps you discover delicious meals, organise your food routine and make better everyday food decisions.",
+      title: "Set your cooking goals",
+      desc: "Tell us what matters most so every recipe and weekly plan fits your life.",
     },
     {
-      stepName: "Challenges",
-      title: "What's making eating well difficult?",
-      desc: "Everyone has different food challenges. Let's understand yours.",
+      stepName: "Dietary preferences",
+      title: "Dietary preferences",
+      desc: "From plant-based to halal or keto, keep your daily recipe feed aligned with how you eat.",
     },
     {
-      stepName: "Health",
-      title: "What are you working towards?",
-      desc: "Choose the health and fitness priorities that guide your weekly meals.",
+      stepName: "Allergies",
+      title: "Allergies & intolerances",
+      desc: "Keep your kitchen safe. MealMate filters out unsafe ingredients automatically.",
     },
     {
-      stepName: "Routine",
-      title: "Let's understand your routine.",
-      desc: "Tell us how you eat day to day and how often you cook at home.",
+      stepName: "Flavours",
+      title: "Favourite flavours",
+      desc: "Choose the cuisines you crave most, from South African staples to world classics.",
     },
     {
-      stepName: "Preferences",
-      title: "What do you enjoy eating?",
-      desc: "Select what you love alongside any allergies, dietary restrictions, or disliked foods.",
-    },
-    {
-      stepName: "Lifestyle",
-      title: "Let's make cooking fit your life.",
-      desc: "Match recipes to your kitchen confidence, schedule, and South African food budget.",
+      stepName: "Cooking style",
+      title: "Skill level & pace",
+      desc: "We'll recommend meals matched to your comfort in the kitchen and available time.",
     },
     {
       stepName: "Discovery",
-      title: "How did you hear about us?",
-      desc: "Share where you found MealMate so we can keep improving for cooks like you.",
-    },
-    {
-      stepName: "Personalise",
-      title: "Your MealMate journey starts here.",
-      desc: "Review your answers and build a MealMate experience tailored to your life.",
-    },
-  ],
-  pages: [
-    {
-      stepName: "Goals",
-      title: "Let's make eating better easier.",
-      desc: "MealMate helps you discover delicious meals, organise your food routine and make better everyday food decisions.",
-    },
-    {
-      stepName: "Challenges",
-      title: "What's making eating well difficult?",
-      desc: "Everyone has different food challenges. Let's understand yours.",
-    },
-    {
-      stepName: "Health",
-      title: "What are you working towards?",
-      desc: "Choose the health and fitness priorities that guide your weekly meals.",
-    },
-    {
-      stepName: "Routine",
-      title: "Let's understand your routine.",
-      desc: "Tell us how you eat day to day and how often you cook at home.",
-    },
-    {
-      stepName: "Preferences",
-      title: "What do you enjoy eating?",
-      desc: "Select what you love alongside any allergies, dietary restrictions, or disliked foods.",
-    },
-    {
-      stepName: "Lifestyle",
-      title: "Let's make cooking fit your life.",
-      desc: "Match recipes to your kitchen confidence, schedule, and South African food budget.",
-    },
-    {
-      stepName: "Discovery",
-      title: "How did you hear about us?",
-      desc: "Share where you found MealMate so we can keep improving for cooks like you.",
-    },
-    {
-      stepName: "Personalise",
-      title: "Your MealMate journey starts here.",
-      desc: "Review your answers and build a MealMate experience tailored to your life.",
+      title: "How did you discover MealMate?",
+      desc: "Let us know how you found us and preview your tailored kitchen setup before diving in.",
     },
   ],
   fields: {
@@ -180,6 +129,8 @@ export const ONBOARDING_EN: OnboardingLocaleBundle = {
     flavoursHint: "Select as many cuisines and styles as you like.",
     skillLabel: "What's your cooking style?",
     cookingTimeLabel: "Preferred cooking time",
+    discoveryLabel: "Where did you hear about MealMate?",
+    discoveryHint: "Your answer helps us improve MealMate for home cooks everywhere.",
   },
   options: {
     household: {
@@ -254,6 +205,16 @@ export const ONBOARDING_EN: OnboardingLocaleBundle = {
       "35 to 50 mins": "35 to 50 mins",
       "Weekend slow cooking": "Weekend slow cooking",
     },
+    discoverySources: {
+      TikTok: "TikTok",
+      Instagram: "Instagram",
+      YouTube: "YouTube",
+      "Friend or family": "Friend or family",
+      "Google search": "Google search",
+      "App Store / Google Play": "App Store / Google Play",
+      "Local restaurant": "Local restaurant",
+      Other: "Other",
+    },
   },
 };
 
@@ -304,48 +265,6 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
         stepName: "Kookstyl",
         title: "Vaardigheidsvlak en pas",
         desc: "Ons sal maaltye aanbeveel wat pas by jou gemak in die kombuis en beskikbare tyd.",
-      },
-    ],
-    pages: [
-      {
-        stepName: "Doelwitte",
-        title: "Kom ons maak beter eet makliker.",
-        desc: "MealMate help jou om heerlike maaltye te ontdek en jou kosroetine te organiseer.",
-      },
-      {
-        stepName: "Uitdagings",
-        title: "Wat maak gesonde eet moeilik?",
-        desc: "Elkeen het ander kosuitdagings. Kom ons verstaan joune.",
-      },
-      {
-        stepName: "Gesondheid",
-        title: "Waarnatoe werk jy?",
-        desc: "Kies die gesondheids- en fiksheidsdoelwitte vir jou weeklikse maaltye.",
-      },
-      {
-        stepName: "Roetine",
-        title: "Kom ons verstaan jou roetine.",
-        desc: "Vertel ons hoe jy daagliks eet en hoe gereeld jy kook.",
-      },
-      {
-        stepName: "Voorkeure",
-        title: "Wat geniet jy om te eet?",
-        desc: "Kies jou gunstelinge saam met enige allergieë en dieetbeperkings.",
-      },
-      {
-        stepName: "Leefstyl",
-        title: "Laat kook by jou lewe pas.",
-        desc: "Pas resepte aan by jou tyd, ervaring en maandelikse kosbegroting.",
-      },
-      {
-        stepName: "Ontdekking",
-        title: "Hoe het jy van ons gehoor?",
-        desc: "Deel waar jy MealMate ontdek het.",
-      },
-      {
-        stepName: "Verpersoonlik",
-        title: "Jou MealMate-reis begin hier.",
-        desc: "Skep jou verpersoonlikte MealMate-ervaring.",
       },
     ],
     fields: {
@@ -483,48 +402,6 @@ export const ONBOARDING_TRANSLATIONS: Record<AppLanguageCode, OnboardingLocaleBu
         stepName: "Indlela yokupheka",
         title: "Izinga lekhono nesikhathi",
         desc: "Sizoncoma ukudla okufanelana nekhono lakho ekhishini nesikhathi onaso.",
-      },
-    ],
-    pages: [
-      {
-        stepName: "Izinhloso",
-        title: "Masenze ukudla kahle kube lula.",
-        desc: "I-MealMate ikusiza uthole izidlo ezimnandi futhi uhlele indlela yakho yokudla.",
-      },
-      {
-        stepName: "Izinselelo",
-        title: "Yini eyenza ukudla kahle kube nzima?",
-        desc: "Wonke umuntu unezinselelo zokudla ezahlukene. Asiqonde ezakho.",
-      },
-      {
-        stepName: "Impilo",
-        title: "Yini osebenzela ukuyifinyelela?",
-        desc: "Khetha imigomo yakho yempilo nokuzivocavoca.",
-      },
-      {
-        stepName: "Indlela",
-        title: "Asiqonde indlela yakho yokudla.",
-        desc: "Sitshele ukuthi udla kanjani nsuku zonke nokuthi upheka kangaki.",
-      },
-      {
-        stepName: "Izintandokazi",
-        title: "Uthanda ukudla okunjani?",
-        desc: "Khetha okuthandayo kanye nokungahambisani nomzimba wakho.",
-      },
-      {
-        stepName: "Impilo yokupheka",
-        title: "Masenze ukupheka kuhambisane nempilo yakho.",
-        desc: "Qondanisa amaresiphi nesikhathi sakho, ikhono, nesabelomali sokudla.",
-      },
-      {
-        stepName: "Ukuthola",
-        title: "Uzwile kanjani ngathi?",
-        desc: "Sitshele ukuthi uyithole kuphi i-MealMate.",
-      },
-      {
-        stepName: "Hlela",
-        title: "Uhambo lwakho lwe-MealMate luqala lapha.",
-        desc: "Yakha ulwazi lwakho lwe-MealMate olwenzelwe wena.",
       },
     ],
     fields: {

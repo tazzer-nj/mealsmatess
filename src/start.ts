@@ -1,4 +1,5 @@
 import { createStart, createMiddleware } from "@tanstack/react-start";
+import { contentSecurityPolicy as whopContentSecurityPolicy } from "@whop/elements";
 import { isHubSurface } from "@/lib/hub-surface";
 
 import { renderErrorPage } from "./lib/error-page";
@@ -15,6 +16,7 @@ const authDomains = Array.from(
   ),
 );
 const firebaseFrameSources = authDomains.map((domain) => `https://${domain}`).join(" ");
+const whopCsp = whopContentSecurityPolicy({ wallets: true });
 
 function isHtmlDocumentRequest(request: Request) {
   return (
@@ -66,23 +68,21 @@ const securityHeadersMiddleware = createMiddleware().server(async ({ next, reque
       "Permissions-Policy",
       `camera=(self), microphone=${consumerVoice ? "(self)" : "()"}, geolocation=(), payment=(self)`,
     );
-    h.set(
-      "Content-Security-Policy",
-      [
-        "default-src 'self'",
-        ...(consumerVoice ? ["worker-src 'self' blob:"] : []),
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://js.stripe.com https://cdn.paddle.com https://sdk.revenuecat-static.com",
-        `frame-src 'self' ${firebaseFrameSources} https://accounts.google.com https://js.stripe.com https://hooks.stripe.com https://*.paddle.com https://*.revenuecat.com`,
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src 'self' https://fonts.gstatic.com data:",
-        "img-src 'self' data: blob: https:",
-        "media-src 'self' data: blob: https:",
-        "connect-src 'self' https: wss:",
-        "frame-ancestors *",
-        "base-uri 'self'",
-        "form-action 'self'",
-      ].join("; "),
-    );
+    const baseCsp = [
+      "default-src 'self'",
+      ...(consumerVoice ? ["worker-src 'self' blob:"] : []),
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://js.stripe.com https://cdn.paddle.com https://sdk.revenuecat-static.com",
+      `frame-src 'self' ${firebaseFrameSources} https://accounts.google.com https://js.stripe.com https://hooks.stripe.com https://*.paddle.com https://*.revenuecat.com https://*.whop.com`,
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com data:",
+      "img-src 'self' data: blob: https:",
+      "media-src 'self' data: blob: https:",
+      "connect-src 'self' https: wss:",
+      "frame-ancestors *",
+      "base-uri 'self'",
+      "form-action 'self' https://api.whop.com",
+    ].join("; ");
+    h.set("Content-Security-Policy", whopCsp.merge(baseCsp));
   }
   return result;
 });

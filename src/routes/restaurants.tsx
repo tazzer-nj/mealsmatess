@@ -16,16 +16,13 @@ import {
   Search,
   ShoppingBag,
   SlidersHorizontal,
-  Sparkles,
   Star,
   Store,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MiaLoadingCard } from "@/components/mia-loading-card";
 import {
   Sheet,
   SheetContent,
@@ -109,12 +106,16 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 ];
 const FALLBACKS = Object.values(RECIPE_PHOTOS).map((photo) => photo.card);
 
-function restaurantText(restaurant: FeedRestaurant, dishes: FeedDish[]) {
-  return `${restaurant.name} ${restaurant.cuisine ?? ""} ${restaurant.description ?? ""} ${dishes
-    .filter((dish) => dish.restaurant_id === restaurant.id)
-    .map((dish) => `${dish.name} ${dish.category ?? ""} ${dish.dietary_tags.join(" ")}`)
-    .join(" ")}`.toLowerCase();
-}
+type BrowserSpeechRecognition = {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((event: { results?: ArrayLike<ArrayLike<{ transcript?: string }>> }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
 
 function sectionTitle(title: string, subtitle?: string) {
   return (
@@ -147,11 +148,7 @@ function RestaurantsPage() {
   const [slide, setSlide] = useState(0);
   const [locationLabel, setLocationLabel] = useState("Choose delivery location");
   const [manualLocation, setManualLocation] = useState("");
-  const [miaPick, setMiaPick] = useState<{
-    row: RestaurantRow;
-    dish: FeedDish | null;
-    reason: string;
-  } | null>(null);
+  const [listeningVoice, setListeningVoice] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
 
   const restaurants = useMemo(() => data?.restaurants ?? [], [data?.restaurants]);
@@ -165,6 +162,30 @@ function RestaurantsPage() {
     () => new Set(promotions.map((promotion) => promotion.restaurant_id)),
     [promotions],
   );
+
+  const dishesByRestaurant = useMemo(() => {
+    const grouped = new Map<string, FeedDish[]>();
+    for (const dish of dishes) {
+      const list = grouped.get(dish.restaurant_id) ?? [];
+      list.push(dish);
+      grouped.set(dish.restaurant_id, list);
+    }
+    return grouped;
+  }, [dishes]);
+
+  const searchIndexByRestaurantId = useMemo(() => {
+    const index = new Map<string, { text: string; hasUnder100: boolean }>();
+    for (const restaurant of restaurants) {
+      const menu = dishesByRestaurant.get(restaurant.id) ?? [];
+      const text =
+        `${restaurant.name} ${restaurant.cuisine ?? ""} ${restaurant.description ?? ""} ${menu
+          .map((dish) => `${dish.name} ${dish.category ?? ""} ${dish.dietary_tags.join(" ")}`)
+          .join(" ")}`.toLowerCase();
+      const hasUnder100 = menu.some((dish) => Number(dish.price) < 100);
+      index.set(restaurant.id, { text, hasUnder100 });
+    }
+    return index;
+  }, [restaurants, dishesByRestaurant]);
 
   useEffect(() => {
     if (geoState === "granted") setLocationLabel("Current location");
@@ -182,7 +203,8 @@ function RestaurantsPage() {
           };
         })
         .filter(({ restaurant, distance, hasDeal }) => {
-          const text = restaurantText(restaurant, dishes);
+          const entry = searchIndexByRestaurantId.get(restaurant.id);
+          const text = entry?.text ?? "";
           const searchMatch = !search.trim() || text.includes(search.trim().toLowerCase());
           const categoryMatch = !category || matchesCategory(category, text, hasDeal);
           if (!searchMatch || !categoryMatch) return false;
@@ -197,10 +219,7 @@ function RestaurantsPage() {
           if (filter === "halal") return text.includes("halal");
           if (filter === "vegetarian") return text.includes("vegetarian") || text.includes("vegan");
           if (filter === "deals") return hasDeal;
-          if (filter === "under100")
-            return dishes.some(
-              (dish) => dish.restaurant_id === restaurant.id && Number(dish.price) < 100,
-            );
+          if (filter === "under100") return entry?.hasUnder100 ?? false;
           return true;
         })
         .sort((a, b) =>
@@ -212,13 +231,13 @@ function RestaurantsPage() {
                 ? a.distance - b.distance
                 : Number(b.restaurant.avg_rating) - Number(a.restaurant.avg_rating),
         ),
-    [restaurants, coords, dishes, promoRestaurantIds, search, category, filter],
+    [restaurants, coords, promoRestaurantIds, searchIndexByRestaurantId, search, category, filter],
   );
 
-  const visibleDishes = useMemo(
-    () => dishes.filter((dish) => rows.some((row) => row.restaurant.id === dish.restaurant_id)),
-    [dishes, rows],
-  );
+  const visibleDishes = useMemo(() => {
+    const visibleIds = new Set(rows.map((row) => row.restaurant.id));
+    return dishes.filter((dish) => visibleIds.has(dish.restaurant_id));
+  }, [dishes, rows]);
   const banners = useMemo(() => {
     if (promotions.length) return promotions.slice(0, 4);
     return restaurants.slice(0, 3).map((restaurant, index) => ({
@@ -243,15 +262,53 @@ function RestaurantsPage() {
   useEffect(() => {
     if (banners.length < 2) return;
     const timer = window.setInterval(() => {
-      const next = (slide + 1) % banners.length;
-      setSlide(next);
-      carouselRef.current?.scrollTo({
-        left: carouselRef.current.clientWidth * next,
-        behavior: "smooth",
+      setSlide((prev) => {
+        const next = (prev + 1) % banners.length;
+        carouselRef.current?.scrollTo({
+          left: carouselRef.current.clientWidth * next,
+          behavior: "smooth",
+        });
+        return next;
       });
     }, 5000);
     return () => window.clearInterval(timer);
-  }, [banners.length, slide]);
+  }, [banners.length]);
+
+  const startVoiceSearch = () => {
+    if (listeningVoice) return;
+    const win = window as unknown as {
+      SpeechRecognition?: new () => BrowserSpeechRecognition;
+      webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
+    };
+    const SpeechCtor = win.SpeechRecognition ?? win.webkitSpeechRecognition;
+    if (!SpeechCtor) {
+      toast.info("Voice input isn't supported in this browser — type a dish or restaurant above.");
+      return;
+    }
+    try {
+      const recognition = new SpeechCtor();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      setListeningVoice(true);
+      recognition.onresult = (event) => {
+        const spoken = event.results?.[0]?.[0]?.transcript?.trim();
+        if (spoken) {
+          setSearch(spoken);
+          toast.success(`Searching for "${spoken}"`);
+        }
+      };
+      recognition.onerror = () => {
+        setListeningVoice(false);
+        toast.error("Couldn't hear that. Please try typing your search.");
+      };
+      recognition.onend = () => setListeningVoice(false);
+      recognition.start();
+    } catch {
+      setListeningVoice(false);
+      toast.info("Microphone unavailable — type to search restaurants and dishes.");
+    }
+  };
 
   const addDish = (dish: FeedDish) => {
     const restaurant = restaurantById.get(dish.restaurant_id);
@@ -276,48 +333,6 @@ function RestaurantsPage() {
       ...(replaced ? { description: "Your previous restaurant cart was cleared." } : {}),
     });
   };
-
-  function handlePickForMe() {
-    if (rows.length === 0) {
-      toast.message("Try clearing a filter so Mia has kitchens to pick from.");
-      return;
-    }
-    const openRows = rows.filter(
-      ({ restaurant }) =>
-        restaurant.is_accepting_orders && isOpenNow(restaurant.opening_hours) !== false,
-    );
-    const pool = openRows.length > 0 ? openRows : rows;
-    const personalizedPool = personalize(hasPreferences ? preferences : null, pool, (row) => [
-      row.restaurant.name,
-      row.restaurant.cuisine,
-      row.restaurant.description,
-    ]);
-    const candidates =
-      personalizedPool.length > 1 && miaPick
-        ? personalizedPool.filter((r) => r.restaurant.id !== miaPick.row.restaurant.id)
-        : personalizedPool;
-    const chosen =
-      candidates[Math.floor(Math.random() * Math.min(candidates.length, 4))] ?? pool[0];
-    if (!chosen) return;
-    const topDish = dishes.find((d) => d.restaurant_id === chosen.restaurant.id) ?? null;
-    const reasons: string[] = [];
-    if (Number(chosen.restaurant.avg_rating) >= 4.2) {
-      reasons.push(`${Number(chosen.restaurant.avg_rating).toFixed(1)}★ top rated`);
-    }
-    if (chosen.restaurant.delivery_estimate_minutes <= 35) {
-      reasons.push(`${chosen.restaurant.delivery_estimate_minutes} min fast delivery`);
-    }
-    if (chosen.hasDeal) reasons.push("active deal");
-    if (chosen.restaurant.cuisine) reasons.push(chosen.restaurant.cuisine);
-    const reason =
-      reasons.length > 0
-        ? `Mia picked ${chosen.restaurant.name} (${reasons.slice(0, 2).join(" · ")})`
-        : `Mia picked ${chosen.restaurant.name} for tonight`;
-    setMiaPick({ row: chosen, dish: topDish, reason });
-    toast.success(`Mia suggests ${chosen.restaurant.name}`, {
-      description: topDish ? `Try ordering ${topDish.name}` : reason,
-    });
-  }
 
   return (
     <div className="marketplace-dark min-h-screen overflow-x-hidden bg-background pb-36 text-foreground">
@@ -399,11 +414,14 @@ function RestaurantsPage() {
             <Button
               size="icon"
               variant="ghost"
-              className="absolute right-1.5 top-1/2 h-10 w-10 -translate-y-1/2 rounded-xl"
-              aria-label="Voice search"
-              onClick={() => toast.info("Voice search is not available on this device")}
+              className={cn(
+                "absolute right-1 top-1/2 h-11 w-11 -translate-y-1/2 rounded-xl",
+                listeningVoice && "bg-primary/15 text-primary",
+              )}
+              aria-label={listeningVoice ? "Listening for dish or restaurant" : "Voice search"}
+              onClick={startVoiceSearch}
             >
-              <Mic className="h-5 w-5" />
+              <Mic className={cn("h-5 w-5", listeningVoice && "animate-pulse")} />
             </Button>
           </div>
         </div>
@@ -454,22 +472,14 @@ function RestaurantsPage() {
 
         <section
           aria-label="Restaurant filters"
-          className="no-scrollbar flex items-center gap-2 overflow-x-auto px-4"
+          className="no-scrollbar flex gap-2 overflow-x-auto px-4"
         >
-          <button
-            type="button"
-            onClick={handlePickForMe}
-            className="mia-ai-pill inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-xs font-semibold"
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            Pick for me
-          </button>
           {FILTERS.map((item) => (
             <Button
               key={item.key}
               size="sm"
               variant={filter === item.key ? "default" : "outline"}
-              className="h-9 shrink-0 rounded-full px-4 shadow-none"
+              className="min-h-10 shrink-0 rounded-full px-4 shadow-none"
               onClick={() => setFilter(item.key)}
             >
               <SlidersHorizontal className={cn("h-3.5 w-3.5", item.key !== "all" && "hidden")} />
@@ -477,55 +487,6 @@ function RestaurantsPage() {
             </Button>
           ))}
         </section>
-
-        {miaPick && (
-          <section
-            aria-label="Mia's dining recommendation"
-            className="mx-4 rounded-2xl border border-primary/35 bg-card p-4 shadow-sm"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Mia&apos;s Pick
-                </p>
-                <h2 className="mt-1 truncate font-sans text-lg font-extrabold text-foreground">
-                  {miaPick.row.restaurant.name}
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  {miaPick.reason}
-                  {miaPick.dish ? ` · Signature dish: ${miaPick.dish.name}` : ""}
-                </p>
-              </div>
-              <button
-                type="button"
-                aria-label="Dismiss Mia's pick"
-                onClick={() => setMiaPick(null)}
-                className="rounded-lg p-1 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button asChild size="sm" className="mia-ai-pill rounded-full px-4 font-semibold">
-                <Link to="/restaurant/$slug" params={{ slug: miaPick.row.restaurant.slug }}>
-                  Open menu
-                  <ChevronRight className="ml-1 h-3.5 w-3.5" />
-                </Link>
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="rounded-full"
-                onClick={handlePickForMe}
-              >
-                <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                Pick another
-              </Button>
-            </div>
-          </section>
-        )}
 
         {isLoading ? (
           <MarketplaceSkeleton />
@@ -664,11 +625,13 @@ function RestaurantsPage() {
           className="fixed inset-x-4 bottom-[calc(var(--app-nav-h,4rem)+12px)] z-30 mx-auto h-14 max-w-md justify-between rounded-2xl px-5 shadow-2xl"
           onClick={() => navigate({ to: "/checkout" })}
         >
-          <span className="flex items-center gap-2 font-bold">
+          <span className="flex items-center gap-2 font-bold tabular-nums">
             <ShoppingBag className="h-5 w-5" />
             {count} item{count === 1 ? "" : "s"}
           </span>
-          <span className="font-black">{money(subtotal, cart?.currency)} · View cart</span>
+          <span className="font-black tabular-nums">
+            {money(subtotal, cart?.currency)} · View cart
+          </span>
         </Button>
       )}
     </div>
@@ -730,13 +693,13 @@ function PromoCarousel({
           );
         })}
       </div>
-      <div className="mt-3 flex justify-center gap-1.5">
+      <div className="mt-2 flex justify-center gap-0.5">
         {banners.map((banner, index) => (
           <Button
             key={banner.id}
             variant="ghost"
             size="icon"
-            className="h-5 w-5 rounded-full p-0"
+            className="h-11 min-w-8 rounded-full p-0"
             aria-label={`Show offer ${index + 1}`}
             onClick={() => {
               setSlide(index);
@@ -798,7 +761,7 @@ function DishSection({
                     loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
                   />
-                  <span className="absolute left-2 top-2 rounded-full bg-background/90 px-2 py-1 text-[10px] font-bold">
+                  <span className="absolute left-2 top-2 rounded-full bg-background/90 px-2 py-1 text-[10px] font-bold tabular-nums">
                     <Clock3 className="mr-1 inline h-3 w-3" />
                     {restaurant.delivery_estimate_minutes} min
                   </span>
@@ -806,27 +769,29 @@ function DishSection({
                 <div className="px-3 pt-3">
                   <p className="truncate text-sm font-bold">{dish.name}</p>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">{restaurant.name}</p>
-                  <p className="mt-2 text-sm font-black">
+                  <p className="mt-2 text-sm font-black tabular-nums">
                     {money(dish.price, restaurant.currency)}
                   </p>
                 </div>
               </Link>
-              <div className="flex h-12 items-center justify-end px-2 pb-2">
+              <div className="flex min-h-12 items-center justify-end px-2 pb-2 pt-1">
                 {quantity > 0 ? (
                   <div className="flex items-center gap-1">
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8 rounded-full"
+                      className="h-10 w-10 rounded-full"
                       onClick={() => setQuantity(dish.id, quantity - 1)}
                       aria-label={`Remove one ${dish.name}`}
                     >
                       <Minus />
                     </Button>
-                    <span className="w-5 text-center text-sm font-bold">{quantity}</span>
+                    <span className="w-5 text-center text-sm font-bold tabular-nums">
+                      {quantity}
+                    </span>
                     <Button
                       size="icon"
-                      className="h-8 w-8 rounded-full"
+                      className="h-10 w-10 rounded-full"
                       onClick={() => setQuantity(dish.id, quantity + 1)}
                       aria-label={`Add one ${dish.name}`}
                     >
@@ -836,7 +801,7 @@ function DishSection({
                 ) : (
                   <Button
                     size="sm"
-                    className="h-8 rounded-full"
+                    className="h-10 rounded-full px-4"
                     onClick={() => addDish(dish)}
                     disabled={!restaurant.is_accepting_orders}
                   >
@@ -890,7 +855,7 @@ function RestaurantSection({
                 <Button
                   size="icon"
                   variant="secondary"
-                  className="absolute right-2 top-2 h-9 w-9 rounded-full bg-background/90"
+                  className="absolute right-2 top-2 h-11 w-11 rounded-full bg-background/90"
                   onClick={() => toggle(restaurant.id)}
                   aria-label={
                     isFavourite(restaurant.id)
@@ -919,12 +884,12 @@ function RestaurantSection({
                       {restaurant.cuisine || "Local favourites"}
                     </p>
                   </div>
-                  <span className="flex shrink-0 items-center gap-1 text-sm font-bold">
+                  <span className="flex shrink-0 items-center gap-1 text-sm font-bold tabular-nums">
                     <Star className="h-3.5 w-3.5 fill-primary text-primary" />
                     {Number(restaurant.avg_rating || 0).toFixed(1)}
                   </span>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs tabular-nums text-muted-foreground">
                   <span>
                     <Clock3 className="mr-1 inline h-3.5 w-3.5" />
                     {restaurant.delivery_estimate_minutes} min
@@ -972,19 +937,16 @@ function RestaurantSection({
 function MarketplaceSkeleton() {
   return (
     <div className="space-y-8 px-4" aria-label="Loading restaurants">
-      <MiaLoadingCard
-        delayMs={120_000}
-        label="Mia is scouting nearby kitchens and 20% off dining specials..."
-      />
-      <Skeleton className="h-52 rounded-3xl" />
+      <div className="skeleton-shimmer h-52 rounded-3xl" />
       <div className="flex gap-3">
-        <Skeleton className="h-24 w-20 rounded-2xl" />
-        <Skeleton className="h-24 w-20 rounded-2xl" />
-        <Skeleton className="h-24 w-20 rounded-2xl" />
+        <div className="skeleton-shimmer h-24 w-20 rounded-2xl" />
+        <div className="skeleton-shimmer h-24 w-20 rounded-2xl" />
+        <div className="skeleton-shimmer h-24 w-20 rounded-2xl" />
+        <div className="skeleton-shimmer h-24 w-20 rounded-2xl" />
       </div>
       <div className="flex gap-4">
-        <Skeleton className="h-64 w-72 shrink-0 rounded-2xl" />
-        <Skeleton className="h-64 w-72 shrink-0 rounded-2xl" />
+        <div className="skeleton-shimmer h-64 w-72 shrink-0 rounded-2xl" />
+        <div className="skeleton-shimmer h-64 w-72 shrink-0 rounded-2xl" />
       </div>
     </div>
   );

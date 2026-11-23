@@ -3,6 +3,7 @@ import { HubContext } from "@/components/hub/hub-context";
 import { HubShell } from "@/components/hub/hub-shell";
 import { isHubSurface } from "@/lib/hub-surface";
 import { requestHostname } from "@/lib/hub-request";
+import { SplashScreen } from "@/components/splash-screen";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -14,6 +15,8 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -30,9 +33,15 @@ import { LocaleProvider } from "@/components/locale-provider";
 import { UpgradeModalProvider } from "@/components/upgrade-modal";
 import { ConsumerAccessGate } from "@/components/consumer-access-gate";
 import { GlobalLoadingCompanion } from "@/components/global-loading-companion";
+import { WebMcpProvider } from "@/components/web-mcp-provider";
 import { useShellMetrics } from "@/hooks/use-shell-metrics";
 import { useSession } from "@/hooks/use-session";
-import { southAfricanFavoritesQuery, trendingRecipesQuery } from "@/lib/queries";
+import {
+  myFavoritesQuery,
+  myPantryQuery,
+  southAfricanFavoritesQuery,
+  trendingRecipesQuery,
+} from "@/lib/queries";
 
 function NotFoundComponent() {
   return (
@@ -125,10 +134,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "google-site-verification",
         content: "U6Y3az-2aYiYoygTitJ1URIuTNWCwkbfNVznjygMimg",
       },
-      { name: "theme-color", content: "#faf7f1" },
+      { name: "theme-color", content: "#f8faf6" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "MealMate" },
       { name: "application-name", content: "MealMate" },
       { title: "MealMate – AI Recipe Generator, Meal Planner & Smart Pantry" },
@@ -180,7 +189,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=DM+Serif+Display&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
       },
     ],
   }),
@@ -292,7 +301,6 @@ function RootComponent() {
         "/profile",
         "/recipes",
         "/pantry",
-        "/list",
         "/settings",
       ] as const;
       const run = () => {
@@ -302,6 +310,8 @@ function RootComponent() {
         if (firebaseUser) {
           void queryClient.prefetchQuery(trendingRecipesQuery()).catch(() => undefined);
           void queryClient.prefetchQuery(southAfricanFavoritesQuery()).catch(() => undefined);
+          void queryClient.prefetchQuery(myFavoritesQuery()).catch(() => undefined);
+          void queryClient.prefetchQuery(myPantryQuery()).catch(() => undefined);
         }
       };
       const idle = (
@@ -321,23 +331,57 @@ function RootComponent() {
     return onAuthStateChanged(auth, (firebaseUser) => {
       const nextUid = firebaseUser?.uid ?? null;
       if (initialized && prevUid === nextUid) return;
-      const wasInitialized = initialized;
-      const previousUid = prevUid;
+      const switchedAccount = initialized && prevUid !== nextUid;
       initialized = true;
       prevUid = nextUid;
-      if (wasInitialized || !firebaseUser) {
+      if (switchedAccount) {
         router.invalidate();
       }
       if (firebaseUser) {
-        if (wasInitialized && previousUid !== nextUid) {
+        if (switchedAccount) {
           void queryClient.invalidateQueries();
         }
         warmRoutesAndData(firebaseUser);
-      } else {
+      } else if (switchedAccount) {
         queryClient.clear();
       }
     });
   }, [router, queryClient]);
+
+  // Native Android hardware back button handling
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let cancelled = false;
+    let removeListener: (() => Promise<void>) | undefined;
+    void CapacitorApp.addListener("backButton", ({ canGoBack }) => {
+      if (cancelled) return;
+      const openDialog = document.querySelector('[role="dialog"][data-state="open"]');
+      if (openDialog) {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        return;
+      }
+      const path = router.state.location.pathname;
+      if (canGoBack && path !== "/") {
+        window.history.back();
+        return;
+      }
+      if (path !== "/" && path !== "/auth") {
+        void router.navigate({ to: "/" });
+        return;
+      }
+      void CapacitorApp.exitApp();
+    }).then((handle) => {
+      if (cancelled) {
+        void handle.remove();
+      } else {
+        removeListener = () => handle.remove();
+      }
+    });
+    return () => {
+      cancelled = true;
+      void removeListener?.();
+    };
+  }, [router]);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -353,32 +397,34 @@ function RootComponent() {
                     </AuthGate>
                   </HubShell>
                 ) : (
-                  <ConsumerAccessGate>
-                    <MiaProvider>
-                      <div className="theme-backdrop h-dvh w-full overflow-hidden bg-background">
-                        {showAppHeader && <AppHeader />}
-                        <div
-                          id="app-scroll"
-                          className={`h-full overflow-x-hidden overflow-y-auto overscroll-y-none ${hideConsumerChrome ? "" : "pb-[calc(var(--app-nav-h)+14px)] pt-[var(--app-header-h)]"}`}
-                        >
+                  <AuthGate>
+                    <ConsumerAccessGate>
+                      <MiaProvider>
+                        <div className="theme-backdrop h-dvh w-full overflow-hidden bg-background">
+                          {showAppHeader && <AppHeader />}
                           <div
-                            className={`mx-auto flex min-h-full w-full min-w-0 flex-col ${hideConsumerChrome ? "" : pathname === "/admin" ? "max-w-6xl" : "max-w-3xl"}`}
+                            id="app-scroll"
+                            className={`h-full overflow-x-hidden overflow-y-auto overscroll-y-none ${hideConsumerChrome ? "" : "pb-[calc(var(--app-nav-h)+14px)] pt-[var(--app-header-h)]"}`}
                           >
-                            <AuthGate>
-                              <div className="flex flex-1 flex-col">
+                            <div
+                              className={`mx-auto flex min-h-full w-full min-w-0 flex-col ${hideConsumerChrome ? "" : pathname === "/admin" ? "max-w-6xl" : "max-w-3xl"}`}
+                            >
+                              <div className="page-enter flex flex-1 flex-col">
                                 <Outlet />
                               </div>
-                            </AuthGate>
+                            </div>
                           </div>
+                          {hideConsumerChrome ? null : <BottomNav />}
+                          <GlobalLoadingCompanion />
                         </div>
-                        {hideConsumerChrome ? null : <BottomNav />}
-                        <GlobalLoadingCompanion />
-                      </div>
-                    </MiaProvider>
-                  </ConsumerAccessGate>
+                      </MiaProvider>
+                    </ConsumerAccessGate>
+                  </AuthGate>
                 )}
               </HubContext.Provider>
+              <WebMcpProvider />
               <Toaster position="top-center" />
+              {!isHub && <SplashScreen />}
             </UpgradeModalProvider>
           </LocaleProvider>
         </MascotThemeProvider>

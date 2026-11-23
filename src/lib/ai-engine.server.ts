@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { GoogleGenAI, type Content, type Part } from "@google/genai";
 import {
   createGateway,
   generateImage,
@@ -12,9 +11,6 @@ import {
 import { z } from "zod";
 
 export const DEFAULT_AI_TEXT_MODEL = "google/gemini-2.5-flash";
-export const GEMINI_SDK_TEXT_MODEL = "gemini-4-hydrogen";
-export const DEFAULT_GEMINI_TEXT_MODEL = GEMINI_SDK_TEXT_MODEL;
-export const GEMINI_SDK_IMAGE_MODEL = "gemini-2.5-flash-image";
 export const DEFAULT_AI_IMAGE_MODEL = "openai/gpt-image-2";
 export const DEFAULT_AI_SPEECH_MODEL = "openai/gpt-4o-mini-tts";
 
@@ -56,70 +52,35 @@ function readLovableKey(): string {
   return (process.env["LOVABLE_API_KEY"] || process.env["LOVABLE_AI_API_KEY"] || "").trim();
 }
 
-function readGeminiKey(): string {
-  return (
-    process.env["GEMINI_API_KEY"] ||
-    process.env["GOOGLE_GENERATIVE_AI_API_KEY"] ||
-    ""
-  ).trim();
-}
-
 function usesLovableGateway() {
   return Boolean(readLovableKey());
 }
 
-function usesVercelGateway() {
-  return Boolean(
-    process.env["AI_GATEWAY_API_KEY"] ||
-    process.env["VERCEL_OIDC_TOKEN"] ||
-    process.env["VERCEL"] === "1",
-  );
-}
-
-function usesGeminiSdk() {
-  return !usesLovableGateway() && !usesVercelGateway() && Boolean(readGeminiKey());
-}
-
 export function getAiProviderConfiguration() {
   const lovable = usesLovableGateway();
-  const vercel = !lovable && usesVercelGateway();
-  const gemini = !lovable && !vercel && Boolean(readGeminiKey());
-  const provider = lovable
-    ? "Lovable AI Gateway"
-    : vercel
-      ? "Vercel AI Gateway"
-      : gemini
-        ? "Google Gemini API"
-        : "Vercel AI Gateway";
+  const provider = lovable ? "Lovable AI Gateway" : "Vercel AI Gateway";
   return {
     textProvider: provider,
-    textModel: gemini ? GEMINI_SDK_TEXT_MODEL : DEFAULT_AI_TEXT_MODEL,
+    textModel: DEFAULT_AI_TEXT_MODEL,
     imageProvider: provider,
-    imageModel: gemini ? GEMINI_SDK_IMAGE_MODEL : DEFAULT_AI_IMAGE_MODEL,
-    speechProvider: lovable || vercel ? provider : "Vercel AI Gateway",
+    imageModel: DEFAULT_AI_IMAGE_MODEL,
+    speechProvider: provider,
     speechModel: DEFAULT_AI_SPEECH_MODEL,
-    authentication: lovable
-      ? "Server-only credentials"
-      : gemini
-        ? "Server-only Gemini API key"
-        : "Server API key or Vercel OIDC",
-    configured: lovable || vercel || gemini,
+    authentication: lovable ? "Server-only credentials" : "Server API key or Vercel OIDC",
+    configured:
+      lovable ||
+      Boolean(
+        process.env["AI_GATEWAY_API_KEY"] ||
+        process.env["VERCEL_OIDC_TOKEN"] ||
+        process.env["VERCEL"] === "1",
+      ),
   };
 }
 
 function vercelGateway() {
-  if (!usesVercelGateway()) throw new AiProviderError("configuration_missing");
+  if (!getAiProviderConfiguration().configured) throw new AiProviderError("configuration_missing");
   // The SDK handles Vercel's request-scoped OIDC token and local API keys.
   return createGateway();
-}
-
-function createGeminiClient(): GoogleGenAI {
-  const apiKey = readGeminiKey();
-  if (!apiKey) throw new AiProviderError("configuration_missing");
-  return new GoogleGenAI({
-    apiKey,
-    httpOptions: { headers: { "User-Agent": "aistudio-build" } },
-  });
 }
 
 function errorStatus(error: unknown): number | undefined {
@@ -135,21 +96,12 @@ function errorCategory(error: unknown): string {
   const name = error instanceof Error ? error.name : "UnknownError";
   const message = error instanceof Error ? error.message : "";
   const status = errorStatus(error);
-  if (/not configured|LOVABLE_API_KEY|AI_GATEWAY_API_KEY|GEMINI_API_KEY/i.test(message))
+  if (/not configured|LOVABLE_API_KEY|AI_GATEWAY_API_KEY/i.test(message))
     return "configuration_missing";
   if (/timeout|abort/i.test(name)) return "timeout";
   if (/credit|billing|payment/i.test(message) || status === 402) return "credits_unavailable";
-  if (
-    status === 401 ||
-    status === 403 ||
-    /authentication/i.test(name) ||
-    /API_KEY_INVALID|PERMISSION_DENIED/i.test(message)
-  ) {
-    return "authentication";
-  }
-  if (status === 429 || /rate.?limit/i.test(name) || /RESOURCE_EXHAUSTED/i.test(message)) {
-    return "rate_limited";
-  }
+  if (status === 401 || status === 403 || /authentication/i.test(name)) return "authentication";
+  if (status === 429 || /rate.?limit/i.test(name)) return "rate_limited";
   if (status && status >= 500) return "provider_unavailable";
   return "request_failed";
 }
@@ -330,171 +282,33 @@ function promptFields(options: AiRequestOptions) {
   };
 }
 
-function base64FromImageInput(
-  image: unknown,
-  fallbackMimeType = "image/png",
-): {
-  data: string;
-  mimeType: string;
-} {
-  if (typeof image === "string") {
-    const match = /^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i.exec(image.trim());
-    if (match?.[1] && match?.[2]) {
-      return { mimeType: match[1].toLowerCase(), data: match[2].replace(/\s+/g, "") };
-    }
-    return { mimeType: fallbackMimeType, data: image.replace(/\s+/g, "") };
-  }
-  if (image instanceof Uint8Array) {
-    return { mimeType: fallbackMimeType, data: Buffer.from(image).toString("base64") };
-  }
-  if (image instanceof ArrayBuffer) {
-    return { mimeType: fallbackMimeType, data: Buffer.from(image).toString("base64") };
-  }
-  throw new AiProviderError("invalid_response");
-}
-
-function geminiContentsFor(options: AiRequestOptions): {
-  contents: Content[];
-  systemInstruction?: string;
-} {
-  const systemParts: string[] = [];
-  if (options.instructions) systemParts.push(options.instructions);
-
-  const contents: Content[] = [];
-  if (options.messages) {
-    for (const message of options.messages) {
-      if (message.role === "system") {
-        if (typeof message.content === "string") {
-          systemParts.push(message.content);
-        }
-        continue;
-      }
-      const role = message.role === "assistant" ? "model" : "user";
-      if (typeof message.content === "string") {
-        contents.push({ role, parts: [{ text: message.content }] });
-        continue;
-      }
-      const parts: Part[] = message.content.map((part) => {
-        if (part.type === "text") return { text: part.text };
-        if (part.type === "image") {
-          const inline = base64FromImageInput(part.image, part.mediaType ?? "image/png");
-          return { inlineData: inline };
-        }
-        throw new AiProviderError("invalid_response");
-      });
-      contents.push({ role, parts });
-    }
-  } else {
-    contents.push({ role: "user", parts: [{ text: options.prompt }] });
-  }
-
-  return {
-    contents,
-    ...(systemParts.length > 0 ? { systemInstruction: systemParts.join("\n\n") } : {}),
-  };
-}
-
-async function geminiChat(options: AiRequestOptions, jsonMode = false): Promise<string> {
-  const ai = createGeminiClient();
-  const { contents, systemInstruction } = geminiContentsFor(options);
-  const timeoutMs = options.timeoutMs ?? DEFAULT_TEXT_TIMEOUT_MS;
-  const response = await ai.models.generateContent({
-    model: GEMINI_SDK_TEXT_MODEL,
-    contents,
-    config: {
-      ...(systemInstruction ? { systemInstruction } : {}),
-      ...(jsonMode ? { responseMimeType: "application/json" } : {}),
-      maxOutputTokens: 8192,
-      abortSignal: AbortSignal.timeout(timeoutMs),
-    },
-  });
-  const text = response.text?.trim() ?? "";
-  if (!text) throw new AiProviderError("empty_response");
-  return text;
-}
-
 export async function generateAiText(options: AiRequestOptions): Promise<string> {
   const startedAt = Date.now();
-  const config = getAiProviderConfiguration();
   try {
     let text: string;
-    if (options.modelOverride) {
+    if (options.modelOverride || !usesLovableGateway()) {
       const result = await sdkTextRequest(options, (model, settings) =>
         generateText({ model, ...promptFields(options), ...settings }),
       );
       text = result.text.trim();
-    } else if (usesLovableGateway()) {
-      text = await lovableChat(options);
-    } else if (usesVercelGateway()) {
-      const result = await sdkTextRequest(options, (model, settings) =>
-        generateText({ model, ...promptFields(options), ...settings }),
-      );
-      text = result.text.trim();
-    } else if (usesGeminiSdk()) {
-      text = await geminiChat(options, false);
     } else {
-      throw new AiProviderError("configuration_missing");
+      text = await lovableChat(options);
     }
     if (!text) throw new AiProviderError("empty_response");
     console.info("[MealMate AI] request completed", {
-      provider: config.textProvider,
+      provider: getAiProviderConfiguration().textProvider,
       feature: options.feature,
-      model: options.model ?? config.textModel,
+      model: options.model ?? DEFAULT_AI_TEXT_MODEL,
       durationMs: Date.now() - startedAt,
     });
     return text;
   } catch (error) {
-    logFailure(options.feature, options.model ?? config.textModel, error, Date.now() - startedAt);
-    throw publicError(errorCategory(error));
-  }
-}
-
-export async function* streamAiText(
-  options: AiRequestOptions,
-): AsyncGenerator<string, void, unknown> {
-  const startedAt = Date.now();
-  const config = getAiProviderConfiguration();
-  try {
-    if (
-      usesGeminiSdk() &&
-      !options.modelOverride &&
-      !usesVercelGateway() &&
-      !usesLovableGateway()
-    ) {
-      const ai = createGeminiClient();
-      const { contents, systemInstruction } = geminiContentsFor(options);
-      const timeoutMs = options.timeoutMs ?? DEFAULT_TEXT_TIMEOUT_MS;
-      const stream = await ai.models.generateContentStream({
-        model: GEMINI_SDK_TEXT_MODEL,
-        contents,
-        config: {
-          ...(systemInstruction ? { systemInstruction } : {}),
-          maxOutputTokens: 8192,
-          abortSignal: AbortSignal.timeout(timeoutMs),
-        },
-      });
-      let emitted = false;
-      for await (const chunk of stream) {
-        const piece = chunk.text ?? "";
-        if (piece) {
-          emitted = true;
-          yield piece;
-        }
-      }
-      if (!emitted) throw new AiProviderError("empty_response");
-      console.info("[MealMate AI] stream completed", {
-        provider: config.textProvider,
-        feature: options.feature,
-        model: options.model ?? config.textModel,
-        durationMs: Date.now() - startedAt,
-      });
-      return;
-    }
-
-    const text = await generateAiText(options);
-    if (text) yield text;
-  } catch (error) {
-    logFailure(options.feature, options.model ?? config.textModel, error, Date.now() - startedAt);
+    logFailure(
+      options.feature,
+      options.model ?? DEFAULT_AI_TEXT_MODEL,
+      error,
+      Date.now() - startedAt,
+    );
     throw publicError(errorCategory(error));
   }
 }
@@ -518,10 +332,9 @@ export async function generateAiObject<TSchema extends z.ZodTypeAny>(
   options: AiRequestOptions & { schema: TSchema },
 ): Promise<z.output<TSchema>> {
   const startedAt = Date.now();
-  const config = getAiProviderConfiguration();
   try {
     let output: unknown;
-    if (options.modelOverride) {
+    if (options.modelOverride || !usesLovableGateway()) {
       const result = await sdkTextRequest(options, (model, settings) =>
         generateText({
           model,
@@ -531,7 +344,7 @@ export async function generateAiObject<TSchema extends z.ZodTypeAny>(
         }),
       );
       output = result.output;
-    } else if (usesLovableGateway()) {
+    } else {
       const schema = await zodSchema(options.schema).jsonSchema;
       output = parseJsonObject(
         await lovableChat(
@@ -542,29 +355,6 @@ export async function generateAiObject<TSchema extends z.ZodTypeAny>(
           true,
         ),
       );
-    } else if (usesVercelGateway()) {
-      const result = await sdkTextRequest(options, (model, settings) =>
-        generateText({
-          model,
-          ...promptFields(options),
-          output: Output.object({ schema: options.schema }),
-          ...settings,
-        }),
-      );
-      output = result.output;
-    } else if (usesGeminiSdk()) {
-      const schema = await zodSchema(options.schema).jsonSchema;
-      output = parseJsonObject(
-        await geminiChat(
-          {
-            ...options,
-            instructions: `${options.instructions ?? ""}\nReturn only a valid JSON object matching this JSON Schema:\n${JSON.stringify(schema)}`,
-          },
-          true,
-        ),
-      );
-    } else {
-      throw new AiProviderError("configuration_missing");
     }
     try {
       return options.schema.parse(output) as z.output<TSchema>;
@@ -572,7 +362,12 @@ export async function generateAiObject<TSchema extends z.ZodTypeAny>(
       throw new AiProviderError("invalid_response");
     }
   } catch (error) {
-    logFailure(options.feature, options.model ?? config.textModel, error, Date.now() - startedAt);
+    logFailure(
+      options.feature,
+      options.model ?? DEFAULT_AI_TEXT_MODEL,
+      error,
+      Date.now() - startedAt,
+    );
     throw publicError(errorCategory(error));
   }
 }
@@ -722,7 +517,7 @@ export async function generateAiImage(
       bytes = generated.bytes;
       mediaType = generated.mediaType;
       model = generated.model;
-    } else if (usesVercelGateway()) {
+    } else {
       const result = await generateImage({
         model: vercelGateway().imageModel(model),
         prompt,
@@ -732,25 +527,6 @@ export async function generateAiImage(
       });
       bytes = result.image.uint8Array;
       mediaType = result.image.mediaType;
-    } else if (usesGeminiSdk()) {
-      model = GEMINI_SDK_IMAGE_MODEL;
-      const ai = createGeminiClient();
-      const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-          responseModalities: ["IMAGE"],
-          abortSignal: AbortSignal.timeout(timeoutMs),
-        },
-      });
-      const imagePart = response.candidates?.[0]?.content?.parts?.find(
-        (part) => part.inlineData?.data,
-      );
-      if (!imagePart?.inlineData?.data) throw new AiProviderError("invalid_response");
-      bytes = new Uint8Array(Buffer.from(imagePart.inlineData.data, "base64"));
-      mediaType = (imagePart.inlineData.mimeType || "image/png").toLowerCase();
-    } else {
-      throw new AiProviderError("configuration_missing");
     }
     if (bytes.byteLength === 0 || bytes.byteLength > 20 * 1024 * 1024) {
       throw new AiProviderError("invalid_response");

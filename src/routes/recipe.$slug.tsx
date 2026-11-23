@@ -16,24 +16,14 @@ import {
   Share2,
   MessageCircleQuestion,
   Expand,
-  AlertTriangle,
-  ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
-import { recipeBySlugQuery, myFavoritesQuery, myGroceryQuery } from "@/lib/queries";
+import { recipeBySlugQuery, myFavoritesQuery } from "@/lib/queries";
 import { curatedRecipeImageUrl } from "@/lib/recipe-image";
 import { waitForFirebaseAuth } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
 import { usePremium } from "@/hooks/use-premium";
-import { usePreferences } from "@/hooks/use-preferences";
-import { evaluateRecipeAllergens } from "@/lib/preferences";
-import {
-  categorizeGroceryItem,
-  combineQuantities,
-  consolidateIngredients,
-  normalizeItemKey,
-} from "@/lib/grocery-categorizer";
 import { regenerateRecipeImage } from "@/lib/ai.functions";
 import { postAuthenticatedAi } from "@/lib/ai-api";
 import { trackRecipeView } from "@/lib/engagement.functions";
@@ -43,7 +33,6 @@ const CookingMode = lazy(() =>
   import("@/components/cooking-mode").then((m) => ({ default: m.CookingMode })),
 );
 import { RecipeImage } from "@/components/recipe-image";
-import { MiaLoadingCard } from "@/components/mia-loading-card";
 import { ChangeImageButton, ImageCredit } from "@/components/recipe-image-tools";
 import { awardXp } from "@/lib/xp.functions";
 import { useFeatureFlag } from "@/hooks/use-feature-flag";
@@ -116,11 +105,9 @@ function RecipePage() {
   });
   const r = data ?? recipe;
   const { isPremium } = usePremium();
-  const { preferences } = usePreferences();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: favorites } = useQuery({ ...myFavoritesQuery(), enabled: !!user && isPremium });
-  const { data: groceryItems } = useQuery({ ...myGroceryQuery(), enabled: !!user && isPremium });
+  const { data: favorites } = useQuery({ ...myFavoritesQuery(), enabled: !!user });
   const [savingFav, setSavingFav] = useState(false);
   const [addingList, setAddingList] = useState(false);
   const [regen, setRegen] = useState(false);
@@ -158,9 +145,9 @@ function RecipePage() {
   }, [queryClient, r?.id, r?.slug, user]);
 
   useEffect(() => {
-    if (!user || !isPremium || !r?.id || r.image_url || curatedRecipeImageUrl(r)) return;
+    if (!user || !r?.id || r.image_url || curatedRecipeImageUrl(r)) return;
     void requestRecipeImage();
-  }, [user, isPremium, r, requestRecipeImage]);
+  }, [user, r, requestRecipeImage]);
 
   async function regenerateImage() {
     if (!user || !r) {
@@ -195,17 +182,6 @@ function RecipePage() {
     });
     if (user && r.id) {
       void trackRecipeView({ data: { recipeId: r.id } }).catch(() => {});
-      void import("@/lib/analytics-events")
-        .then(({ dispatchAnalyticsEvent }) =>
-          dispatchAnalyticsEvent({
-            userId: user.id,
-            eventName: "recipe_viewed",
-            entityId: r.id,
-            dedupeKey: `view_${r.id}_${new Date().toISOString().slice(0, 10)}`,
-            metadata: { slug: r.slug, name: r.name },
-          }),
-        )
-        .catch(() => undefined);
     }
   }, [r, user]);
 
@@ -213,16 +189,17 @@ function RecipePage() {
     if (sessionLoading || isLoading) {
       return (
         <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-8">
-          <MiaLoadingCard
-            delayMs={120_000}
-            label="Mia is setting the prep table for this recipe..."
-          />
-          <div className="h-8 w-40 animate-pulse rounded-xl bg-muted" />
+          <div className="skeleton-shimmer h-8 w-40 rounded-xl" />
           <div className="grid gap-8 md:grid-cols-2">
-            <div className="aspect-square w-full animate-pulse rounded-2xl bg-muted" />
+            <div className="skeleton-shimmer aspect-square w-full rounded-2xl" />
             <div className="space-y-4">
-              <div className="h-9 w-3/4 animate-pulse rounded-xl bg-muted" />
-              <div className="h-20 w-full animate-pulse rounded-xl bg-muted" />
+              <div className="skeleton-shimmer h-9 w-3/4 rounded-xl" />
+              <div className="skeleton-shimmer h-20 w-full rounded-xl" />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, idx) => (
+                  <div key={idx} className="skeleton-shimmer h-16 rounded-xl" />
+                ))}
+              </div>
             </div>
           </div>
         </main>
@@ -256,11 +233,6 @@ function RecipePage() {
   const ingredients = (Array.isArray(r.ingredients) ? r.ingredients : []) as Ingredient[];
   const steps = (Array.isArray(r.steps) ? r.steps : []) as string[];
   const isFav = favorites?.some((f) => f.recipe_id === r.id) ?? false;
-  const allergenCheck = evaluateRecipeAllergens(preferences, {
-    name: r.name,
-    description: r.description,
-    ingredients,
-  });
 
   const stats = [
     r.cooking_time_minutes && { icon: Clock, label: `${r.cooking_time_minutes} min` },
@@ -303,28 +275,20 @@ function RecipePage() {
       navigate({ to: "/auth" });
       return;
     }
-    if (!isPremium) {
-      toast.message("Start your 3-day free trial to save favorite recipes.");
-      navigate({ to: "/premium" });
-      return;
-    }
     setSavingFav(true);
     try {
       if (isFav) {
-        await firebaseData.from("favorites").delete().eq("recipe_id", r.id).eq("user_id", user.id);
+        const { error } = await firebaseData
+          .from("favorites")
+          .delete()
+          .eq("recipe_id", r.id)
+          .eq("user_id", user.id);
+        if (error) throw error;
       } else {
-        await firebaseData.from("favorites").insert({ recipe_id: r.id, user_id: user.id });
-        void import("@/lib/analytics-events")
-          .then(({ dispatchAnalyticsEvent }) =>
-            dispatchAnalyticsEvent({
-              userId: user.id,
-              eventName: "recipe_saved",
-              entityId: r.id,
-              dedupeKey: `save_${r.id}_${new Date().toISOString().slice(0, 10)}`,
-              metadata: { slug: r.slug, name: r.name },
-            }),
-          )
-          .catch(() => undefined);
+        const { error } = await firebaseData
+          .from("favorites")
+          .insert({ recipe_id: r.id, user_id: user.id });
+        if (error) throw error;
       }
       await queryClient.invalidateQueries({ queryKey: ["favorites"] });
     } catch {
@@ -339,52 +303,16 @@ function RecipePage() {
       navigate({ to: "/auth" });
       return;
     }
-    if (!isPremium) {
-      toast.message("Start your 3-day free trial to build consolidated grocery lists.");
-      navigate({ to: "/premium" });
-      return;
-    }
     if (ingredients.length === 0) return;
     setAddingList(true);
     try {
-      const overrides = preferences.shopping?.category_overrides ?? {};
-      const consolidated = consolidateIngredients(ingredients, { overrides });
-      const existingUnchecked = (groceryItems ?? []).filter((g) => !g.checked);
-      const toInsert: {
-        user_id: string;
-        recipe_id: string;
-        name: string;
-        quantity: string | null;
-        category: string;
-      }[] = [];
-
-      for (const ing of consolidated) {
-        const key = normalizeItemKey(ing.name).replace(/s$/, "");
-        const match = existingUnchecked.find(
-          (g) => normalizeItemKey(g.name).replace(/s$/, "") === key,
-        );
-        const category = categorizeGroceryItem(ing.name, { overrides });
-        if (match) {
-          const mergedQty = combineQuantities(match.quantity, ing.quantity);
-          await firebaseData
-            .from("grocery_items")
-            .update({ quantity: mergedQty, category })
-            .eq("id", match.id);
-        } else {
-          toInsert.push({
-            user_id: user.id,
-            recipe_id: r.id,
-            name: ing.name,
-            quantity: ing.quantity,
-            category,
-          });
-        }
-      }
-
-      if (toInsert.length > 0) {
-        const { error } = await firebaseData.from("grocery_items").insert(toInsert);
-        if (error) throw error;
-      }
+      const rows = ingredients.map((ing) => ({
+        user_id: user.id,
+        name: ing.name,
+        ...(ing.quantity?.trim() ? { quantity: ing.quantity.trim() } : {}),
+      }));
+      const { error } = await firebaseData.from("grocery_items").insert(rows);
+      if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["grocery"] });
       toast.success("Added to your grocery list", {
         action: { label: "View", onClick: () => navigate({ to: "/list" }) },
@@ -433,7 +361,7 @@ function RecipePage() {
                   type="button"
                   onClick={() => setImagePreviewOpen(true)}
                   aria-label={`Preview photo of ${r.name}`}
-                  className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/75 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md transition-colors hover:bg-black"
+                  className="absolute bottom-3 right-3 flex min-h-11 items-center gap-1.5 rounded-full border border-white/20 bg-black/75 px-4 text-xs font-medium text-white shadow-md backdrop-blur-md transition-colors hover:bg-black"
                 >
                   <Expand className="h-3.5 w-3.5" />
                   Preview
@@ -460,29 +388,15 @@ function RecipePage() {
             )}
 
             {r.diet_tags && r.diet_tags.length > 0 && (
-              <p className="mt-3 text-xs text-muted-foreground">{r.diet_tags.join(" · ")}</p>
-            )}
-
-            {allergenCheck.warningSummary && (
-              <div
-                role="alert"
-                className={`mt-4 flex items-start gap-2.5 rounded-xl border p-3.5 text-xs ${
-                  !allergenCheck.safe
-                    ? "border-destructive/50 bg-destructive/10 text-destructive"
-                    : "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300"
-                }`}
-              >
-                {!allergenCheck.safe ? (
-                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                ) : (
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                )}
-                <div>
-                  <p className="font-semibold">
-                    {!allergenCheck.safe ? "Allergy warning" : "Ingredient verification notice"}
-                  </p>
-                  <p className="mt-0.5 leading-relaxed">{allergenCheck.warningSummary}</p>
-                </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {r.diet_tags.map((t: string) => (
+                  <span
+                    key={t}
+                    className="rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground"
+                  >
+                    {t}
+                  </span>
+                ))}
               </div>
             )}
 
@@ -493,7 +407,9 @@ function RecipePage() {
                   className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card p-3 text-center"
                 >
                   <s.icon className="h-4 w-4 text-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground">{s.label}</span>
+                  <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                    {s.label}
+                  </span>
                 </div>
               ))}
             </div>
@@ -502,7 +418,7 @@ function RecipePage() {
               {cookingModeEnabled && steps.length > 0 && (
                 <Button
                   onClick={() => setCookingOpen(true)}
-                  className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="min-h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   <Play className="mr-2 h-4 w-4" />
                   Start cooking
@@ -512,7 +428,7 @@ function RecipePage() {
                 onClick={toggleFavorite}
                 variant="outline"
                 disabled={savingFav}
-                className={`rounded-xl border-border ${
+                className={`min-h-11 rounded-xl border-border ${
                   isFav
                     ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
                     : "bg-card text-foreground hover:bg-secondary"
@@ -529,7 +445,7 @@ function RecipePage() {
                 onClick={addToGrocery}
                 variant="outline"
                 disabled={addingList}
-                className="rounded-xl border-border bg-card text-foreground hover:bg-secondary"
+                className="min-h-11 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
               >
                 {addingList ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -541,7 +457,7 @@ function RecipePage() {
               <Button
                 asChild
                 variant="outline"
-                className="rounded-xl border-border bg-card text-foreground hover:bg-secondary"
+                className="min-h-11 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
               >
                 <Link to="/chat" search={{ q: `Help me cook ${r.name}` }}>
                   <MessageCircleQuestion className="mr-2 h-4 w-4" />
@@ -552,7 +468,7 @@ function RecipePage() {
                 onClick={regenerateImage}
                 variant="outline"
                 disabled={regen}
-                className="rounded-xl border-border bg-card text-foreground hover:bg-secondary"
+                className="min-h-11 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
               >
                 {regen ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -573,7 +489,7 @@ function RecipePage() {
               { label: "Fat (est.)", value: r.fat_g },
             ].map((m) => (
               <div key={m.label} className="text-center">
-                <div className="text-2xl font-semibold tracking-tight text-foreground">
+                <div className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">
                   {m.value ?? 0}g
                 </div>
                 <div className="mt-0.5 text-xs text-muted-foreground">{m.label}</div>
@@ -586,32 +502,36 @@ function RecipePage() {
           <section className="rounded-2xl border border-border bg-card p-5">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-medium tracking-tight text-foreground">Ingredients</h2>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs tabular-nums text-muted-foreground">
                 {checkedIngredients.size}/{ingredients.length}
               </span>
             </div>
-            <ul className="mt-4 space-y-2.5">
+            <ul className="mt-3 space-y-1">
               {ingredients.map((ing, i) => {
                 const checked = checkedIngredients.has(i);
                 return (
                   <li
                     key={i}
-                    className="flex items-center justify-between gap-3 border-b border-border pb-2.5 text-sm last:border-b-0 last:pb-0"
+                    className="flex min-h-[44px] items-center justify-between gap-2 border-b border-border py-1 text-sm last:border-b-0"
                   >
-                    <div className="flex min-w-0 items-center gap-2.5">
+                    <div className="flex min-w-0 items-center gap-1.5">
                       <button
                         type="button"
                         role="checkbox"
                         aria-checked={checked}
                         aria-label={`Mark ${ing.name} ready`}
                         onClick={() => toggleIngredient(i)}
-                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
-                          checked
-                            ? "border-[var(--periwinkle)] bg-[var(--periwinkle)] text-white"
-                            : "border-border bg-secondary text-transparent hover:border-foreground/40"
-                        }`}
+                        className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-secondary/60"
                       >
-                        <Check className="h-3 w-3" strokeWidth={3} />
+                        <span
+                          className={`flex h-5 w-5 items-center justify-center rounded-md border transition-colors ${
+                            checked
+                              ? "border-[var(--periwinkle)] bg-[var(--periwinkle)] text-white"
+                              : "border-border bg-secondary text-transparent"
+                          }`}
+                        >
+                          <Check className="h-3 w-3" strokeWidth={3} />
+                        </span>
                       </button>
                       <span
                         className={`truncate ${checked ? "text-muted-foreground line-through" : "text-foreground"}`}
@@ -621,7 +541,9 @@ function RecipePage() {
                       <SubstitutionsButton ingredient={ing.name} recipeName={r.name} />
                     </div>
                     {ing.quantity && (
-                      <span className="shrink-0 text-xs text-muted-foreground">{ing.quantity}</span>
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {ing.quantity}
+                      </span>
                     )}
                   </li>
                 );
@@ -634,7 +556,7 @@ function RecipePage() {
             <ol className="mt-4 space-y-4">
               {steps.map((step, i) => (
                 <li key={i} className="flex gap-3.5">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary text-xs font-semibold text-primary-foreground">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-primary text-xs font-semibold tabular-nums text-primary-foreground">
                     {i + 1}
                   </span>
                   <p className="pt-0.5 text-sm leading-relaxed text-muted-foreground">{step}</p>

@@ -171,17 +171,8 @@ export const Route = createFileRoute("/api/public/webhooks/revenuecat")({
           .maybeSingle();
 
         if (ACTIVATE_TYPES.has(evt.type)) {
-          const periodUpper = (evt.period_type ?? "").toUpperCase();
-          const isTrialPeriod =
-            evt.type === "TRIAL_STARTED" ||
-            (periodUpper === "TRIAL" && evt.type !== "TRIAL_CONVERTED");
-          const isPaidTrialConversion =
-            evt.type === "TRIAL_CONVERTED" ||
-            (evt.type === "RENEWAL" &&
-              (evt.is_trial_conversion === true || existing?.status === "trialing"));
-          const isDirectPaidPurchase = evt.type === "INITIAL_PURCHASE" && !isTrialPeriod;
-
-          const status: "trialing" | "active" = isTrialPeriod ? "trialing" : "active";
+          const status: "trialing" | "active" =
+            TRIAL_TYPES.has(evt.type) && evt.period_type === "TRIAL" ? "trialing" : "active";
           const patch = {
             user_id: userId,
             rc_app_user_id: evt.app_user_id,
@@ -202,75 +193,52 @@ export const Route = createFileRoute("/api/public/webhooks/revenuecat")({
             await firebaseAdmin.from("subscriptions").insert(patch);
           }
 
-          // Guardrail 3: Trial starts ($0) must NEVER log revenue payments or trigger creator/referral payouts.
-          if (isTrialPeriod) {
-            const { data: pendingRef } = await firebaseAdmin
+          // Payment record for real money events
+          if (
+            evt.type === "INITIAL_PURCHASE" ||
+            evt.type === "RENEWAL" ||
+            evt.type === "TRIAL_CONVERTED" ||
+            evt.type === "PRODUCT_CHANGE"
+          ) {
+            const kind =
+              evt.type === "TRIAL_CONVERTED"
+                ? "trial_conversion"
+                : evt.type === "RENEWAL"
+                  ? "renewal"
+                  : "initial";
+            await firebaseAdmin
+              .from("payments")
+              .insert({
+                user_id: userId,
+                subscription_id: existing?.id ?? null,
+                rc_event_id: evt.id,
+                amount_usd: evt.price_in_purchased_currency ?? null,
+                currency: evt.currency ?? "USD",
+                kind,
+                occurred_at: purchasedAt,
+                raw: JSON.parse(JSON.stringify(evt)),
+              })
+              .then(
+                () => undefined,
+                () => undefined,
+              );
+          }
+
+          // Reward pending referrals on first paid conversion
+          if (evt.type === "INITIAL_PURCHASE" || evt.type === "TRIAL_CONVERTED") {
+            const { data: ref } = await firebaseAdmin
               .from("referrals")
               .select("*")
               .eq("referred_id", userId)
               .eq("status", "pending")
               .maybeSingle();
-            if (pendingRef) {
+            if (ref) {
+              await grantDays(ref.referrer_id, ref.reward_days);
+              await grantDays(userId, ref.reward_days);
               await firebaseAdmin
                 .from("referrals")
-                .update({
-                  status: "pending_trial",
-                  payout_status: "trial_pending",
-                  trial_started_at: purchasedAt,
-                })
-                .eq("id", pendingRef.id);
-            }
-          } else {
-            // Payment record ONLY for actual paid billing events (Day-4 conversion, direct paid purchase, renewal, product change)
-            if (
-              isPaidTrialConversion ||
-              isDirectPaidPurchase ||
-              evt.type === "RENEWAL" ||
-              evt.type === "PRODUCT_CHANGE"
-            ) {
-              const kind = isPaidTrialConversion
-                ? "trial_conversion"
-                : evt.type === "RENEWAL"
-                  ? "renewal"
-                  : "initial";
-              await firebaseAdmin
-                .from("payments")
-                .insert({
-                  user_id: userId,
-                  subscription_id: existing?.id ?? null,
-                  rc_event_id: evt.id,
-                  amount_usd: evt.price_in_purchased_currency ?? null,
-                  currency: evt.currency ?? "USD",
-                  kind,
-                  occurred_at: purchasedAt,
-                  raw: JSON.parse(JSON.stringify(evt)),
-                })
-                .then(
-                  () => undefined,
-                  () => undefined,
-                );
-            }
-
-            // Reward creator/referral ONLY when trial converts to a paid charge on Day 4 or user completes a direct non-trial purchase
-            if (isPaidTrialConversion || isDirectPaidPurchase) {
-              const { data: ref } = await firebaseAdmin
-                .from("referrals")
-                .select("*")
-                .eq("referred_id", userId)
-                .in("status", ["pending", "pending_trial"])
-                .maybeSingle();
-              if (ref) {
-                await grantDays(ref.referrer_id, ref.reward_days);
-                await grantDays(userId, ref.reward_days);
-                await firebaseAdmin
-                  .from("referrals")
-                  .update({
-                    status: "rewarded",
-                    payout_status: "confirmed_payable",
-                    rewarded_at: new Date().toISOString(),
-                  })
-                  .eq("id", ref.id);
-              }
+                .update({ status: "rewarded", rewarded_at: new Date().toISOString() })
+                .eq("id", ref.id);
             }
           }
         } else if (EXPIRE_TYPES.has(evt.type)) {
@@ -290,28 +258,6 @@ export const Route = createFileRoute("/api/public/webhooks/revenuecat")({
                   evt.type === "CANCELLATION" ? new Date().toISOString() : existing.cancelled_at,
               })
               .eq("id", existing.id);
-
-            if (
-              existing.status === "trialing" &&
-              (evt.type === "CANCELLATION" || evt.type === "EXPIRATION")
-            ) {
-              const { data: trialRef } = await firebaseAdmin
-                .from("referrals")
-                .select("id")
-                .eq("referred_id", userId)
-                .in("status", ["pending", "pending_trial"])
-                .maybeSingle();
-              if (trialRef) {
-                await firebaseAdmin
-                  .from("referrals")
-                  .update({
-                    payout_status:
-                      evt.type === "CANCELLATION" ? "cancelled_in_trial" : "expired_in_trial",
-                    ...(evt.type === "EXPIRATION" ? { status: "expired" } : {}),
-                  })
-                  .eq("id", trialRef.id);
-              }
-            }
           }
           if (evt.type === "REFUND" && evt.id) {
             await firebaseAdmin
@@ -340,59 +286,6 @@ export const Route = createFileRoute("/api/public/webhooks/revenuecat")({
               .update({ status: "in_grace" })
               .eq("id", existing.id);
           }
-        }
-
-        const { recordServerAnalyticsEvent } = await import("@/lib/analytics-events.functions");
-        const rcPlatform =
-          store === "play_store" ? "android" : store === "app_store" ? "ios" : "web";
-        const eventIdSafe = evt.id.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 80);
-
-        if (ACTIVATE_TYPES.has(evt.type)) {
-          const periodUpper = (evt.period_type ?? "").toUpperCase();
-          const isTrialPeriod =
-            evt.type === "TRIAL_STARTED" ||
-            (periodUpper === "TRIAL" && evt.type !== "TRIAL_CONVERTED");
-          const isPaidTrialConversion =
-            evt.type === "TRIAL_CONVERTED" ||
-            (evt.type === "RENEWAL" &&
-              (evt.is_trial_conversion === true || existing?.status === "trialing"));
-          const isDirectPaidPurchase = evt.type === "INITIAL_PURCHASE" && !isTrialPeriod;
-
-          if (isTrialPeriod) {
-            void recordServerAnalyticsEvent({
-              eventId: `trial_started_${eventIdSafe}`,
-              userId,
-              eventName: "trial_started",
-              platform: rcPlatform,
-              metadata: { tier, store, product_id: evt.product_id ?? null },
-            });
-          } else if (isPaidTrialConversion || isDirectPaidPurchase || evt.type === "RENEWAL") {
-            void recordServerAnalyticsEvent({
-              eventId: `subscription_started_${eventIdSafe}`,
-              userId,
-              eventName: "subscription_started",
-              platform: rcPlatform,
-              metadata: {
-                tier,
-                store,
-                product_id: evt.product_id ?? null,
-                amount: evt.price_in_purchased_currency ?? null,
-                currency: evt.currency ?? "USD",
-              },
-            });
-          }
-        } else if (
-          evt.type === "CANCELLATION" ||
-          evt.type === "EXPIRATION" ||
-          evt.type === "REFUND"
-        ) {
-          void recordServerAnalyticsEvent({
-            eventId: `subscription_cancelled_${eventIdSafe}`,
-            userId,
-            eventName: "subscription_cancelled",
-            platform: rcPlatform,
-            metadata: { tier, store, rc_type: evt.type },
-          });
         }
 
         const { error: completionError } = await firebaseAdmin

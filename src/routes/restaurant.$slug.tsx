@@ -87,9 +87,9 @@ function RestaurantPage() {
   if (isLoading) {
     return (
       <div className="mx-auto max-w-3xl px-4 pb-28 pt-4">
-        <Skeleton className="h-44 w-full rounded-3xl" />
-        <Skeleton className="mt-4 h-8 w-2/3" />
-        <Skeleton className="mt-6 h-24 w-full rounded-2xl" />
+        <Skeleton className="skeleton-shimmer h-44 w-full rounded-3xl" />
+        <Skeleton className="skeleton-shimmer mt-4 h-8 w-2/3" />
+        <Skeleton className="skeleton-shimmer mt-6 h-24 w-full rounded-2xl" />
       </div>
     );
   }
@@ -97,7 +97,7 @@ function RestaurantPage() {
     return (
       <div className="mx-auto max-w-md px-4 py-20 text-center">
         <p className="text-sm text-muted-foreground">Restaurant not found.</p>
-        <Button asChild className="mt-4 rounded-full">
+        <Button asChild className="mt-4 min-h-11 rounded-full">
           <Link to="/restaurants">Back to restaurants</Link>
         </Button>
       </div>
@@ -148,7 +148,7 @@ function RestaurantPage() {
             <p className="mt-3 text-sm text-muted-foreground">{restaurant.description}</p>
           )}
 
-          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
+          <div className="tabular-nums mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
               {Number(restaurant.avg_rating).toFixed(1)} ({restaurant.rating_count})
@@ -178,7 +178,7 @@ function RestaurantPage() {
           </div>
 
           {Number(restaurant.min_order_amount) > 0 && (
-            <p className="mt-3 text-xs text-muted-foreground">
+            <p className="tabular-nums mt-3 text-xs text-muted-foreground">
               Minimum order {money(restaurant.min_order_amount, restaurant.currency)}
             </p>
           )}
@@ -226,7 +226,7 @@ function RestaurantPage() {
                             {item.description}
                           </p>
                         )}
-                        <p className="mt-1 text-sm font-semibold">
+                        <p className="tabular-nums mt-1 text-sm font-semibold">
                           {money(item.price, restaurant.currency)}
                         </p>
                       </div>
@@ -239,16 +239,18 @@ function RestaurantPage() {
                           <Button
                             size="icon"
                             variant="outline"
-                            className="h-8 w-8 rounded-full"
+                            className="tap-spring h-11 w-11 rounded-full"
                             aria-label={`Remove one ${item.name}`}
                             onClick={() => setQuantity(item.id, qty - 1)}
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
-                          <span className="w-6 text-center text-sm font-semibold">{qty}</span>
+                          <span className="tabular-nums w-6 text-center text-sm font-semibold">
+                            {qty}
+                          </span>
                           <Button
                             size="icon"
-                            className="h-8 w-8 rounded-full"
+                            className="tap-spring h-11 w-11 rounded-full"
                             aria-label={`Add one ${item.name}`}
                             onClick={() => setQuantity(item.id, qty + 1)}
                           >
@@ -258,7 +260,7 @@ function RestaurantPage() {
                       ) : (
                         <Button
                           size="sm"
-                          className="rounded-full"
+                          className="tap-spring min-h-11 rounded-full px-4"
                           disabled={!restaurant.is_accepting_orders}
                           onClick={() => {
                             const { replaced } = addItem(
@@ -320,16 +322,16 @@ function RestaurantPage() {
       </div>
 
       {count > 0 && cart?.restaurant_id === restaurant.id && (
-        <div className="fixed inset-x-0 bottom-16 z-40 px-4">
+        <div className="fixed inset-x-0 bottom-[calc(var(--app-nav-h,4rem)+12px)] z-40 px-4">
           <Button
-            className="mx-auto flex h-12 w-full max-w-md items-center justify-between rounded-full px-5 shadow-lg"
+            className="tap-spring mx-auto flex h-12 w-full max-w-md items-center justify-between rounded-full px-5 shadow-lg"
             onClick={() => navigate({ to: "/checkout" })}
           >
-            <span className="flex items-center gap-2">
+            <span className="tabular-nums flex items-center gap-2">
               <ShoppingBag className="h-4 w-4" />
               {count} item{count > 1 ? "s" : ""}
             </span>
-            <span>{money(subtotal, restaurant.currency)} · Checkout</span>
+            <span className="tabular-nums">{money(subtotal, restaurant.currency)} · Checkout</span>
           </Button>
         </div>
       )}

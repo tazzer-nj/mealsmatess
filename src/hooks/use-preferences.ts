@@ -46,15 +46,8 @@ export function usePreferences() {
         if (localNewer && local) {
           const { updated_at: _drop, ...rest } = local;
           await saveMyPreferences({ data: rest });
-        } else if (remote) {
+        } else if (remote?.onboarding_completed) {
           writeLocalPreferences(remote);
-          if (remote.shopping) {
-            const { writeLocalShoppingPreferences } = await import("@/lib/grocery-categorizer");
-            writeLocalShoppingPreferences({
-              category_overrides: remote.shopping.category_overrides ?? {},
-              aisle_order: remote.shopping.aisle_order ?? [],
-            });
-          }
         }
       } catch {
         // offline or not provisioned yet — local answers still apply

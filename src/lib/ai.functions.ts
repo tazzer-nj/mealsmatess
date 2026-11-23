@@ -1,5 +1,5 @@
 import { aiProfile } from "@/lib/ai-profile";
-import { evaluateRecipeAllergens, preferenceSummary } from "@/lib/preferences";
+import { preferenceSummary } from "@/lib/preferences";
 import { createServerFn } from "@tanstack/react-start";
 import { requireAiCredit } from "@/lib/ai-credits.server";
 import {
@@ -78,7 +78,7 @@ async function callModel(prompt: string): Promise<GeneratedRecipe> {
     instructions: SYSTEM,
     prompt,
     schema: RecipeSchema,
-    timeoutMs: 30_000,
+    timeoutMs: 15_000,
   });
 }
 
@@ -109,6 +109,7 @@ function toDbRecipe(r: GeneratedRecipe, userId: string | null) {
     steps: r.steps ?? [],
     fun_fact: r.fun_fact ?? null,
     created_by: userId,
+    created_at: new Date().toISOString(),
   };
 }
 
@@ -173,50 +174,59 @@ export const surpriseMe = createServerFn({ method: "POST" })
 // Search / generate a specific recipe — signed-in users only, rate limited.
 export const generateRecipe = createServerFn({ method: "POST" })
   .middleware([requirePremium])
-  .validator((v: unknown) => z.object({ query: z.string().trim().min(1).max(200) }).parse(v))
+  .validator((v: unknown) =>
+    z
+      .object({
+        query: z.string().trim().min(1).max(200),
+        force: z.boolean().optional(),
+      })
+      .parse(v),
+  )
   .handler(async ({ data, context }) => {
     const requestKey = aiRequestFingerprint(
       context.userId,
       "recipe.generate",
-      data.query.toLowerCase(),
+      `${data.force ? "force:" : ""}${data.query.toLowerCase()}`,
     );
     return deduplicateAiRequest(requestKey, async () => {
       await enforceRateLimit("ai_generate", context.userId, 10);
       const { firebaseAdmin } = await loadFirebaseAdmin();
       const t0 = Date.now();
       try {
-        const { data: exact } = await firebaseAdmin
-          .from("recipes")
-          .select("id,slug,name")
-          .ilike("name", data.query)
-          .limit(1);
-        if (exact && exact.length > 0) {
-          void trackEvent({
-            user_id: context.userId,
-            kind: "ai",
-            name: "ai.generate_recipe",
-            latency_ms: Date.now() - t0,
-            success: true,
-            metadata: { query: data.query, cached: true },
-          });
-          return { slug: exact[0]?.slug ?? "", id: exact[0]?.id ?? null, cached: true };
-        }
+        if (!data.force) {
+          const { data: exact } = await firebaseAdmin
+            .from("recipes")
+            .select("id,slug,name")
+            .ilike("name", data.query)
+            .limit(1);
+          if (exact && exact.length > 0) {
+            void trackEvent({
+              user_id: context.userId,
+              kind: "ai",
+              name: "ai.generate_recipe",
+              latency_ms: Date.now() - t0,
+              success: true,
+              metadata: { query: data.query, cached: true },
+            });
+            return { slug: exact[0]?.slug ?? "", id: exact[0]?.id ?? null, cached: true };
+          }
 
-        const { data: fuzzy } = await firebaseAdmin
-          .from("recipes")
-          .select("id,slug,name")
-          .ilike("name", `%${data.query}%`)
-          .limit(1);
-        if (fuzzy && fuzzy.length > 0) {
-          void trackEvent({
-            user_id: context.userId,
-            kind: "ai",
-            name: "ai.generate_recipe",
-            latency_ms: Date.now() - t0,
-            success: true,
-            metadata: { query: data.query, cached: true },
-          });
-          return { slug: fuzzy[0]?.slug ?? "", id: fuzzy[0]?.id ?? null, cached: true };
+          const { data: fuzzy } = await firebaseAdmin
+            .from("recipes")
+            .select("id,slug,name")
+            .ilike("name", `%${data.query}%`)
+            .limit(1);
+          if (fuzzy && fuzzy.length > 0) {
+            void trackEvent({
+              user_id: context.userId,
+              kind: "ai",
+              name: "ai.generate_recipe",
+              latency_ms: Date.now() - t0,
+              success: true,
+              metadata: { query: data.query, cached: true },
+            });
+            return { slug: fuzzy[0]?.slug ?? "", id: fuzzy[0]?.id ?? null, cached: true };
+          }
         }
 
         await requireAiCredit(context.userId);
@@ -237,14 +247,23 @@ export const generateRecipe = createServerFn({ method: "POST" })
             "Use requested ingredients where possible, include practical quantities and at least four actionable steps.",
           ].join("\n"),
         );
-        const safety = evaluateRecipeAllergens(profile?.preferences, {
-          name: recipe.name,
-          description: recipe.description,
-          ingredients: recipe.ingredients,
-        });
-        if (!safety.safe) {
+        const ingredientTokens = new Set(
+          recipe.ingredients
+            .flatMap((ingredient) => ingredient.name.toLowerCase().split(/[^a-z0-9]+/))
+            .filter(Boolean)
+            .map((word) => word.replace(/s$/, "")),
+        );
+        const allergyConflict = allergies.some((allergy) =>
+          allergy
+            .trim()
+            .toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .filter((word) => word.length > 2)
+            .some((word) => ingredientTokens.has(word.replace(/s$/, ""))),
+        );
+        if (allergyConflict) {
           throw new Error(
-            `The generated recipe conflicted with a saved allergy (${safety.matchedAllergens.join(", ")}). Please try again.`,
+            "The generated recipe conflicted with a saved allergy. Please try again.",
           );
         }
         const row = toDbRecipe(recipe, context.userId);

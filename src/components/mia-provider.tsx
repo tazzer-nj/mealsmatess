@@ -1,68 +1,26 @@
 import { Capacitor } from "@capacitor/core";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouterState } from "@tanstack/react-router";
-import {
-  MiaContext,
-  type MiaConversationSummary,
-  type MiaRecipe,
-  type MiaTurn,
-} from "@/hooks/use-mia";
+import { MiaContext, type MiaRecipe, type MiaTurn } from "@/hooks/use-mia";
 import { useSession } from "@/hooks/use-session";
 import { usePremium } from "@/hooks/use-premium";
-import { useOptionalUpgradeModal } from "@/components/upgrade-modal";
 import { postAuthenticatedAi } from "@/lib/ai-api";
-import {
-  FREE_MIA_SEARCH_LIMIT,
-  getClientDeviceFingerprint,
-  MIA_FREE_LIMIT_ERROR_CODE,
-  MIA_FREE_LIMIT_MESSAGE,
-  type MiaQuotaSnapshot,
-} from "@/lib/freemium";
 import { MiaVoiceSession, type MiaVoiceSnapshot } from "@/lib/mia/voice-session";
 import { openMiaMicrophone } from "@/lib/mia/microphone";
 import { speakMia } from "@/lib/mia/speech";
 
-function isFreeLimitErr(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false;
-  const e = err as { code?: unknown; name?: unknown };
-  return e.code === MIA_FREE_LIMIT_ERROR_CODE || e.name === "MiaFreeLimitError";
-}
-
-function makeFreeLimitError(quota?: MiaQuotaSnapshot) {
-  return Object.assign(new Error(MIA_FREE_LIMIT_MESSAGE), {
-    name: "MiaFreeLimitError",
-    code: MIA_FREE_LIMIT_ERROR_CODE,
-    quota,
-  });
-}
-
-function lastConversationStorageKey(uid: string) {
-  return `mealmate.mia.lastConversationId.${uid}`;
-}
-
-/** Shared across Consumer routes; navigation and refreshes preserve conversation history. */
+/** Shared across Consumer routes; navigation never resets a hands-free conversation. */
 export function MiaProvider({ children }: { children: ReactNode }) {
   const { user } = useSession();
   const { isPremium } = usePremium();
-  const upgradeModal = useOptionalUpgradeModal();
   const path = useRouterState({ select: (state) => state.location.pathname });
   const allowed =
-    !!user && !/^\/(auth|welcome|premium|onboarding|admin|legal|reset-password)(\/|$)/.test(path);
-
+    !!user &&
+    isPremium &&
+    !/^\/(auth|welcome|premium|onboarding|admin|legal|reset-password)(\/|$)/.test(path);
   const [turns, setTurns] = useState<MiaTurn[]>([]);
   const turnsRef = useRef<MiaTurn[]>([]);
   const [busy, setBusy] = useState(false);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const activeIdRef = useRef<string | null>(null);
-  const activeCreatedAtRef = useRef<string | undefined>(undefined);
-  const [conversations, setConversations] = useState<MiaConversationSummary[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [quota, setQuota] = useState<MiaQuotaSnapshot | null>(null);
-  const quotaRef = useRef<MiaQuotaSnapshot | null>(null);
-  quotaRef.current = quota;
-  const isPremiumRef = useRef(isPremium);
-  isPremiumRef.current = isPremium;
-
   const requestRef = useRef<AbortController | null>(null);
   const recipe = useRef<MiaRecipe | null>(null);
   const recipeStepper = useRef<((step: number) => void) | undefined>(undefined);
@@ -79,7 +37,6 @@ export function MiaProvider({ children }: { children: ReactNode }) {
   const nativeLifecycleReady = useRef(!Capacitor.isNativePlatform());
   const allowedRef = useRef(allowed);
   allowedRef.current = allowed;
-
   const updateTurns = useCallback((update: (items: MiaTurn[]) => MiaTurn[]) => {
     turnsRef.current = update(turnsRef.current);
     setTurns(turnsRef.current);
@@ -91,132 +48,8 @@ export function MiaProvider({ children }: { children: ReactNode }) {
     [updateTurns],
   );
 
-  const persistCurrentConversation = useCallback(
-    async (uid: string | undefined, items: MiaTurn[]) => {
-      if (!uid || items.length === 0 || typeof window === "undefined") return;
-      if (import.meta.env?.MODE === "test") return;
-      const convId = activeIdRef.current ?? crypto.randomUUID();
-      if (!activeIdRef.current) {
-        activeIdRef.current = convId;
-        activeCreatedAtRef.current = new Date().toISOString();
-        setActiveConversationId(convId);
-      }
-      try {
-        window.localStorage.setItem(lastConversationStorageKey(uid), convId);
-        const { saveMiaConversation } = await import("@/lib/mia-conversations");
-        const saved = await saveMiaConversation({
-          userId: uid,
-          conversationId: convId,
-          turns: items,
-          recipeContext: recipe.current,
-          createdAt: activeCreatedAtRef.current,
-        });
-        setConversations((prev) => {
-          const rest = prev.filter((c) => c.id !== saved.id);
-          return [saved, ...rest].slice(0, 30);
-        });
-      } catch {
-        /* best-effort persistence */
-      }
-    },
-    [],
-  );
-
-  const refreshHistory = useCallback(async () => {
-    const uid = user?.id;
-    if (!uid || !allowedRef.current || import.meta.env?.MODE === "test") return;
-    setHistoryLoading(true);
-    try {
-      const { listMiaConversations } = await import("@/lib/mia-conversations");
-      const items = await listMiaConversations(uid);
-      setConversations(items);
-    } catch {
-      /* ignore */
-    } finally {
-      setHistoryLoading(false);
-    }
-  }, [user?.id]);
-
-  const openConversation = useCallback(
-    async (id: string) => {
-      const uid = user?.id;
-      if (!uid) return;
-      requestRef.current?.abort();
-      const cached = conversations.find((c) => c.id === id);
-      if (cached) {
-        activeIdRef.current = cached.id;
-        activeCreatedAtRef.current = cached.updated_at;
-        setActiveConversationId(cached.id);
-        updateTurns(() => cached.turns ?? []);
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(lastConversationStorageKey(uid), cached.id);
-        }
-        return;
-      }
-      const { loadMiaConversation } = await import("@/lib/mia-conversations");
-      const loaded = await loadMiaConversation(uid, id);
-      if (!loaded) return;
-      activeIdRef.current = loaded.id;
-      activeCreatedAtRef.current = loaded.created_at;
-      setActiveConversationId(loaded.id);
-      updateTurns(() => loaded.turns ?? []);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(lastConversationStorageKey(uid), loaded.id);
-      }
-    },
-    [conversations, updateTurns, user?.id],
-  );
-
-  const newConversation = useCallback(() => {
-    requestRef.current?.abort();
-    activeIdRef.current = null;
-    activeCreatedAtRef.current = undefined;
-    setActiveConversationId(null);
-    updateTurns(() => []);
-    if (user?.id && typeof window !== "undefined") {
-      window.localStorage.removeItem(lastConversationStorageKey(user.id));
-    }
-  }, [updateTurns, user?.id]);
-
-  const removeConversation = useCallback(
-    async (id: string) => {
-      const uid = user?.id;
-      if (!uid) return;
-      const { deleteMiaConversation } = await import("@/lib/mia-conversations");
-      await deleteMiaConversation(uid, id);
-      setConversations((prev) => prev.filter((c) => c.id !== id));
-      if (activeIdRef.current === id) {
-        newConversation();
-      }
-    },
-    [newConversation, user?.id],
-  );
-
-  const refreshQuota = useCallback(async () => {
-    if (!user?.id || isPremiumRef.current) {
-      setQuota(null);
-      return;
-    }
-    if (import.meta.env?.MODE === "test") return;
-    try {
-      const { getMyMiaQuota } = await import("@/lib/premium.functions");
-      const snapshot = await getMyMiaQuota({
-        data: { deviceFingerprint: getClientDeviceFingerprint() },
-      });
-      setQuota(snapshot);
-    } catch {
-      /* keep current local snapshot if unavailable */
-    }
-  }, [user?.id]);
-
   const answer = useCallback(
-    async (
-      turnId: string,
-      text: string,
-      history: MiaTurn[],
-      signal: AbortSignal,
-      voiceMode: boolean,
-    ) => {
+    async (text: string, history: MiaTurn[], signal: AbortSignal, voiceMode: boolean) => {
       const messages = history
         .filter((turn) => turn.answer.trim() && !turn.error)
         .slice(-10)
@@ -230,43 +63,19 @@ export function MiaProvider({ children }: { children: ReactNode }) {
         messages.reduce((total, item) => total + item.content.length, 0) > 16000
       )
         messages.splice(0, 2);
-
-      let quotaReceivedFromServer = false;
       const { reply } = await postAuthenticatedAi<{ reply: string }>(
         "/api/mia",
         {
           messages,
           voice: voiceMode,
-          ...(!voiceMode ? { stream: true } : {}),
           ...(recipe.current ? { recipe: recipe.current } : {}),
         },
-        {
-          signal,
-          onDelta: voiceMode ? undefined : (partial) => patch(turnId, { answer: partial }),
-          onQuota: (nextQuota) => {
-            quotaReceivedFromServer = true;
-            setQuota(nextQuota);
-          },
-        },
+        { signal },
       );
       if (!reply?.trim()) throw new Error("Mia returned an empty response. Please try again.");
-      if (!isPremiumRef.current && !quotaReceivedFromServer) {
-        setQuota((prev) => {
-          const prevUsed = prev?.freeUsed ?? 0;
-          const freeLimit = prev?.freeLimit ?? FREE_MIA_SEARCH_LIMIT;
-          const freeUsed = Math.min(freeLimit, prevUsed + 1);
-          return {
-            isPremium: false,
-            trialActive: false,
-            freeUsed,
-            freeLimit,
-            freeRemaining: Math.max(0, freeLimit - freeUsed),
-          };
-        });
-      }
       return reply;
     },
-    [patch],
+    [],
   );
 
   const ask = useCallback(
@@ -275,11 +84,7 @@ export function MiaProvider({ children }: { children: ReactNode }) {
       options: { visual?: boolean; voice?: boolean; signal?: AbortSignal } = {},
     ) => {
       const text = question.trim().slice(0, 4000);
-      if (!allowedRef.current) throw new Error("Sign in to use Mia.");
-      if (!isPremiumRef.current && quotaRef.current && quotaRef.current.freeRemaining <= 0) {
-        upgradeModal?.open(MIA_FREE_LIMIT_MESSAGE);
-        throw makeFreeLimitError(quotaRef.current);
-      }
+      if (!allowedRef.current) throw new Error("Sign in with an active subscription to use Mia.");
       if (!text || requestRef.current)
         throw new Error("Mia is still answering. Please wait a moment.");
       const request = new AbortController();
@@ -293,7 +98,7 @@ export function MiaProvider({ children }: { children: ReactNode }) {
       updateTurns((items) =>
         [...items, { id, question: text, answer: "", visualLoading: !!options.visual }].slice(-50),
       );
-      if (options.visual && isPremiumRef.current) {
+      if (options.visual) {
         void import("@/lib/visual.functions")
           .then(({ generateVisualExplanation }) =>
             generateVisualExplanation({ data: { prompt: text, scenes: 4, narration: true } }),
@@ -307,25 +112,11 @@ export function MiaProvider({ children }: { children: ReactNode }) {
           );
       }
       try {
-        const reply = await answer(id, text, previous, request.signal, !!options.voice);
+        const reply = await answer(text, previous, request.signal, !!options.voice);
         request.signal.throwIfAborted();
         patch(id, { answer: reply });
-        void persistCurrentConversation(user?.id, turnsRef.current);
         return reply;
       } catch (error) {
-        if (isFreeLimitErr(error)) {
-          updateTurns((items) => items.filter((turn) => turn.id !== id));
-          const exhausted: MiaQuotaSnapshot = {
-            isPremium: false,
-            trialActive: false,
-            freeUsed: FREE_MIA_SEARCH_LIMIT,
-            freeLimit: FREE_MIA_SEARCH_LIMIT,
-            freeRemaining: 0,
-          };
-          setQuota(exhausted);
-          upgradeModal?.open(MIA_FREE_LIMIT_MESSAGE);
-          throw error;
-        }
         patch(id, {
           error: request.signal.aborted
             ? "Response interrupted."
@@ -342,7 +133,7 @@ export function MiaProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [answer, patch, persistCurrentConversation, updateTurns, upgradeModal, user?.id],
+    [answer, patch, updateTurns],
   );
   const askRef = useRef(ask);
   askRef.current = ask;
@@ -358,15 +149,14 @@ export function MiaProvider({ children }: { children: ReactNode }) {
       setBusy(true);
       patch(id, { answer: "", error: undefined });
       try {
-        const reply = await answer(
-          id,
-          turn.question,
-          turnsRef.current.slice(0, index),
-          request.signal,
-          false,
-        );
-        patch(id, { answer: reply });
-        void persistCurrentConversation(user?.id, turnsRef.current);
+        patch(id, {
+          answer: await answer(
+            turn.question,
+            turnsRef.current.slice(0, index),
+            request.signal,
+            false,
+          ),
+        });
       } catch (error) {
         patch(id, {
           error: error instanceof Error ? error.message : "Mia is unavailable. Please try again.",
@@ -378,7 +168,7 @@ export function MiaProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [answer, patch, persistCurrentConversation, user?.id],
+    [answer, patch],
   );
 
   const voiceRespond = useRef<(text: string, signal: AbortSignal) => Promise<string>>(
@@ -456,93 +246,29 @@ export function MiaProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("offline", offline);
     };
   }, []);
-
   useEffect(() => {
     if (!allowed) {
       session.current?.stop();
       requestRef.current?.abort();
     }
   }, [allowed]);
-
-  useEffect(() => {
-    void refreshQuota();
-  }, [refreshQuota, isPremium]);
-
-  // Clear state cleanly on user change and restore saved active conversation for the signed-in user.
   useEffect(() => {
     session.current?.stop();
     requestRef.current?.abort();
-    activeIdRef.current = null;
-    activeCreatedAtRef.current = undefined;
-    setActiveConversationId(null);
-    setConversations([]);
     updateTurns(() => []);
     recipe.current = null;
-
-    const uid = user?.id;
-    if (!uid || !allowed || import.meta.env?.MODE === "test") return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const { listMiaConversations, loadMiaConversation } =
-          await import("@/lib/mia-conversations");
-        const lastId =
-          typeof window !== "undefined"
-            ? window.localStorage.getItem(lastConversationStorageKey(uid))
-            : null;
-        if (lastId) {
-          const loaded = await loadMiaConversation(uid, lastId);
-          if (!cancelled && loaded && turnsRef.current.length === 0) {
-            activeIdRef.current = loaded.id;
-            activeCreatedAtRef.current = loaded.created_at;
-            setActiveConversationId(loaded.id);
-            updateTurns(() => loaded.turns ?? []);
-          }
-        }
-        const list = await listMiaConversations(uid);
-        if (!cancelled) setConversations(list);
-      } catch {
-        /* non-blocking */
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, allowed, updateTurns]);
+  }, [user?.id, updateTurns]);
 
   return (
     <MiaContext.Provider
       value={{
         turns,
         busy,
-        activeConversationId,
-        conversations,
-        historyLoading,
-        quota: isPremium
-          ? null
-          : (quota ?? {
-              isPremium: false,
-              trialActive: false,
-              freeUsed: 0,
-              freeLimit: FREE_MIA_SEARCH_LIMIT,
-              freeRemaining: FREE_MIA_SEARCH_LIMIT,
-            }),
-        refreshQuota,
         ask,
         retry,
-        refreshHistory,
-        openConversation,
-        newConversation,
-        removeConversation,
         voice,
         startVoice: () => {
           if (!allowedRef.current) return;
-          if (!isPremiumRef.current && quotaRef.current && quotaRef.current.freeRemaining <= 0) {
-            upgradeModal?.open(MIA_FREE_LIMIT_MESSAGE);
-            return;
-          }
           if (!nativeLifecycleReady.current) {
             session.current?.stop(
               "error",

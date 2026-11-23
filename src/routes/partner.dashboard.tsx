@@ -110,9 +110,9 @@ function PartnerDashboard() {
   if (loading || (user && mine.isLoading)) {
     return (
       <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6">
-        <Skeleton className="h-10 w-56 rounded-full" />
-        <Skeleton className="h-28 rounded-3xl" />
-        <Skeleton className="h-64 rounded-3xl" />
+        <Skeleton className="skeleton-shimmer h-10 w-56 rounded-full" />
+        <Skeleton className="skeleton-shimmer h-28 rounded-3xl" />
+        <Skeleton className="skeleton-shimmer h-64 rounded-3xl" />
       </div>
     );
   }
@@ -299,7 +299,7 @@ function StatsRow({ restaurantId, currency }: { restaurantId: string; currency: 
       {cards.map((c) => (
         <div key={c.label} className="md3-surface rounded-2xl border border-border/60 bg-card p-3">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{c.label}</p>
-          <p className="mt-1 text-lg font-semibold">{c.value}</p>
+          <p className="tabular-nums mt-1 text-lg font-semibold">{c.value}</p>
         </div>
       ))}
     </div>
@@ -347,7 +347,7 @@ function OrdersPanel({ restaurantId, currency }: { restaurantId: string; currenc
         <Button
           size="sm"
           variant={scope === "active" ? "default" : "outline"}
-          className="rounded-full"
+          className="min-h-11 rounded-full px-4"
           onClick={() => setScope("active")}
         >
           Active
@@ -355,15 +355,16 @@ function OrdersPanel({ restaurantId, currency }: { restaurantId: string; currenc
         <Button
           size="sm"
           variant={scope === "completed" ? "default" : "outline"}
-          className="rounded-full"
+          className="min-h-11 rounded-full px-4"
           onClick={() => setScope("completed")}
         >
           History
         </Button>
         <Button
-          size="sm"
+          size="icon"
           variant="ghost"
-          className="ml-auto rounded-full"
+          aria-label="Refresh orders"
+          className="ml-auto h-11 w-11 rounded-full"
           onClick={() => refetch()}
           disabled={isFetching}
         >
@@ -372,7 +373,7 @@ function OrdersPanel({ restaurantId, currency }: { restaurantId: string; currenc
       </div>
 
       {isLoading ? (
-        [0, 1].map((i) => <Skeleton key={i} className="h-32 rounded-3xl" />)
+        [0, 1].map((i) => <Skeleton key={i} className="skeleton-shimmer h-32 rounded-3xl" />)
       ) : orders.length === 0 ? (
         <div className="md3-surface rounded-3xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
           {scope === "active" ? "No live orders right now." : "No past orders yet."}
@@ -385,8 +386,8 @@ function OrdersPanel({ restaurantId, currency }: { restaurantId: string; currenc
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold">#{o.id.slice(0, 8)}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="tabular-nums text-sm font-semibold">#{o.id.slice(0, 8)}</p>
+                <p className="tabular-nums text-xs text-muted-foreground">
                   {new Date(o.placed_at).toLocaleString()}
                 </p>
               </div>
@@ -398,7 +399,7 @@ function OrdersPanel({ restaurantId, currency }: { restaurantId: string; currenc
               </Badge>
             </div>
 
-            <ul className="mt-3 space-y-1 text-sm">
+            <ul className="tabular-nums mt-3 space-y-1 text-sm">
               {o.order_items.map((it) => (
                 <li key={it.id} className="flex justify-between gap-3">
                   <span className="min-w-0 truncate">
@@ -412,7 +413,7 @@ function OrdersPanel({ restaurantId, currency }: { restaurantId: string; currenc
               ))}
             </ul>
 
-            <div className="mt-3 flex justify-between border-t border-border/60 pt-3 text-sm font-semibold">
+            <div className="tabular-nums mt-3 flex justify-between border-t border-border/60 pt-3 text-sm font-semibold">
               <span>Total</span>
               <span>{money(o.total, currency)}</span>
             </div>
@@ -430,7 +431,7 @@ function OrdersPanel({ restaurantId, currency }: { restaurantId: string; currenc
                     key={next}
                     size="sm"
                     variant={next === "cancelled" ? "outline" : "default"}
-                    className="rounded-full"
+                    className="min-h-11 rounded-full px-4"
                     disabled={move.isPending}
                     onClick={() => move.mutate({ orderId: o.id, status: next })}
                   >
@@ -565,7 +566,7 @@ function MenuPanel({
 
   return (
     <div className="space-y-4">
-      <Button onClick={openNew} className="w-full rounded-full">
+      <Button onClick={openNew} className="min-h-11 w-full rounded-full">
         <Plus className="mr-2 h-4 w-4" /> Add dish
       </Button>
 
@@ -598,7 +599,9 @@ function MenuPanel({
                     {item.description && (
                       <p className="truncate text-xs text-muted-foreground">{item.description}</p>
                     )}
-                    <p className="mt-0.5 text-sm font-semibold">{money(item.price, currency)}</p>
+                    <p className="tabular-nums mt-0.5 text-sm font-semibold">
+                      {money(item.price, currency)}
+                    </p>
                   </div>
                   <Switch
                     checked={item.is_available}
@@ -608,6 +611,7 @@ function MenuPanel({
                   <Button
                     size="icon"
                     variant="ghost"
+                    className="h-11 w-11 rounded-full"
                     onClick={() => openEdit(item)}
                     aria-label="Edit dish"
                   >
@@ -618,7 +622,7 @@ function MenuPanel({
                     variant="ghost"
                     onClick={() => destroy(item)}
                     aria-label="Delete dish"
-                    className="text-destructive"
+                    className="h-11 w-11 rounded-full text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -695,7 +699,11 @@ function MenuPanel({
               />
             </label>
             <DialogFooter>
-              <Button type="submit" disabled={busy || uploading} className="w-full rounded-full">
+              <Button
+                type="submit"
+                disabled={busy || uploading}
+                className="min-h-11 w-full rounded-full"
+              >
                 {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editing ? "Save changes" : "Add dish"}
               </Button>

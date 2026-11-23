@@ -97,7 +97,9 @@ function WelcomeTourPage() {
   const queryClient = useQueryClient();
   const { user } = useSession();
   const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState<"forward" | "backward">("forward");
   const [busy, setBusy] = useState(false);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   useEffect(() => {
     try {
@@ -146,6 +148,7 @@ function WelcomeTourPage() {
       void handleComplete();
     } else {
       const nextStep = step + 1;
+      setDirection("forward");
       setStep(nextStep);
       try {
         localStorage.setItem("mealmate.tour-step.v3", String(nextStep));
@@ -158,6 +161,7 @@ function WelcomeTourPage() {
   function back() {
     if (step > 0) {
       const prevStep = step - 1;
+      setDirection("backward");
       setStep(prevStep);
       try {
         localStorage.setItem("mealmate.tour-step.v3", String(prevStep));
@@ -166,6 +170,19 @@ function WelcomeTourPage() {
       }
     }
   }
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (busy) return;
+      if (e.key === "ArrowRight") {
+        next();
+      } else if (e.key === "ArrowLeft" && step > 0) {
+        back();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
 
   return (
     <main className="premium-flow app-tour-shell">
@@ -222,7 +239,19 @@ function WelcomeTourPage() {
         </div>
       )}
 
-      <section key={step} className="tour-step-card">
+      <section
+        key={step}
+        className={`tour-step-card ${direction === "backward" ? "step-in-left" : "step-in-right"}`}
+        onTouchStart={(e) => setTouchStartX(e.touches[0]?.clientX ?? null)}
+        onTouchEnd={(e) => {
+          if (touchStartX === null || busy) return;
+          const endX = e.changedTouches[0]?.clientX ?? touchStartX;
+          const delta = endX - touchStartX;
+          setTouchStartX(null);
+          if (delta < -48) next();
+          else if (delta > 48 && step > 0) back();
+        }}
+      >
         <div className="tour-photo-wrapper">
           <RecipeImage recipe={{ name: current.dish }} size="hero" priority />
           <div className="tour-photo-badge">

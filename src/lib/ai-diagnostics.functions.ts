@@ -26,10 +26,10 @@ function safeFailure(error: unknown) {
     return "Firebase Admin is not configured for this server runtime.";
   if (/credit|billing|payment/i.test(message))
     return "The AI provider needs active billing or credits before it can process this test.";
-  if (/LOVABLE_API_KEY|AI_GATEWAY_API_KEY|GEMINI_API_KEY|not configured/i.test(message))
-    return "The AI provider is not configured in this server environment. Check GEMINI_API_KEY in Settings > Secrets.";
+  if (/LOVABLE_API_KEY|AI_GATEWAY_API_KEY|not configured/i.test(message))
+    return "The AI Gateway is not available in this server environment.";
   if (/authentication|unauthorized|rejected.*key/i.test(message))
-    return "AI provider authentication failed. Check the server-side credentials in Settings > Secrets.";
+    return "AI Gateway authentication failed. Check the server-side provider credentials.";
   if (/timeout|timed out/i.test(message)) return "The test timed out before the service responded.";
   return "The server-side diagnostic failed. Check server logs for the test name and failure category.";
 }

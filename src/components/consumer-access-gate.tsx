@@ -1,8 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useFlowController } from "@/lib/flow-controller";
-import { MIA_STUCK_LOADING_DELAY_MS, MiaLoadingCard } from "@/components/mia-loading-card";
-import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const ALLOWED_UNAUTH_PREFIXES = [
   "/auth",
@@ -78,11 +77,11 @@ export function ConsumerAccessGate({ children }: { children: ReactNode }) {
       }
     } else if (state === "paywall_required") {
       void import("@/lib/billing-client").then((m) => m.preloadBillingSdk()).catch(() => undefined);
-      if (pathname !== "/premium" && !isPublic) {
+      if (pathname !== "/premium" && pathname !== "/premium/complete" && !isPublic) {
         void navigate({ to: "/premium", replace: true });
       }
     } else if (state === "app_tour_required") {
-      if (pathname !== "/welcome" && !isPublic) {
+      if (pathname !== "/welcome" && pathname !== "/premium/complete" && !isPublic) {
         void navigate({ to: "/welcome", replace: true });
       }
     } else if (state === "application_ready") {
@@ -100,10 +99,15 @@ export function ConsumerAccessGate({ children }: { children: ReactNode }) {
 
   async function handleSignOut() {
     try {
-      const { signOutUser } = await import("@/lib/firebase");
-      await signOutUser();
+      const mod = await import("@/hooks/use-session");
+      if (typeof mod.signOutUnified === "function") {
+        await mod.signOutUnified();
+      } else {
+        const { signOutUser } = await import("@/lib/firebase");
+        await signOutUser();
+      }
     } catch {
-      // Proceed to /auth even if Firebase sign-out fails offline.
+      // Proceed to /auth even if sign-out fails offline.
     }
     void navigate({ to: "/auth", replace: true });
   }
@@ -125,7 +129,7 @@ export function ConsumerAccessGate({ children }: { children: ReactNode }) {
   if (
     user &&
     !isAdmin &&
-    pathname === "/premium" &&
+    (pathname === "/premium" || pathname === "/premium/complete") &&
     (state === "paywall_required" || state === "loading" || Boolean(access.error))
   ) {
     return <>{children}</>;
@@ -138,7 +142,12 @@ export function ConsumerAccessGate({ children }: { children: ReactNode }) {
   ) {
     return <>{children}</>;
   }
-  if (state === "app_tour_required" && pathname === "/welcome") {
+  if (
+    user &&
+    !isAdmin &&
+    pathname === "/welcome" &&
+    (state === "app_tour_required" || state === "loading")
+  ) {
     return <>{children}</>;
   }
 
@@ -183,30 +192,43 @@ export function ConsumerAccessGate({ children }: { children: ReactNode }) {
 
   if (state !== "application_ready") {
     return (
-      <main className="premium-gate" role="status">
-        <span className="premium-eyebrow">MEALMATE</span>
-        <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Checking your access…</span>
+      <main
+        className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-5 px-4 pt-6 pb-20"
+        role="status"
+        aria-label="Loading workspace"
+      >
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="skeleton-shimmer h-3 w-20 rounded-full" />
+            <Skeleton className="skeleton-shimmer h-8 w-44 rounded-xl" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="skeleton-shimmer h-9 w-9 rounded-full" />
+            <Skeleton className="skeleton-shimmer h-9 w-9 rounded-full" />
+          </div>
         </div>
-        <div className="mx-auto mt-6 w-full max-w-md">
-          <MiaLoadingCard
-            delayMs={MIA_STUCK_LOADING_DELAY_MS}
-            label="Mia is warming up your kitchen while access verifies..."
-          />
+        <Skeleton className="skeleton-shimmer h-14 w-full rounded-full" />
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton className="skeleton-shimmer h-36 rounded-3xl" />
+          <Skeleton className="skeleton-shimmer h-36 rounded-3xl" />
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="skeleton-shimmer h-20 rounded-2xl" />
+          ))}
         </div>
         {slowLoad && user && (
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-xs">
+          <div className="mt-auto flex flex-wrap items-center justify-center gap-3 pt-4 text-xs">
             <button
               type="button"
-              className="rounded-lg border border-border bg-secondary px-3 py-1.5 font-medium text-foreground transition-colors hover:bg-muted"
+              className="min-h-11 rounded-xl border border-border bg-secondary px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted"
               onClick={() => void navigate({ to: "/premium" })}
             >
               View plans
             </button>
             <button
               type="button"
-              className="font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              className="min-h-11 px-3 font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground"
               onClick={() => void handleSignOut()}
             >
               Sign out

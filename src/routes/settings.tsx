@@ -30,7 +30,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useSession } from "@/hooks/use-session";
+import { useSession, signOutUnified } from "@/hooks/use-session";
 import { usePremium } from "@/hooks/use-premium";
 import { usePreferences } from "@/hooks/use-preferences";
 import { useTheme } from "@/components/theme-provider";
@@ -39,10 +39,12 @@ import { APP_FONTS, type AppFontId } from "@/lib/app-fonts";
 import { createPurchaseSession, verifyMyPremium } from "@/lib/billing.functions";
 import { loadBillingStore } from "@/lib/billing-client";
 import { useCurrency } from "@/lib/currency";
+import i18n, { APP_LANGUAGES, normalizeAppLanguage } from "@/lib/i18n";
 import { deleteUser } from "firebase/auth";
-import { auth, sendPasswordReset as sendFirebasePasswordReset, signOutUser } from "@/lib/firebase";
+import { auth, sendPasswordReset as sendFirebasePasswordReset } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
 import { saveUserProfile } from "@/lib/profile-avatar";
+import { saveMyAccountSettings } from "@/lib/account.functions";
 import { ProfileAvatarUploader } from "@/components/profile-avatar-uploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,8 +66,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { FoodPreferences } from "@/lib/preferences";
-import { FEEDBACK_CATEGORIES, type FeedbackCategory } from "@/lib/feedback";
-import { submitFeedbackReport } from "@/lib/feedback.functions";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -129,18 +129,6 @@ const PREF_GOALS = [
 ];
 
 const PREF_SKILLS = ["Beginner", "Intermediate", "Experienced"];
-const PREF_INTOLERANCES = ["Lactose", "Gluten", "Fructose", "Histamine", "Sulfites"];
-const PREF_LIFESTYLES = [
-  "Home cook",
-  "Busy weeknights",
-  "Meal prepper",
-  "Family cooking",
-  "Fitness focused",
-];
-const PREF_MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks", "Dessert"];
-const PREF_BUDGETS = ["Budget friendly", "Moderate", "Flexible"];
-const PREF_COOK_TIMES = ["Under 20 mins", "20 to 35 mins", "35 to 50 mins", "No rush"];
-const PREF_HOUSEHOLD = ["1 person", "2 people", "3 to 4 people (family)", "5+ people"];
 
 function formatInitials(name?: string | null, email?: string | null): string {
   const source = (name || email || "Chef").trim();
@@ -199,10 +187,8 @@ function SettingsPage() {
   const [restoring, setRestoring] = useState(false);
 
   // Report state
-  const [reportCategory, setReportCategory] = useState<FeedbackCategory>("Bug");
   const [reportText, setReportText] = useState("");
   const [reporting, setReporting] = useState(false);
-  const [dislikedDraft, setDislikedDraft] = useState("");
 
   // Mia speech & mic permission state
   const [voiceResponses, setVoiceResponses] = useState(true);
@@ -227,9 +213,9 @@ function SettingsPage() {
   const [draftPrefs, setDraftPrefs] = useState<FoodPreferences>(preferences);
   const [savingPrefs, setSavingPrefs] = useState(false);
 
-  const isGoogleUser = Boolean(
-    firebaseUser?.providerData?.some((p) => p.providerId === "google.com"),
-  );
+  const isWhopUser = user?.provider === "whop";
+  const isGoogleUser =
+    !isWhopUser && Boolean(firebaseUser?.providerData?.some((p) => p.providerId === "google.com"));
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -237,7 +223,11 @@ function SettingsPage() {
     setIsMuted(localStorage.getItem("mealmate_voice_muted") === "true");
     setSpeechSpeed(localStorage.getItem("mealmate_speech_speed") ?? "1.0");
     setUnits((localStorage.getItem("mealmate_units") as "metric" | "imperial") ?? "metric");
-    setLanguage(localStorage.getItem("mealmate_lang") ?? "en");
+    setLanguage(
+      normalizeAppLanguage(
+        localStorage.getItem("mealmate-lang") ?? localStorage.getItem("mealmate_lang") ?? "en",
+      ),
+    );
 
     setMealReminders(localStorage.getItem("mealmate_notif_meal_reminders") !== "false");
     setRecipeAlerts(localStorage.getItem("mealmate_notif_recipe_alerts") !== "false");
@@ -274,11 +264,14 @@ function SettingsPage() {
       await saveUserProfile({
         displayName: trimmed,
         photoURL: photoURL.trim() || null,
+        userId: user.id,
       });
-      await firebaseData
-        .from("profiles")
-        .update({ displayName: trimmed, name: trimmed } as never)
-        .eq("id", user.id);
+      if (auth.currentUser) {
+        await firebaseData
+          .from("profiles")
+          .update({ displayName: trimmed, name: trimmed } as never)
+          .eq("id", user.id);
+      }
       await queryClient.invalidateQueries({ queryKey: ["user", user.id] });
       toast.success("Profile updated");
       setEditProfileOpen(false);
@@ -312,35 +305,15 @@ function SettingsPage() {
   }
 
   function toggleDraftList(
-    field:
-      | "dietary_restrictions"
-      | "allergies"
-      | "intolerances"
-      | "favorite_foods"
-      | "preferred_cuisines"
-      | "lifestyles"
-      | "preferred_meal_types",
+    field: "dietary_restrictions" | "allergies" | "favorite_foods",
     value: string,
   ) {
-    setDraftPrefs((prev) => {
-      const current = prev[field] ?? [];
-      return {
-        ...prev,
-        [field]: current.includes(value) ? current.filter((v) => v !== value) : [...current, value],
-      };
-    });
-  }
-
-  function addDislikedIngredient() {
-    const clean = dislikedDraft.trim();
-    if (!clean) return;
     setDraftPrefs((prev) => ({
       ...prev,
-      disliked_foods: prev.disliked_foods.includes(clean)
-        ? prev.disliked_foods
-        : [...prev.disliked_foods, clean],
+      [field]: prev[field].includes(value)
+        ? prev[field].filter((v) => v !== value)
+        : [...prev[field], value],
     }));
-    setDislikedDraft("");
   }
 
   async function handlePasswordReset() {
@@ -381,8 +354,9 @@ function SettingsPage() {
 
   async function handleSignOut() {
     try {
-      await signOutUser();
+      await queryClient.cancelQueries();
       queryClient.clear();
+      await signOutUnified();
       toast.success("Signed out successfully");
       await navigate({ to: "/auth", replace: true });
     } catch {
@@ -425,7 +399,7 @@ function SettingsPage() {
         }
       }
       if (!auth.currentUser || requiresReauth) {
-        await signOutUser().catch(() => undefined);
+        await signOutUnified().catch(() => undefined);
       }
       queryClient.clear();
       toast.success(
@@ -500,18 +474,32 @@ function SettingsPage() {
     );
   }
 
-  function handleLanguageChange(nextLang: string) {
-    setLanguage(nextLang);
+  async function handleLanguageChange(nextLang: string) {
+    const normalized = normalizeAppLanguage(nextLang);
+    setLanguage(normalized);
     if (typeof window !== "undefined") {
-      localStorage.setItem("mealmate_lang", nextLang);
+      localStorage.setItem("mealmate-lang", normalized);
+      localStorage.setItem("mealmate_lang", normalized);
+      window.dispatchEvent(new CustomEvent("mealmate-lang-changed", { detail: normalized }));
     }
-    const names: Record<string, string> = {
-      en: "English",
-      zu: "isiZulu",
-      af: "Afrikaans",
-      xh: "isiXhosa",
-    };
-    toast.success(`Language set to ${names[nextLang] ?? nextLang}`);
+    void i18n.changeLanguage(normalized).catch(() => undefined);
+    if (user?.id) {
+      try {
+        if (auth.currentUser) {
+          await firebaseData
+            .from("profiles")
+            .update({ locale: normalized } as never)
+            .eq("id", user.id);
+        } else {
+          await saveMyAccountSettings({ data: { locale: normalized } });
+        }
+        void queryClient.invalidateQueries({ queryKey: ["profile-prefs", user.id] });
+      } catch {
+        // Non-blocking: localStorage and active i18n session remain updated.
+      }
+    }
+    const label = APP_LANGUAGES.find((item) => item.code === normalized)?.name ?? normalized;
+    toast.success(`Language set to ${label}`);
   }
 
   function handleFontChange(nextFont: AppFontId) {
@@ -555,30 +543,23 @@ function SettingsPage() {
   }
 
   async function handleReportProblem() {
-    const clean = reportText.trim();
-    if (clean.length < 5) {
-      toast.error("Please include a short description (at least 5 characters).");
-      return;
-    }
+    const details = reportText.trim();
+    if (!details || reporting) return;
     setReporting(true);
     try {
-      const report = await submitFeedbackReport({
-        data: {
-          category: reportCategory,
-          title: `${reportCategory}: ${clean.slice(0, 80)}`,
-          description: clean,
-          routeContext: "/settings",
-        },
-      });
-      await queryClient.invalidateQueries({ queryKey: ["feedback-reports"] });
+      const subject = encodeURIComponent("MealMate Consumer Problem Report");
+      const body = encodeURIComponent(
+        `${details}\n\n---\nAccount: ${user?.email ?? "Signed in user"}\nPlatform: ${navigator.userAgent}`,
+      );
+      try {
+        await navigator.clipboard?.writeText(details);
+      } catch {
+        /* clipboard optional */
+      }
+      window.location.href = `mailto:support@mealsmates.site?subject=${subject}&body=${body}`;
       setReportProblemOpen(false);
       setReportText("");
-      toast.success(`Report logged (${report.reference_id})`, {
-        description: "Track status anytime in Help Centre.",
-        action: { label: "View", onClick: () => navigate({ to: "/support" }) },
-      });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not submit your report right now.");
+      toast.success("Drafted your support email (details copied to clipboard).");
     } finally {
       setReporting(false);
     }
@@ -660,7 +641,7 @@ function SettingsPage() {
                 <span>Account sign-in</span>
               </div>
               <span className="font-medium text-foreground">
-                {isGoogleUser ? "Google" : "Email & Password"}
+                {isWhopUser ? "Whop" : isGoogleUser ? "Google" : "Email & Password"}
               </span>
             </div>
 
@@ -774,7 +755,7 @@ function SettingsPage() {
                   <div className="text-sm font-medium text-foreground">
                     Edit culinary &amp; onboarding preferences
                   </div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">
+                  <div className="mt-0.5 text-xs tabular-nums text-muted-foreground">
                     {dietaryCount || allergyCount || cuisineCount
                       ? `${dietaryCount} diets · ${allergyCount} allergies · ${cuisineCount} flavours`
                       : "Set your dietary preferences, allergies, cuisines, and skill level"}
@@ -798,7 +779,7 @@ function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleUnitsChange("metric")}
-                  className={`min-h-8 rounded-lg px-2.5 py-1.5 font-medium transition-colors sm:px-3 ${
+                  className={`min-h-9 rounded-lg px-3 py-1.5 font-medium transition-colors ${
                     units === "metric"
                       ? "bg-card text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -809,7 +790,7 @@ function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleUnitsChange("imperial")}
-                  className={`min-h-8 rounded-lg px-2.5 py-1.5 font-medium transition-colors sm:px-3 ${
+                  className={`min-h-9 rounded-lg px-3 py-1.5 font-medium transition-colors ${
                     units === "imperial"
                       ? "bg-card text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -831,14 +812,15 @@ function SettingsPage() {
                 </div>
               </div>
               <Select value={language} onValueChange={handleLanguageChange}>
-                <SelectTrigger className="h-9 w-28 shrink-0 rounded-xl border-border bg-secondary text-xs text-foreground sm:w-32">
+                <SelectTrigger className="h-10 w-32 shrink-0 rounded-xl border-border bg-secondary text-xs text-foreground sm:w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-border bg-popover text-popover-foreground">
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="zu">isiZulu</SelectItem>
-                  <SelectItem value="af">Afrikaans</SelectItem>
-                  <SelectItem value="xh">isiXhosa</SelectItem>
+                  {APP_LANGUAGES.map((langOption) => (
+                    <SelectItem key={langOption.code} value={langOption.code}>
+                      {langOption.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1125,7 +1107,7 @@ function SettingsPage() {
             Privacy &amp; Security
           </h2>
           <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-            {!isGoogleUser && user?.email && (
+            {!isWhopUser && !isGoogleUser && user?.email && (
               <button
                 type="button"
                 disabled={sendingReset}
@@ -1447,45 +1429,17 @@ function SettingsPage() {
             </div>
 
             <div>
-              <Label className="text-xs font-medium text-muted-foreground">Intolerances</Label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {PREF_INTOLERANCES.map((item) => {
-                  const active = (draftPrefs.intolerances ?? []).includes(item);
-                  return (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => toggleDraftList("intolerances", item)}
-                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
-                        active
-                          ? "border-amber-600 bg-amber-600 text-white"
-                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
               <Label className="text-xs font-medium text-muted-foreground">
-                Favourite cuisines &amp; flavours
+                Favourite flavours
               </Label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {PREF_CUISINES.map((cuisine) => {
-                  const active =
-                    draftPrefs.favorite_foods.includes(cuisine) ||
-                    (draftPrefs.preferred_cuisines ?? []).includes(cuisine);
+                  const active = draftPrefs.favorite_foods.includes(cuisine);
                   return (
                     <button
                       key={cuisine}
                       type="button"
-                      onClick={() => {
-                        toggleDraftList("favorite_foods", cuisine);
-                        toggleDraftList("preferred_cuisines", cuisine);
-                      }}
+                      onClick={() => toggleDraftList("favorite_foods", cuisine)}
                       className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
                         active
                           ? "border-foreground bg-foreground text-background"
@@ -1493,104 +1447,6 @@ function SettingsPage() {
                       }`}
                     >
                       {cuisine}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">
-                Disliked ingredients
-              </Label>
-              <div className="mt-2 flex gap-2">
-                <Input
-                  value={dislikedDraft}
-                  onChange={(e) => setDislikedDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addDislikedIngredient();
-                    }
-                  }}
-                  placeholder="e.g. cilantro, olives, liver"
-                  className="h-10 flex-1 rounded-xl border-border bg-secondary text-xs text-foreground"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addDislikedIngredient}
-                  className="h-10 rounded-xl border-border text-xs"
-                >
-                  Add
-                </Button>
-              </div>
-              {draftPrefs.disliked_foods.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {draftPrefs.disliked_foods.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() =>
-                        setDraftPrefs((p) => ({
-                          ...p,
-                          disliked_foods: p.disliked_foods.filter((x) => x !== item),
-                        }))
-                      }
-                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-secondary px-2.5 py-1 text-xs text-foreground hover:border-destructive/40"
-                    >
-                      {item} ×
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">
-                Dietary lifestyle &amp; routine
-              </Label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {PREF_LIFESTYLES.map((style) => {
-                  const active = (draftPrefs.lifestyles ?? []).includes(style);
-                  return (
-                    <button
-                      key={style}
-                      type="button"
-                      onClick={() => toggleDraftList("lifestyles", style)}
-                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
-                        active
-                          ? "border-foreground bg-foreground text-background"
-                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {style}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">
-                Preferred meal types
-              </Label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {PREF_MEAL_TYPES.map((meal) => {
-                  const active = (draftPrefs.preferred_meal_types ?? []).includes(meal);
-                  return (
-                    <button
-                      key={meal}
-                      type="button"
-                      onClick={() => toggleDraftList("preferred_meal_types", meal)}
-                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
-                        active
-                          ? "border-foreground bg-foreground text-background"
-                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {meal}
                     </button>
                   );
                 })}
@@ -1616,87 +1472,6 @@ function SettingsPage() {
                       }`}
                     >
                       {level}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground">Household size</Label>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {PREF_HOUSEHOLD.map((size) => {
-                    const active = draftPrefs.household_size === size;
-                    return (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() =>
-                          setDraftPrefs((p) => ({
-                            ...p,
-                            household_size: size,
-                            meals_per_day: size,
-                          }))
-                        }
-                        className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                          active
-                            ? "border-foreground bg-foreground text-background"
-                            : "border-border bg-secondary text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {size}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground">
-                  Budget preference
-                </Label>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {PREF_BUDGETS.map((budget) => {
-                    const active = draftPrefs.food_budget === budget;
-                    return (
-                      <button
-                        key={budget}
-                        type="button"
-                        onClick={() => setDraftPrefs((p) => ({ ...p, food_budget: budget }))}
-                        className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                          active
-                            ? "border-foreground bg-foreground text-background"
-                            : "border-border bg-secondary text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {budget}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">
-                Typical cooking time
-              </Label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {PREF_COOK_TIMES.map((time) => {
-                  const active = draftPrefs.cooking_time === time;
-                  return (
-                    <button
-                      key={time}
-                      type="button"
-                      onClick={() => setDraftPrefs((p) => ({ ...p, cooking_time: time }))}
-                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
-                        active
-                          ? "border-foreground bg-foreground text-background"
-                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {time}
                     </button>
                   );
                 })}
@@ -1818,30 +1593,12 @@ function SettingsPage() {
               Describe what went wrong and our team will look into it.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Category</Label>
-              <Select
-                value={reportCategory}
-                onValueChange={(v) => setReportCategory(v as FeedbackCategory)}
-              >
-                <SelectTrigger className="mt-1.5 h-10 rounded-xl border-border bg-secondary text-xs text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FEEDBACK_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="py-2">
             <textarea
               rows={4}
               value={reportText}
               onChange={(e) => setReportText(e.target.value)}
-              placeholder="What happened? Which screen or recipe were you using?"
+              placeholder="What happened? Which screen were you using?"
               className="w-full rounded-xl border border-border bg-secondary p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-[var(--periwinkle)] focus:outline-none"
             />
           </div>
@@ -1855,7 +1612,7 @@ function SettingsPage() {
             </Button>
             <Button
               onClick={handleReportProblem}
-              disabled={reporting || reportText.trim().length < 5}
+              disabled={reporting || !reportText.trim()}
               className="rounded-xl bg-foreground text-background hover:opacity-90"
             >
               {reporting ? <Loader2 className="animate-spin" size={16} /> : "Submit report"}

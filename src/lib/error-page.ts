@@ -1,23 +1,33 @@
-export function renderErrorPage(options?: {
+export type ErrorPageOptions = {
   status?: number;
+  code?: string;
   title?: string;
   message?: string;
-}): string {
-  const status = options?.status ?? 500;
-  const title =
-    options?.title ??
-    (status === 503
-      ? "MealMate is taking a quick breather"
-      : status === 404
-        ? "We couldn't find that kitchen page"
-        : "Something went wrong in the kitchen");
-  const message =
-    options?.message ??
-    (status === 503
-      ? "Our kitchen servers are catching up right now. Your saved recipes, pantry, and meal plans are safe."
-      : status === 404
-        ? "That link may have moved or expired. Head back home to continue cooking."
-        : "We hit an unexpected bump loading this page. Your saved data is safe—try refreshing or head home.");
+  path?: string;
+};
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function escapeXml(value: string): string {
+  return escapeHtml(value);
+}
+
+export function renderErrorPage(options: ErrorPageOptions = {}): string {
+  const status = options.status ?? 500;
+  const code = escapeHtml(options.code ?? "INTERNAL_SERVER_ERROR");
+  const title = escapeHtml(options.title ?? "This page didn't load");
+  const message = escapeHtml(
+    options.message ??
+      "Something unexpected happened in our kitchen. Try refreshing the page or head back home.",
+  );
+  const pathNote = options.path ? ` · ${escapeHtml(options.path)}` : "";
 
   return `<!doctype html>
 <html lang="en">
@@ -25,196 +35,151 @@ export function renderErrorPage(options?: {
     <meta charset="utf-8" />
     <title>${title} · MealMate</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#fcfcfb" />
+    <meta name="robots" content="noindex" />
     <style>
-      :root {
-        --bg: #fcfcfb;
-        --card: #f5f7f3;
-        --border: #dfe7da;
-        --ink: #17231b;
-        --muted: #526256;
-        --accent: #3d8b40;
-        --accent-ink: #ffffff;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #0e110f;
-          --card: #161b18;
-          --border: #27302a;
-          --ink: #f3f6f4;
-          --muted: #a5b4aa;
-          --accent: #68b86a;
-          --accent-ink: #0e110f;
-        }
-      }
-      * { box-sizing: border-box; }
+      :root { color-scheme: light dark; }
       body {
-        font: 15px/1.6 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: var(--bg);
-        color: var(--ink);
+        font: 15px/1.6 "Manrope", system-ui, -apple-system, sans-serif;
+        background: #fafaf7;
+        color: #13341b;
         display: grid;
         place-items: center;
         min-height: 100vh;
         margin: 0;
         padding: 1.5rem;
       }
+      @media (prefers-color-scheme: dark) {
+        body { background: #101511; color: #f3f5f0; }
+        .card { background: #171e18; border-color: rgba(255, 255, 255, 0.12); }
+        .muted, p { color: #a7b3a9; }
+        .secondary { background: #202a22; color: #f3f5f0; border-color: rgba(255, 255, 255, 0.16); }
+      }
       .card {
         max-width: 30rem;
         width: 100%;
-        background: var(--card);
-        border: 1px solid var(--border);
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
         border-radius: 1.25rem;
-        padding: 2rem;
+        padding: 2.25rem 2rem;
         text-align: center;
+        box-shadow: 0 12px 36px -20px rgba(19, 52, 27, 0.25);
       }
       .brand {
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        font-weight: 600;
-        font-size: 0.875rem;
-        color: var(--accent);
-        margin-bottom: 1rem;
+        gap: 0.45rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        font-size: 0.95rem;
+        margin-bottom: 1.25rem;
       }
-      .code {
-        font-size: 0.75rem;
+      .dot { color: #2f7d44; }
+      .badge {
+        display: inline-block;
+        padding: 0.2rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: var(--muted);
-        margin-bottom: 0.35rem;
+        background: #edf3e9;
+        color: #1f5c31;
+        margin-bottom: 0.85rem;
       }
-      h1 {
-        font-size: 1.4rem;
-        line-height: 1.25;
-        font-weight: 600;
-        margin: 0 0 0.75rem;
-      }
-      p {
-        color: var(--muted);
-        margin: 0 0 1.5rem;
-        font-size: 0.9375rem;
-      }
-      .actions {
-        display: flex;
-        gap: 0.625rem;
-        justify-content: center;
-        flex-wrap: wrap;
-      }
+      h1 { font-size: 1.45rem; line-height: 1.25; margin: 0 0 0.6rem; letter-spacing: -0.02em; }
+      p { color: #4b5563; margin: 0 0 1.5rem; }
+      .actions { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; }
       a, button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 44px;
-        padding: 0.625rem 1.125rem;
+        padding: 0.65rem 1.15rem;
         border-radius: 0.75rem;
         font: inherit;
+        font-weight: 600;
         font-size: 0.875rem;
-        font-weight: 500;
         cursor: pointer;
         text-decoration: none;
         border: 1px solid transparent;
       }
-      .primary {
-        background: var(--accent);
-        color: var(--accent-ink);
-      }
-      .secondary {
-        background: var(--bg);
-        color: var(--ink);
-        border-color: var(--border);
-      }
-      .support {
-        margin-top: 1.25rem;
-        font-size: 0.8125rem;
-        color: var(--muted);
-      }
-      .support a {
-        min-height: auto;
-        padding: 0;
-        color: var(--accent);
-        border: none;
-        display: inline;
-      }
+      .primary { background: #13341b; color: #ffffff; }
+      .secondary { background: #ffffff; color: #13341b; border-color: #d1d5db; }
+      .muted { margin-top: 1.25rem; font-size: 0.75rem; color: #6b7280; }
     </style>
   </head>
   <body>
     <main class="card" role="main">
-      <div class="brand">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M12 3a6 6 0 0 0-6 6c0 1.8.8 3.4 2 4.5V19a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-5.5c1.2-1.1 2-2.7 2-4.5a6 6 0 0 0-6-6Z"/>
-          <path d="M8 15h8"/>
-        </svg>
-        <span>MealMate · Discover. Plan. Eat. Enjoy.</span>
-      </div>
-      <div class="code">Status ${status}</div>
+      <div class="brand">MealMate<span class="dot">.</span></div>
+      <div><span class="badge">HTTP ${status} · ${code}</span></div>
       <h1>${title}</h1>
       <p>${message}</p>
       <div class="actions">
-        <button class="primary" type="button" onclick="location.reload()">Try again</button>
-        <a class="secondary" href="/">Back to MealMate</a>
+        <button type="button" class="primary" onclick="location.reload()">Try again</button>
+        <a class="secondary" href="/">Go home</a>
+        <a class="secondary" href="/support">Support</a>
       </div>
-      <div class="support">
-        Need help? <a href="/support">Visit Help Center</a>
-      </div>
+      <div class="muted">MealMate by Taz Technologies${pathNote}</div>
     </main>
   </body>
 </html>`;
 }
 
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
 export function renderErrorResponse(
   request: Request,
-  options?: {
-    status?: number;
-    code?: string;
-    title?: string;
-    message?: string;
-  },
+  options: Required<Pick<ErrorPageOptions, "status" | "code" | "title" | "message">>,
 ): Response {
-  const status = options?.status ?? 500;
-  const code =
-    options?.code ??
-    (status === 404
-      ? "NOT_FOUND"
-      : status === 503
-        ? "SERVICE_UNAVAILABLE"
-        : "INTERNAL_SERVER_ERROR");
-  const title = options?.title ?? "Something went wrong in the kitchen";
-  const message = options?.message ?? "Please try again shortly.";
+  const url = new URL(request.url);
   const accept = (request.headers.get("accept") ?? "").toLowerCase();
+  const baseHeaders = {
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+  };
 
-  if (accept.includes("application/json")) {
-    return new Response(JSON.stringify({ error: code, status, title, message }), {
-      status,
-      headers: { "content-type": "application/json; charset=utf-8" },
+  const wantsHtml =
+    accept.includes("text/html") ||
+    (!accept.includes("application/json") &&
+      !accept.includes("application/xml") &&
+      !accept.includes("text/xml") &&
+      !accept.includes("text/plain") &&
+      !url.pathname.startsWith("/api/"));
+
+  if (wantsHtml) {
+    const html = renderErrorPage({ ...options, path: url.pathname });
+    return new Response(request.method === "HEAD" ? null : html, {
+      status: options.status,
+      headers: { ...baseHeaders, "Content-Type": "text/html; charset=utf-8" },
     });
   }
 
   if (accept.includes("application/xml") || accept.includes("text/xml")) {
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<error>\n  <status>${status}</status>\n  <code>${escapeXml(code)}</code>\n  <title>${escapeXml(title)}</title>\n  <message>${escapeXml(message)}</message>\n</error>`;
-    return new Response(xml, {
-      status,
-      headers: { "content-type": "application/xml; charset=utf-8" },
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<error>
+  <status>${options.status}</status>
+  <code>${escapeXml(options.code)}</code>
+  <title>${escapeXml(options.title)}</title>
+  <message>${escapeXml(options.message)}</message>
+  <path>${escapeXml(url.pathname)}</path>
+</error>`;
+    return new Response(request.method === "HEAD" ? null : xml, {
+      status: options.status,
+      headers: { ...baseHeaders, "Content-Type": "application/xml; charset=utf-8" },
     });
   }
 
-  if (accept.includes("text/plain") && !accept.includes("text/html")) {
-    return new Response(`MealMate Error (${status} ${code}): ${title} — ${message}`, {
-      status,
-      headers: { "content-type": "text/plain; charset=utf-8" },
+  if (accept.includes("text/plain") && !accept.includes("application/json")) {
+    const text = `MealMate Error (${options.status} ${options.code})\n${options.title}: ${options.message}\nPath: ${url.pathname}\n`;
+    return new Response(request.method === "HEAD" ? null : text, {
+      status: options.status,
+      headers: { ...baseHeaders, "Content-Type": "text/plain; charset=utf-8" },
     });
   }
 
-  return new Response(renderErrorPage({ status, title, message }), {
-    status,
-    headers: { "content-type": "text/html; charset=utf-8" },
+  const payload = {
+    error: options.code,
+    status: options.status,
+    title: options.title,
+    message: options.message,
+    path: url.pathname,
+  };
+  return new Response(request.method === "HEAD" ? null : JSON.stringify(payload), {
+    status: options.status,
+    headers: { ...baseHeaders, "Content-Type": "application/json; charset=utf-8" },
   });
 }

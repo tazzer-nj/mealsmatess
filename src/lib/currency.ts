@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
+import { auth } from "@/lib/firebase";
+import { getMyAccountSettings, saveMyAccountSettings } from "@/lib/account.functions";
 
 export type CurrencyCode = "USD" | "ZAR" | "EUR" | "GBP" | "AUD" | "CAD" | "NZD";
 
@@ -122,13 +124,18 @@ export function useCurrency(): {
   const { data } = useQuery({
     queryKey: ["currency", user?.id ?? "anon"],
     enabled: !!user,
+    staleTime: 5 * 60_000,
     queryFn: async () => {
-      const { data } = await firebaseData
-        .from("profiles")
-        .select("currency")
-        .eq("id", user!.id)
-        .maybeSingle();
-      return (data as { currency?: string } | null)?.currency ?? null;
+      if (auth.currentUser) {
+        const { data } = await firebaseData
+          .from("profiles")
+          .select("currency")
+          .eq("id", user!.id)
+          .maybeSingle();
+        return (data as { currency?: string } | null)?.currency ?? null;
+      }
+      const settings = await getMyAccountSettings().catch(() => null);
+      return settings?.currency ?? null;
     },
   });
 
@@ -146,10 +153,14 @@ export function useCurrency(): {
       window.dispatchEvent(new CustomEvent("mealmate-currency-changed", { detail: next }));
     }
     if (user) {
-      await firebaseData
-        .from("profiles")
-        .update({ currency: next } as never)
-        .eq("id", user.id);
+      if (auth.currentUser) {
+        await firebaseData
+          .from("profiles")
+          .update({ currency: next } as never)
+          .eq("id", user.id);
+      } else {
+        await saveMyAccountSettings({ data: { currency: next } }).catch(() => undefined);
+      }
     }
   }
 

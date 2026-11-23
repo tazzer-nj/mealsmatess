@@ -52,8 +52,8 @@ function OrderPage() {
   if (isLoading) {
     return (
       <div className="mx-auto w-full max-w-2xl space-y-3 px-4 py-6">
-        <Skeleton className="h-8 w-48 rounded-full" />
-        <Skeleton className="h-64 rounded-3xl" />
+        <Skeleton className="skeleton-shimmer h-8 w-48 rounded-full" />
+        <Skeleton className="skeleton-shimmer h-64 rounded-3xl" />
       </div>
     );
   }
@@ -62,7 +62,7 @@ function OrderPage() {
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-16 text-center">
         <h1 className="font-display text-2xl">Order not found</h1>
-        <Button asChild className="rounded-full">
+        <Button asChild className="min-h-11 rounded-full">
           <Link to="/orders">My orders</Link>
         </Button>
       </main>
@@ -81,7 +81,7 @@ function OrderPage() {
     <div className="page-enter mx-auto w-full max-w-2xl space-y-6 px-4 py-6">
       <header>
         <h1 className="font-display text-2xl">{restaurant?.name ?? "Your order"}</h1>
-        <p className="text-xs text-muted-foreground">
+        <p className="tabular-nums text-xs text-muted-foreground">
           Placed {new Date(data.placed_at).toLocaleString()}
         </p>
       </header>
@@ -90,7 +90,7 @@ function OrderPage() {
         <StatusTracker status={data.status as OrderStatus} />
       </section>
 
-      <section className="md3-surface rounded-3xl border border-border/60 bg-card p-4">
+      <section className="md3-surface tabular-nums rounded-3xl border border-border/60 bg-card p-4">
         <h2 className="text-sm font-semibold">Items</h2>
         <ul className="mt-3 space-y-2 text-sm">
           {items.map((it) => (
@@ -128,10 +128,10 @@ function OrderPage() {
       )}
 
       <div className="flex gap-2">
-        <Button asChild variant="outline" size="sm" className="rounded-full">
+        <Button asChild variant="outline" size="sm" className="min-h-11 rounded-full px-4">
           <Link to="/orders">All orders</Link>
         </Button>
-        <Button asChild size="sm" className="rounded-full">
+        <Button asChild size="sm" className="min-h-11 rounded-full px-4">
           <Link to="/restaurants">Order again</Link>
         </Button>
       </div>
