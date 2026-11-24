@@ -181,4 +181,27 @@ describe("Final QA Verification", () => {
       ),
     ).toBe(true);
   });
+
+  it("preserves positive real ratings and ignores fake zero ratings in recipeCatalogRecord", async () => {
+    const { recipeCatalogRecord } = await import("@/lib/recipe-catalog");
+    const rated = recipeCatalogRecord({
+      id: "r1",
+      slug: "rated-dish",
+      name: "Rated Dish",
+      rating: 4.8,
+      difficulty: "Medium",
+      is_premium: true,
+    });
+    expect(rated?.rating).toBe(4.8);
+    expect(rated?.difficulty).toBe("Medium");
+    expect(rated?.is_premium).toBe(true);
+
+    const zeroRated = recipeCatalogRecord({
+      id: "r2",
+      slug: "unrated-dish",
+      name: "Unrated Dish",
+      rating: 0,
+    });
+    expect(zeroRated?.rating).toBeNull();
+  });
 });

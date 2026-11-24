@@ -10,6 +10,7 @@ const ALLOWED_UNAUTH_PREFIXES = [
   "/support",
   "/about",
   "/ai-founder",
+  ...(import.meta.env.DEV ? ["/dev"] : []),
 ];
 
 function isPublicPath(pathname: string) {

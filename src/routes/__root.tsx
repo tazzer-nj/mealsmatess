@@ -265,12 +265,14 @@ function RootComponent() {
     pathname === "/onboarding" ||
     pathname === "/ai-founder" ||
     pathname.startsWith("/auth");
+  const isDevQa = import.meta.env.DEV && pathname.startsWith("/dev");
   const isStandalonePublic =
+    isDevQa ||
     pathname === "/about" ||
     pathname === "/support" ||
     pathname.startsWith("/legal/") ||
     pathname === "/reset-password";
-  const hideConsumerChrome = isFlow || (!user && isStandalonePublic);
+  const hideConsumerChrome = isFlow || isDevQa || (!user && isStandalonePublic);
   const showAppHeader = !isHub && pathname !== "/" && !isMarketplace && !hideConsumerChrome;
   useShellMetrics(showAppHeader ? "with-header" : "no-header");
 

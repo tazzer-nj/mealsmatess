@@ -41,3 +41,7 @@ website/dist/
 # Pinned offline voice model is verified and packaged by voice:prepare.
 public/mia/*.tar.gz
 public/mia/*.tar.gz.json
+
+# Development-only QA telemetry report (not committed to production)
+.qa-report/
+

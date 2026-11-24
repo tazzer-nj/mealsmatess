@@ -58,7 +58,7 @@ type ThemeContextValue = {
   resolved: ResolvedTheme;
   setMode: (m: ThemeMode) => void;
   font: AppFontId;
-  setFont: (f: AppFontId) => void;
+  setFont: (f: AppFontId) => Promise<{ ok: boolean; error?: string }>;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -431,14 +431,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       });
 
       if (user) {
-        void persistToAccount(nextThemeId);
+        void persistToAccount(nextThemeId).then((res) => {
+          if (!res.ok && res.error) {
+            toast.error("Couldn't save theme mode to your account", {
+              description: res.error,
+            });
+          }
+        });
       }
     },
     [user, persistToAccount],
   );
 
   const setFont = useCallback(
-    (nextFont: AppFontId) => {
+    async (nextFont: AppFontId): Promise<{ ok: boolean; error?: string }> => {
       setFontState(nextFont);
       try {
         window.localStorage.setItem(APP_FONT_STORAGE_KEY, nextFont);
@@ -446,10 +452,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         /* ignore */
       }
       document.documentElement.dataset["font"] = nextFont;
-      if (user && (typeof process === "undefined" || !process.env["VITEST"])) {
-        void import("@/lib/account.functions")
-          .then(({ saveMyAccountSettings }) => saveMyAccountSettings({ data: { font: nextFont } }))
-          .catch(() => undefined);
+      if (!user) {
+        return {
+          ok: false,
+          error: "Sign in to sync your font across devices. Applied on this device only.",
+        };
+      }
+      if (typeof process !== "undefined" && process.env["VITEST"]) {
+        return { ok: true };
+      }
+      try {
+        const { saveMyAccountSettings } = await import("@/lib/account.functions");
+        await saveMyAccountSettings({ data: { font: nextFont } });
+        return { ok: true };
+      } catch (err) {
+        return {
+          ok: false,
+          error:
+            err instanceof Error
+              ? err.message
+              : "Couldn't save font preference to your account right now.",
+        };
       }
     },
     [user],

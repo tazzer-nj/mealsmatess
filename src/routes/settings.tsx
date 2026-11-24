@@ -518,45 +518,99 @@ function SettingsPage() {
     }
   }
 
-  function persistAccountPatch(patch: Parameters<typeof saveMyAccountSettings>[0]["data"]) {
-    if (!user?.id) return;
-    void saveMyAccountSettings({ data: patch }).catch(() => {
-      toast.error("Couldn't sync that setting to your account right now.");
-    });
+  async function persistAccountPatch(
+    patch: Parameters<typeof saveMyAccountSettings>[0]["data"],
+  ): Promise<{ ok: boolean; reason?: "unauthenticated" | "error"; error?: string }> {
+    if (!user?.id) {
+      return { ok: false, reason: "unauthenticated" };
+    }
+    try {
+      await saveMyAccountSettings({ data: patch });
+      return { ok: true };
+    } catch (err) {
+      return {
+        ok: false,
+        reason: "error",
+        error: err instanceof Error ? err.message : "Couldn't sync that setting right now.",
+      };
+    }
   }
 
-  function toggleVoiceMute(muted: boolean) {
+  async function toggleVoiceMute(muted: boolean) {
+    const prev = isMuted;
     setIsMuted(muted);
     if (typeof window !== "undefined") {
       localStorage.setItem("mealmate_voice_muted", String(muted));
       if (muted && window.speechSynthesis) window.speechSynthesis.cancel();
     }
-    persistAccountPatch({ isMuted: muted });
-    toast.info(muted ? "Mia audio muted" : "Mia audio unmuted");
+    const res = await persistAccountPatch({ isMuted: muted });
+    if (res.ok) {
+      toast.info(muted ? "Mia audio muted" : "Mia audio unmuted");
+      return;
+    }
+    if (res.reason === "unauthenticated") {
+      toast.info(
+        muted
+          ? "Muted on this device (sign in to sync across devices)"
+          : "Unmuted on this device (sign in to sync across devices)",
+      );
+      return;
+    }
+    setIsMuted(prev);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("mealmate_voice_muted", String(prev));
+    }
+    toast.error("Couldn't sync mute setting to your account right now.");
   }
 
-  function toggleVoiceResponses(val: boolean) {
+  async function toggleVoiceResponses(val: boolean) {
+    const prev = voiceResponses;
     setVoiceResponses(val);
     if (typeof window !== "undefined") {
       localStorage.setItem("mealmate_voice_responses", String(val));
       if (!val && window.speechSynthesis) window.speechSynthesis.cancel();
     }
-    persistAccountPatch({ voiceResponses: val });
-    toast.success(val ? "Voice responses enabled" : "Voice responses disabled");
+    const res = await persistAccountPatch({ voiceResponses: val });
+    if (res.ok) {
+      toast.success(val ? "Voice responses enabled" : "Voice responses disabled");
+      return;
+    }
+    if (res.reason === "unauthenticated") {
+      toast.info("Applied on this device — sign in to save across devices.");
+      return;
+    }
+    setVoiceResponses(prev);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("mealmate_voice_responses", String(prev));
+    }
+    toast.error("Couldn't sync voice responses to your account right now.");
   }
 
-  function handleUnitsChange(nextUnits: "metric" | "imperial") {
+  async function handleUnitsChange(nextUnits: "metric" | "imperial") {
+    const prev = units;
     setUnits(nextUnits);
     if (typeof window !== "undefined") {
       localStorage.setItem("mealmate_units", nextUnits);
     }
-    persistAccountPatch({ units: nextUnits });
-    toast.success(
-      `Units updated to ${nextUnits === "metric" ? "Metric (g, ml)" : "Imperial (oz, lb)"}`,
-    );
+    const label = nextUnits === "metric" ? "Metric (g, ml)" : "Imperial (oz, lb)";
+    const res = await persistAccountPatch({ units: nextUnits });
+    if (res.ok) {
+      toast.success(`Units updated to ${label}`);
+      return;
+    }
+    if (res.reason === "unauthenticated") {
+      toast.info(`Units set to ${label} on this device — sign in to sync across devices.`);
+      return;
+    }
+    setUnits(prev);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("mealmate_units", prev);
+    }
+    toast.error("Couldn't sync measurement units to your account right now.");
   }
 
   async function handleLanguageChange(nextLang: string) {
+    const prevLang = language;
     const normalized = normalizeAppLanguage(nextLang);
     setLanguage(normalized);
     if (typeof window !== "undefined") {
@@ -565,30 +619,49 @@ function SettingsPage() {
       window.dispatchEvent(new CustomEvent("mealmate-lang-changed", { detail: normalized }));
     }
     void i18n.changeLanguage(normalized).catch(() => undefined);
-    if (user?.id) {
-      try {
-        await saveMyAccountSettings({ data: { locale: normalized } });
-        void queryClient.invalidateQueries({ queryKey: ["profile-prefs", user.id] });
-      } catch {
-        toast.error("Couldn't sync language setting to your account.");
-      }
-    }
     const label = APP_LANGUAGES.find((item) => item.code === normalized)?.name ?? normalized;
-    toast.success(`Language set to ${label}`);
+    if (!user?.id) {
+      toast.info(`Language set to ${label} on this device — sign in to sync across devices.`);
+      return;
+    }
+    try {
+      await saveMyAccountSettings({ data: { locale: normalized } });
+      void queryClient.invalidateQueries({ queryKey: ["profile-prefs", user.id] });
+      toast.success(`Language set to ${label}`);
+    } catch {
+      setLanguage(prevLang);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("mealmate-lang", prevLang);
+        localStorage.setItem("mealmate_lang", prevLang);
+        window.dispatchEvent(new CustomEvent("mealmate-lang-changed", { detail: prevLang }));
+      }
+      void i18n.changeLanguage(prevLang).catch(() => undefined);
+      toast.error("Couldn't sync language setting to your account right now.");
+    }
   }
 
-  function handleFontChange(nextFont: AppFontId) {
-    setFont(nextFont);
+  async function handleFontChange(nextFont: AppFontId) {
     const match = APP_FONTS.find((item) => item.id === nextFont);
-    toast.success(`Font set to ${match?.label ?? nextFont}`);
+    const label = match?.label ?? nextFont;
+    const res = await setFont(nextFont);
+    if (res.ok) {
+      toast.success(`Font set to ${label}`);
+      return;
+    }
+    if (!user?.id) {
+      toast.info(`Font set to ${label} on this device — sign in to sync across devices.`);
+      return;
+    }
+    toast.error(res.error || "Applied on this device, but couldn't sync font to your account.");
   }
 
-  function handleNotificationToggle(
+  async function handleNotificationToggle(
     key: string,
     setter: (v: boolean) => void,
     val: boolean,
     label: string,
   ) {
+    const prev = !val;
     setter(val);
     if (typeof window !== "undefined") {
       localStorage.setItem(key, String(val));
@@ -603,10 +676,43 @@ function SettingsPage() {
       mealmate_notif_promo: "promoAlerts",
     };
     const field = fieldMap[key];
-    if (field) {
-      persistAccountPatch({ notifications: { [field]: val } });
+    if (!field) return;
+    const res = await persistAccountPatch({ notifications: { [field]: val } });
+    if (res.ok) {
+      toast.success(`${label} ${val ? "enabled" : "turned off"}`);
+      return;
     }
-    toast.success(`${label} ${val ? "enabled" : "turned off"}`);
+    if (res.reason === "unauthenticated") {
+      toast.info(`${label} updated on this device — sign in to sync across devices.`);
+      return;
+    }
+    setter(prev);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(key, String(prev));
+    }
+    toast.error(`Couldn't sync ${label.toLowerCase()} to your account right now.`);
+  }
+
+  async function handleSpeechSpeedChange(rate: string) {
+    const prev = speechSpeed;
+    setSpeechSpeed(rate);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("mealmate_speech_speed", rate);
+    }
+    const res = await persistAccountPatch({ speechSpeed: rate });
+    if (res.ok) {
+      toast.success(`Mia speech rate set to ${rate}x`);
+      return;
+    }
+    if (res.reason === "unauthenticated") {
+      toast.info(`Speech rate set to ${rate}x on this device.`);
+      return;
+    }
+    setSpeechSpeed(prev);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("mealmate_speech_speed", prev);
+    }
+    toast.error("Couldn't sync speech speed to your account right now.");
   }
 
   function handleExportData() {
@@ -1645,11 +1751,7 @@ function SettingsPage() {
                   <button
                     key={rate}
                     type="button"
-                    onClick={() => {
-                      setSpeechSpeed(rate);
-                      localStorage.setItem("mealmate_speech_speed", rate);
-                      persistAccountPatch({ speechSpeed: rate });
-                    }}
+                    onClick={() => void handleSpeechSpeedChange(rate)}
                     className={`flex-1 rounded-xl border py-2.5 text-xs font-medium transition-colors ${
                       speechSpeed === rate
                         ? "border-foreground bg-foreground text-background"

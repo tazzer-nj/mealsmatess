@@ -68,6 +68,11 @@ export function recipeCatalogRecord(row: Record<string, unknown>) {
       : [],
     fun_fact: text(row["fun_fact"]),
     created_by: text(row["created_by"]),
+    rating: (() => {
+      const val = number(row["rating"]) ?? number(row["avg_rating"]);
+      return val !== null && val > 0 ? val : null;
+    })(),
+    is_premium: typeof row["is_premium"] === "boolean" ? row["is_premium"] : undefined,
     image_url: text(row["image_url"]),
     image_source: text(row["image_source"]),
     image_attribution: photoAttribution(row["image_attribution"]),

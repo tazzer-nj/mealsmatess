@@ -131,6 +131,12 @@ export function FeaturedRecipeCard({
                   {recipe.difficulty}
                 </span>
               ) : null}
+              {typeof recipe.rating === "number" && recipe.rating > 0 ? (
+                <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                  <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                  {recipe.rating.toFixed(1)}
+                </span>
+              ) : null}
             </div>
 
             <div className="flex items-center justify-between pt-2">
@@ -205,6 +211,12 @@ export function TrendingCard({
           </span>
         </button>
 
+        {recipe.is_premium && (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold text-white shadow backdrop-blur-md">
+            <Sparkles className="h-2.5 w-2.5" /> Premium
+          </span>
+        )}
+
         {(recipe.cooking_time_minutes || recipe.calories) && (
           <div className="tabular-nums absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-ink/80 px-2.5 py-1 text-[11px] font-medium text-cream backdrop-blur">
             {recipe.cooking_time_minutes ? (
@@ -225,19 +237,29 @@ export function TrendingCard({
       <h3 className="mt-2 line-clamp-2 font-display text-base leading-tight transition-colors group-hover:text-primary">
         {recipe.name}
       </h3>
-      {recipe.difficulty && (
-        <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
-          {recipe.difficulty}
-          <span className="flex items-center gap-0.5">
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className={`h-1.5 w-1.5 rounded-full ${
-                  i < dots ? "bg-primary" : "bg-muted-foreground/30"
-                }`}
-              />
-            ))}
-          </span>
+      {(recipe.difficulty || (typeof recipe.rating === "number" && recipe.rating > 0)) && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          {recipe.difficulty && (
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground">
+              {recipe.difficulty}
+              <span className="flex items-center gap-0.5">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      i < dots ? "bg-primary" : "bg-muted-foreground/30"
+                    }`}
+                  />
+                ))}
+              </span>
+            </div>
+          )}
+          {typeof recipe.rating === "number" && recipe.rating > 0 && (
+            <span className="tabular-nums inline-flex items-center gap-0.5 text-[11px] font-semibold text-foreground">
+              <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+              {recipe.rating.toFixed(1)}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -301,9 +323,11 @@ export function RecipeCard({
 
       <div className="flex flex-1 flex-col justify-between p-4">
         <div>
-          <div className="tabular-nums flex items-center justify-between text-xs text-muted-foreground">
-            <span className="font-medium">{recipe.cuisine ?? recipe.category ?? "Recipe"}</span>
-            <div className="flex items-center gap-2">
+          <div className="tabular-nums flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span className="truncate font-medium">
+              {recipe.cuisine ?? recipe.category ?? "Recipe"}
+            </span>
+            <div className="flex shrink-0 items-center gap-2">
               {recipe.cooking_time_minutes ? (
                 <span className="inline-flex items-center gap-1">
                   <Clock className="h-3 w-3" />
@@ -316,6 +340,12 @@ export function RecipeCard({
                   {recipe.calories}
                 </span>
               ) : null}
+              {typeof recipe.rating === "number" && recipe.rating > 0 ? (
+                <span className="inline-flex items-center gap-0.5 font-semibold text-foreground">
+                  <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                  {recipe.rating.toFixed(1)}
+                </span>
+              ) : null}
             </div>
           </div>
 
@@ -326,9 +356,15 @@ export function RecipeCard({
           </Link>
         </div>
 
-        {recipe.diet_tags && recipe.diet_tags.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1">
-            {recipe.diet_tags.slice(0, 3).map((t) => (
+        {(recipe.difficulty || (recipe.diet_tags && recipe.diet_tags.length > 0)) && (
+          <div className="mt-4 flex flex-wrap items-center gap-1.5">
+            {recipe.difficulty && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                <ChefHat className="h-3 w-3" />
+                {recipe.difficulty}
+              </span>
+            )}
+            {recipe.diet_tags?.slice(0, 2).map((t) => (
               <span
                 key={t}
                 className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground"
