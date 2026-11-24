@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MEALMATE_THEMES, EXCLUSIVE_PREMIUM_THEMES } from "@/lib/themes";
+import { MEALMATE_THEMES, PREMIUM_THEMES } from "@/lib/themes";
 import type { DevLiveCheck, QaFailureEntry, QaReportPayload } from "@/routes/api/dev/qa-report";
 
 export const Route = createFileRoute("/dev/qa")({

@@ -682,17 +682,41 @@ class FirestoreTableQuery implements PromiseLike<DbResult<any>> {
     this.assertUserAccess(inputRows);
     const results: Row[] = [];
     for (const input of inputRows) {
-      const query = collectionRef.where(
-        this.conflictFields[0] ?? "id",
-        "==",
-        input[this.conflictFields[0] ?? "id"],
-      );
-      const snapshot = await query.get();
-      const existing = snapshot.docs.find((item) =>
-        this.conflictFields.every((field) => item.get(field) === input[field]),
-      );
-      const id = existing?.id ?? documentKey(this.table, input);
-      const ref = existing?.ref ?? documentForRow(db, this.table, input, id, this.userId);
+      const conflictField = this.conflictFields[0] ?? "id";
+      const conflictVal = String(input[conflictField] ?? "");
+      let existing: { id: string; ref: any; data: () => any } | undefined = undefined;
+
+      if (conflictVal && (this.table === "profiles" || conflictField === "id")) {
+        const directRef = documentForRow(db, this.table, input, conflictVal, this.userId);
+        const directSnap = await directRef.get();
+        if (directSnap.exists) {
+          existing = {
+            id: directSnap.id,
+            ref: directSnap.ref,
+            data: () => directSnap.data(),
+          };
+        }
+      } else if (conflictVal) {
+        try {
+          const query = collectionRef.where(conflictField, "==", input[conflictField]);
+          const snapshot = await query.get();
+          const found = snapshot.docs.find((item) =>
+            this.conflictFields.every((field) => item.get(field) === input[field]),
+          );
+          if (found) {
+            existing = {
+              id: found.id,
+              ref: found.ref,
+              data: () => found.data(),
+            };
+          }
+        } catch {
+          /* fallback if collection query index is missing */
+        }
+      }
+
+      const id = existing?.id || conflictVal || documentKey(this.table, input);
+      const ref = existing?.ref || documentForRow(db, this.table, input, id, this.userId);
       await db.runTransaction(async (transaction) => {
         const current = await transaction.get(ref);
         transaction.set(ref, { ...(current.data() ?? {}), ...input, id }, { merge: true });

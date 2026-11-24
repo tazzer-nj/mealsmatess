@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { json } from "@tanstack/react-start";
-import { MEALMATE_THEMES, EXCLUSIVE_PREMIUM_THEMES } from "@/lib/themes";
+import { MEALMATE_THEMES, PREMIUM_THEMES } from "@/lib/themes";
 import { CURATED_RECIPES } from "@/lib/curated-recipes";
 import { getFirebaseAdminConfigStatus } from "@/server/firebase-admin";
 
@@ -85,7 +85,7 @@ async function runLiveServerChecks(): Promise<DevLiveCheck[]> {
 
   // 1. Theme registry audit (2 default + 6 exclusive)
   const themeStart = Date.now();
-  const hasSixExclusive = EXCLUSIVE_PREMIUM_THEMES.length === 6;
+  const hasSixExclusive = PREMIUM_THEMES.length === 6;
   const totalThemes = MEALMATE_THEMES.length === 8;
   checks.push({
     id: "server-themes-count",

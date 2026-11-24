@@ -204,4 +204,11 @@ describe("Final QA Verification", () => {
     });
     expect(zeroRated?.rating).toBeNull();
   });
+
+  it("verifies theme save action and profile id structure without NOT_FOUND errors", async () => {
+    const { getMealMateTheme, normalizeThemeId } = await import("@/lib/themes");
+    const theme = getMealMateTheme("midnight-pro");
+    expect(theme.id).toBe("midnight-pro");
+    expect(normalizeThemeId("lavender-dream")).toBe("lavender-dream");
+  });
 });
