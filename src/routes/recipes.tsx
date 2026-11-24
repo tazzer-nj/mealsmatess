@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Loader2, Sparkles } from "lucide-react";
+import { Search, Loader2, Sparkles, Compass, Flame, Heart } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
 import {
@@ -9,25 +9,27 @@ import {
   searchOrGenerateRecipe,
   toastRecipeGenerationError,
 } from "@/lib/recipe-search";
-import { recipesByCategoryQuery } from "@/lib/queries";
+import { recipesByCategoryQuery, myFavoritesQuery } from "@/lib/queries";
 import { generateRecipe, surpriseMe } from "@/lib/ai.functions";
-import { RecipeCard } from "@/components/recipe-card";
+import { RecipeCard, FeaturedRecipeCard } from "@/components/recipe-card";
 import { MiaLoadingCard } from "@/components/mia-loading-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { firebaseData } from "@/lib/firebase-data";
 
-const CATEGORIES = [
+const DISCOVERY_CATEGORIES = [
   "All",
-  "Breakfast",
-  "Lunch",
-  "Dinner",
-  "Dessert",
-  "Snacks",
-  "Drinks",
-  "Vegan",
-  "High Protein",
+  "Today's Picks",
+  "Trending",
+  "South African Favorites",
   "Quick",
+  "Budget",
+  "Healthy Meals",
+  "High Protein",
+  "Comfort Food",
+  "Breakfast",
+  "Dessert",
 ];
 
 type RecipeSearch = { c?: string; q?: string };
@@ -35,18 +37,20 @@ type RecipeSearch = { c?: string; q?: string };
 export const Route = createFileRoute("/recipes")({
   head: () => ({
     meta: [
-      { title: "Discover recipes | MealMate" },
+      { title: "Discover recipes & Food Inspiration | MealMate" },
       {
         name: "description",
-        content: "Browse South African favourites, global classics, and personalised recipe ideas.",
+        content:
+          "Explore trending recipes, South African favourites, quick meals, and AI-crafted dishes.",
       },
       { property: "og:title", content: "Discover recipes | MealMate" },
       {
         property: "og:description",
-        content: "Browse South African favourites, global classics, and personalised recipe ideas.",
+        content:
+          "Explore trending recipes, South African favourites, quick meals, and AI-crafted dishes.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   validateSearch: (search: Record<string, unknown>): RecipeSearch => ({
@@ -68,7 +72,10 @@ function RecipesPage() {
     isError,
     refetch,
   } = useQuery({
-    ...recipesByCategoryQuery(active !== "All" ? active : undefined, q),
+    ...recipesByCategoryQuery(
+      active !== "All" && active !== "Today's Picks" && active !== "Trending" ? active : undefined,
+      q,
+    ),
     enabled: !!user,
   });
   const loadingRecipes = (!user && sessionLoading) || isLoading;
@@ -79,6 +86,32 @@ function RecipesPage() {
   const [busy, setBusy] = useState(false);
   const [generatingFor, setGeneratingFor] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  const { data: favorites } = useQuery({ ...myFavoritesQuery(), enabled: !!user });
+  const favoriteIds = new Set(favorites?.map((f) => f.recipe_id) ?? []);
+
+  async function toggleFavorite(recipeId: string) {
+    if (!user) {
+      toast.error("Sign in to save favorite recipes.");
+      await navigate({ to: "/auth" });
+      return;
+    }
+    const isFav = favoriteIds.has(recipeId);
+    try {
+      if (isFav) {
+        await firebaseData
+          .from("favorites")
+          .delete()
+          .eq("recipe_id", recipeId)
+          .eq("user_id", user.id);
+      } else {
+        await firebaseData.from("favorites").insert({ recipe_id: recipeId, user_id: user.id });
+      }
+      await queryClient.invalidateQueries({ queryKey: ["favorites"] });
+    } catch {
+      toast.error("Couldn't update favorites");
+    }
+  }
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
@@ -153,15 +186,40 @@ function RecipesPage() {
     }
   }
 
+  const featuredRecipe = recipes && recipes.length > 0 ? recipes[0] : null;
+  const gridRecipes = recipes && recipes.length > 1 ? recipes.slice(1) : [];
+
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 overflow-x-hidden bg-background px-3.5 py-6 text-foreground sm:px-4 sm:py-8">
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-3xl font-medium tracking-tight text-foreground">Discover recipes</h1>
-        <p className="text-sm text-muted-foreground">
-          Search our library—if a dish isn&apos;t here yet, Mia will create a recipe for you.
-        </p>
+    <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden bg-background px-4 py-8 text-foreground sm:px-6 lg:px-8">
+      {/* Editorial Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-border">
+        <div>
+          <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary mb-1">
+            <Compass className="h-4 w-4" /> Editorial Food Discovery
+          </div>
+          <h1 className="font-display text-3xl md:text-4xl tracking-tight text-foreground">
+            Discover culinary inspiration
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
+            Browse hand-crafted recipes, South African classics, and AI-tailored creations designed
+            for every table.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-xl border-border bg-card text-foreground hover:bg-secondary"
+            onClick={handleSurprise}
+            disabled={busy}
+          >
+            <Sparkles className="mr-1.5 h-4 w-4 text-primary" />
+            Surprise Me
+          </Button>
+        </div>
       </div>
 
+      {/* Search & AI Bar */}
       <form onSubmit={handleGenerate} className="mt-6 flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -170,7 +228,7 @@ function RecipesPage() {
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search recipes"
             maxLength={200}
-            placeholder="Search recipes, ingredients, cuisines…"
+            placeholder="Search recipes, ingredients, cuisines (e.g. bobotie, creamy pasta)…"
             className="h-12 rounded-xl border-border bg-card pl-10 text-foreground placeholder:text-muted-foreground"
           />
         </div>
@@ -199,36 +257,27 @@ function RecipesPage() {
             </>
           )}
         </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="lg"
-          className="h-12 rounded-xl border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
-          onClick={handleSurprise}
-          disabled={busy}
-        >
-          Surprise
-        </Button>
       </form>
 
       {generatingFor && (
-        <div className="mt-5">
+        <div className="mt-6">
           <MiaLoadingCard
             delayMs={0}
-            label={`Mia is creating a recipe for "${generatingFor}"...`}
+            label={`Mia is creating a custom recipe for "${generatingFor}" with professional food photography...`}
           />
         </div>
       )}
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {CATEGORIES.map((cat) => (
+      {/* Discovery Category Pills */}
+      <div className="mt-6 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+        {DISCOVERY_CATEGORIES.map((cat) => (
           <Link
             key={cat}
             to="/recipes"
             search={{ ...(cat === "All" ? {} : { c: cat }), ...(q ? { q } : {}) }}
-            className={`inline-flex min-h-11 items-center rounded-xl border px-3.5 py-2 text-xs font-medium transition-colors ${
+            className={`inline-flex shrink-0 min-h-11 items-center rounded-xl border px-4 py-2 text-xs font-medium transition-colors ${
               active === cat
-                ? "border-primary bg-primary text-primary-foreground"
+                ? "border-primary bg-primary text-primary-foreground shadow-sm"
                 : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground"
             }`}
           >
@@ -237,18 +286,22 @@ function RecipesPage() {
         ))}
       </div>
 
+      {/* Main Content Area */}
       <div className="mt-8">
         {loadingRecipes ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton
-                key={i}
-                className="skeleton-shimmer aspect-[4/3] w-full rounded-2xl bg-secondary"
-              />
-            ))}
+          <div className="space-y-8">
+            <Skeleton className="skeleton-shimmer aspect-[16/9] w-full rounded-3xl bg-secondary" />
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton
+                  key={i}
+                  className="skeleton-shimmer aspect-[4/3] w-full rounded-2xl bg-secondary"
+                />
+              ))}
+            </div>
           </div>
         ) : isError ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+          <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center">
             <p className="text-sm text-muted-foreground">Recipes couldn&apos;t load right now.</p>
             <Button
               variant="outline"
@@ -259,13 +312,12 @@ function RecipesPage() {
             </Button>
           </div>
         ) : recipes && recipes.length > 0 ? (
-          <div className="space-y-5">
+          <div className="space-y-10">
             {q && (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
                 <p className="text-sm text-muted-foreground">
                   Showing {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"} for{" "}
-                  <span className="font-medium text-foreground">&ldquo;{q}&rdquo;</span>. Want a
-                  fresh custom version?
+                  <span className="font-medium text-foreground">&ldquo;{q}&rdquo;</span>.
                 </p>
                 <Button
                   type="button"
@@ -280,22 +332,54 @@ function RecipesPage() {
                 </Button>
               </div>
             )}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {recipes.map((r, index) => (
-                <RecipeCard key={r.id} recipe={r} priority={index < 2} />
-              ))}
+
+            {/* Featured Hero Recipe (only shown when not deep in search/filter if desired, or always as spotlight) */}
+            {!q && active === "All" && featuredRecipe && (
+              <div>
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="font-display text-xl tracking-tight text-foreground flex items-center gap-2">
+                    <Flame className="h-5 w-5 text-primary" /> Today&apos;s Featured Masterpiece
+                  </h2>
+                </div>
+                <FeaturedRecipeCard
+                  recipe={featuredRecipe}
+                  isFavorite={featuredRecipe.id ? favoriteIds.has(featuredRecipe.id) : false}
+                  onToggleFavorite={toggleFavorite}
+                />
+              </div>
+            )}
+
+            {/* Grid of Recipes */}
+            <div>
+              {!q && active === "All" && (
+                <div className="mb-4">
+                  <h2 className="font-display text-xl tracking-tight text-foreground">
+                    Explore All Recipes
+                  </h2>
+                </div>
+              )}
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {(!q && active === "All" ? gridRecipes : recipes).map((r, index) => (
+                  <RecipeCard
+                    key={r.id}
+                    recipe={r}
+                    isFavorite={r.id ? favoriteIds.has(r.id) : false}
+                    onToggleFavorite={toggleFavorite}
+                    priority={index < 3}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
-            <p className="text-sm text-muted-foreground">
+          <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center">
+            <p className="text-base font-medium text-foreground">No recipes found</p>
+            <p className="mt-1 text-sm text-muted-foreground">
               {q
-                ? `No saved recipes matched "${q}" yet. Let Mia create it for you!`
-                : active !== "All"
-                  ? "No recipes matched this filter. Try another category or generate a recipe above."
-                  : "Nothing here yet. Try searching or generating a recipe above!"}
+                ? `No saved recipes matched "${q}" yet. Let Mia create a custom recipe for you!`
+                : "Nothing here yet. Try searching or generating a recipe above!"}
             </p>
-            <div className="mt-4 flex flex-wrap justify-center gap-2.5">
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
               {q && (
                 <Button
                   type="button"
@@ -311,18 +395,16 @@ function RecipesPage() {
                   Generate &ldquo;{q}&rdquo; recipe
                 </Button>
               )}
-              {(q || active !== "All") && (
-                <Button
-                  variant="outline"
-                  className="min-h-11 rounded-xl border-border bg-secondary text-foreground"
-                  onClick={() => {
-                    setQuery("");
-                    void navigate({ to: "/recipes", search: {} });
-                  }}
-                >
-                  Show all recipes
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                className="min-h-11 rounded-xl border-border bg-secondary text-foreground"
+                onClick={() => {
+                  setQuery("");
+                  void navigate({ to: "/recipes", search: {} });
+                }}
+              >
+                Show all recipes
+              </Button>
             </div>
           </div>
         )}

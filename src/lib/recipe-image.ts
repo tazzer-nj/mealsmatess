@@ -30,6 +30,7 @@ const INGREDIENT_HINTS: Array<[RegExp, string]> = [
   [/\bpancake|waffle|french toast\b/i, "breakfast stack on a plate"],
   [/\bcake|pudding|pie|tart|dessert|brownie|cookie\b/i, "dessert plated with garnish"],
   [/\bbread|loaf|sandwich|wrap|taco|kota|bunny chow\b/i, "handheld, cut to show the filling"],
+  [/\bpap|boerewors|wors|chakalaka\b/i, "traditional South African pap and boerewors plating"],
 ];
 
 function hashSeed(input: string): number {
@@ -89,6 +90,19 @@ const CURATED_ALIASES: Record<string, string> = {
   "malva-pudding-mealmate": "malva-pudding",
   "jollof-rice": "west-african-jollof-rice",
   "west-african-jollof-rice": "west-african-jollof-rice",
+  "chicken-alfredo": "creamy-chicken-alfredo",
+  "creamy-chicken-alfredo": "creamy-chicken-alfredo",
+  "buttermilk-pancakes": "fluffy-buttermilk-pancakes",
+  "fluffy-buttermilk-pancakes": "fluffy-buttermilk-pancakes",
+  "rainbow-buddha-bowl": "rainbow-buddha-bowl",
+  "buddha-bowl": "rainbow-buddha-bowl",
+  "beef-tacos": "smoky-beef-tacos",
+  "smoky-beef-tacos": "smoky-beef-tacos",
+  potjiekos: "beef-potjiekos",
+  "beef-potjiekos": "beef-potjiekos",
+  "banana-bread": "classic-banana-bread",
+  "classic-banana-bread": "classic-banana-bread",
+  "apple-pie": "classic-american-apple-pie-rgq3c",
 };
 
 function curatedKey(value: string): string {

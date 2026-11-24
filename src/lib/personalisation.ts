@@ -173,7 +173,9 @@ export const HOUSEHOLD_SIZE_OPTIONS = [
   "5+ people (large feast)",
 ] as const;
 
-export function parseMaxMinutesFromCookingTime(cookingTime: string | null | undefined): number | null {
+export function parseMaxMinutesFromCookingTime(
+  cookingTime: string | null | undefined,
+): number | null {
   if (!cookingTime) return null;
   if (/under 15/i.test(cookingTime)) return 15;
   if (/under 20/i.test(cookingTime)) return 20;
@@ -199,13 +201,19 @@ export function buildPersonalisationProfile(prefs: FoodPreferences): Personalisa
   const challenges = prefs.challenges ?? [];
   const healthGoals = prefs.health_goals ?? [];
 
-  if (enjoyments.includes("South African food") || prefs.preferred_cuisines.includes("South African")) {
+  if (
+    enjoyments.includes("South African food") ||
+    prefs.preferred_cuisines.includes("South African")
+  ) {
     recommendedCategories.add("South African Favorites");
   }
   if (enjoyments.includes("Vegan") || prefs.dietary_restrictions.includes("Vegan")) {
     recommendedCategories.add("Vegan");
   }
-  if (enjoyments.includes("High-protein meals") || healthGoals.includes("Support my fitness routine.")) {
+  if (
+    enjoyments.includes("High-protein meals") ||
+    healthGoals.includes("Support my fitness routine.")
+  ) {
     recommendedCategories.add("High Protein");
   }
   if (
@@ -353,7 +361,10 @@ export function buildDynamicOnboardingSummary(prefs: FoodPreferences): string {
   );
   const primaryGoals =
     goals.length > 0
-      ? goals.slice(0, 2).map((g) => g.replace(/\.$/, "").toLowerCase()).join(" and ")
+      ? goals
+          .slice(0, 2)
+          .map((g) => g.replace(/\.$/, "").toLowerCase())
+          .join(" and ")
       : "make everyday meals simpler";
   const challenges = prefs.challenges ?? [];
   const challengeClause =

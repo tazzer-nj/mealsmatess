@@ -195,7 +195,7 @@ export function PremiumPaywall() {
               purchase: async () => {},
             },
             {
-              id: "premium_family",
+              id: "premium_family_monthly",
               kind: "family",
               price: isUsd ? "$12.99" : "R249.00",
               period: "month",
@@ -253,7 +253,7 @@ export function PremiumPaywall() {
                 purchase: async () => {},
               },
               {
-                id: "premium_family",
+                id: "premium_family_monthly",
                 kind: "family",
                 price: isUsd ? "$12.99" : "R249.00",
                 period: "month",

@@ -10,17 +10,27 @@ import { VitePWA } from "vite-plugin-pwa";
 function resolveFirebaseAuthDomain() {
   const fromEnv = process.env["VITE_FIREBASE_AUTH_DOMAIN"]?.trim();
   if (fromEnv) return fromEnv;
-  try {
-    const raw = fs.readFileSync(path.resolve(process.cwd(), "firebase-applet-config.json"), "utf8");
-    const parsed = JSON.parse(raw) as { authDomain?: string };
-    if (parsed.authDomain?.trim()) return parsed.authDomain.trim();
-  } catch {
-    // Fall back to default domain if config file is unavailable.
+  if (process.env["VERCEL_ENV"] !== "production") {
+    try {
+      const raw = fs.readFileSync(
+        path.resolve(process.cwd(), "firebase-applet-config.json"),
+        "utf8",
+      );
+      const parsed = JSON.parse(raw) as { authDomain?: string };
+      if (parsed.authDomain?.trim()) return parsed.authDomain.trim();
+    } catch {
+      // Fall back to default domain if config file is unavailable.
+    }
   }
   return "mealmate-d2e53.firebaseapp.com";
 }
 
 export default defineConfig(({ command }) => ({
+  define: {
+    "import.meta.env.VITE_VERCEL_ENV": JSON.stringify(
+      process.env["VERCEL_ENV"]?.trim() || (process.env["VERCEL"] === "1" ? "vercel" : ""),
+    ),
+  },
   // Expose only explicitly allowlisted public Firebase Web App settings.
   envPrefix: [
     "VITE_FIREBASE_API_KEY",

@@ -137,6 +137,7 @@ const DISH_TYPE: Array<[RegExp, string]> = [
   [/rice|jollof|biryani|risotto|paella/i, "rice"],
   [/pancake|waffle/i, "breakfast stack"],
   [/cake|pudding|pie|tart|brownie|cookie/i, "dessert"],
+  [/pap|boerewors|chakalaka/i, "south african sausage and maize porridge"],
 ];
 
 export function buildQueries(r: RecipeForImage): string[] {

@@ -109,19 +109,40 @@ function ChatPage() {
     voice.state,
   );
   const latestTurn = turns.at(-1);
+  const miaMood =
+    busy || voice.state === "thinking"
+      ? { label: "Thinking", detail: "Crafting a thoughtful kitchen answer" }
+      : voice.state === "speaking"
+        ? { label: "Speaking", detail: "Guiding you hands-free" }
+        : voice.state === "listening"
+          ? { label: "Listening", detail: "Ready for your next question" }
+          : latestTurn?.error
+            ? { label: "Careful", detail: "Ready to retry when you are" }
+            : latestTurn?.answer
+              ? { label: "Helpful", detail: "Warm, practical chef mode" }
+              : { label: "Warm & Ready", detail: "Your friendly AI kitchen companion" };
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col overflow-x-hidden px-4 py-10 text-foreground">
       {turns.length === 0 ? (
         <div className="flex flex-col items-center py-6 text-center">
-          <ChefMascot animate className="h-48 w-48" />
-          <h1 className="mt-6 font-display text-3xl">Your little kitchen companion.</h1>
+          <ChefMascot animate interactive className="h-48 w-48" />
+          <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground">
+            <Sparkles className="h-3 w-3 text-primary" />
+            Mia · {miaMood.label}
+          </span>
+          <h1 className="mt-4 font-display text-3xl">Your little kitchen companion.</h1>
           <p className="mt-3 text-sm text-muted-foreground">What&apos;s cooking, Chef?</p>
         </div>
       ) : (
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl">MealMate Chef</h1>
-          <ChefMascot className="h-9 w-9" />
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="font-display text-2xl">MealMate Chef</h1>
+            <p className="text-xs text-muted-foreground">
+              Mia ({miaMood.label}) · {miaMood.detail}
+            </p>
+          </div>
+          <ChefMascot animate={busy || voiceActive} interactive className="h-10 w-10 shrink-0" />
         </div>
       )}
 

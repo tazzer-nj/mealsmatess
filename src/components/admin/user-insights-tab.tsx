@@ -335,9 +335,7 @@ export function UserInsightsTab() {
 
           <Select
             value={onboardingCompleted}
-            onValueChange={(v) =>
-              setOnboardingCompleted(v as "all" | "completed" | "incomplete")
-            }
+            onValueChange={(v) => setOnboardingCompleted(v as "all" | "completed" | "incomplete")}
           >
             <SelectTrigger className="h-9 bg-background text-xs">
               <SelectValue placeholder="Onboarding" />
@@ -456,7 +454,8 @@ export function UserInsightsTab() {
                 Section D · Meal Enjoyments &amp; Dietary Restrictions
               </h3>
               <span className="text-[11px] text-muted-foreground">
-                Privacy policy: individual allergies are strictly excluded from analytics &amp; exports
+                Privacy policy: individual allergies are strictly excluded from analytics &amp;
+                exports
               </span>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
@@ -479,10 +478,7 @@ export function UserInsightsTab() {
               Section E · Eating Habits, Cooking Lifestyle &amp; ZAR Budgets
             </h3>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <ShareBarList
-                title="Eating habits"
-                items={report.habitsAndLifestyle.eatingHabits}
-              />
+              <ShareBarList title="Eating habits" items={report.habitsAndLifestyle.eatingHabits} />
               <ShareBarList
                 title="Cooking frequency"
                 items={report.habitsAndLifestyle.cookingFrequency}
@@ -716,9 +712,7 @@ export function UserInsightsTab() {
                 <h3 className="font-display text-base font-semibold text-foreground">
                   Subscriptions by tier
                 </h3>
-                <p className="mb-3 text-xs text-muted-foreground">
-                  Active and trialing plans
-                </p>
+                <p className="mb-3 text-xs text-muted-foreground">Active and trialing plans</p>
                 {report.subscriptions.byTier.length === 0 ? (
                   <p className="py-12 text-center text-xs text-muted-foreground">
                     No active plans in cohort yet.
@@ -745,10 +739,7 @@ export function UserInsightsTab() {
             ) : (
               <div className="grid gap-3 md:grid-cols-2">
                 {report.actionableInsights.map((ins) => (
-                  <div
-                    key={ins.id}
-                    className="rounded-lg border border-border bg-card p-4"
-                  >
+                  <div key={ins.id} className="rounded-lg border border-border bg-card p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <Lightbulb className="h-4 w-4 shrink-0 text-[var(--periwinkle)]" />
@@ -825,7 +816,10 @@ export function UserInsightsTab() {
               </thead>
               <tbody>
                 {(inspectionQuery.data?.rows ?? []).map((row) => (
-                  <tr key={row.maskedUserId + row.preferredName} className="border-t border-border/60">
+                  <tr
+                    key={row.maskedUserId + row.preferredName}
+                    className="border-t border-border/60"
+                  >
                     <td className="px-2.5 py-2 font-mono text-[11px] text-muted-foreground">
                       {row.maskedUserId}
                     </td>
@@ -838,15 +832,11 @@ export function UserInsightsTab() {
                         ? "Completed"
                         : `${row.onboardingStatus} (p.${row.currentPage ?? 1})`}
                     </td>
-                    <td className="px-2.5 py-2 text-muted-foreground">
-                      {row.primaryGoal ?? "—"}
-                    </td>
+                    <td className="px-2.5 py-2 text-muted-foreground">{row.primaryGoal ?? "—"}</td>
                     <td className="px-2.5 py-2 text-muted-foreground">
                       {row.budgetRangeZar ?? "—"}
                     </td>
-                    <td className="px-2.5 py-2 text-muted-foreground">
-                      {row.acquisitionChannel}
-                    </td>
+                    <td className="px-2.5 py-2 text-muted-foreground">{row.acquisitionChannel}</td>
                     <td className="px-2.5 py-2 capitalize text-foreground">
                       {row.subscriptionStatus}
                     </td>

@@ -22,7 +22,9 @@ function escapeXml(value: string): string {
 export function renderErrorPage(options: ErrorPageOptions = {}): string {
   const status = options.status ?? 500;
   const code = escapeHtml(options.code ?? "INTERNAL_SERVER_ERROR");
-  const title = escapeHtml(options.title ?? "This page didn't load");
+  const defaultTitle =
+    status === 503 ? "MealMate is taking a quick breather" : "This page didn't load";
+  const title = escapeHtml(options.title ?? defaultTitle);
   const message = escapeHtml(
     options.message ??
       "Something unexpected happened in our kitchen. Try refreshing the page or head back home.",
@@ -107,7 +109,7 @@ export function renderErrorPage(options: ErrorPageOptions = {}): string {
   <body>
     <main class="card" role="main">
       <div class="brand">MealMate<span class="dot">.</span></div>
-      <div><span class="badge">HTTP ${status} · ${code}</span></div>
+      <div><span class="badge">Status ${status} · ${code}</span></div>
       <h1>${title}</h1>
       <p>${message}</p>
       <div class="actions">

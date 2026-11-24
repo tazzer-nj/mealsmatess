@@ -36,6 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { pantryRecipeQuery } from "@/lib/pantry-recipe";
+import { toastRecipeGenerationError } from "@/lib/recipe-search";
 
 export const Route = createFileRoute("/scan")({
   validateSearch: (search: Record<string, unknown>): { mode?: "ingredients" | "dish" } =>
@@ -298,9 +299,7 @@ function ScanPage() {
       toast.success("Recipe generated!");
       await navigate({ to: "/recipe/$slug", params: { slug } });
     } catch (err) {
-      toast.error("Mia couldn't generate a recipe right now", {
-        description: err instanceof Error ? err.message : "Please try again.",
-      });
+      toastRecipeGenerationError(err);
     } finally {
       setGeneratingRecipe(false);
     }

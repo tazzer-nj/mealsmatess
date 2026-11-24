@@ -86,6 +86,43 @@ function imageUrlFor(r: GeneratedRecipe): string | null {
   return curatedRecipeImageUrl({ slug: slugify(r.name), name: r.name }, "hero") ?? null;
 }
 
+function canGenerateBackgroundImage(): boolean {
+  const hasStorage = Boolean(process.env["BLOB_READ_WRITE_TOKEN"]?.trim());
+  const hasAiKey = Boolean(
+    process.env["AI_GATEWAY_API_KEY"]?.trim() ||
+    process.env["LOVABLE_API_KEY"]?.trim() ||
+    process.env["VERCEL_OIDC_TOKEN"]?.trim() ||
+    process.env["VERCEL"] === "1",
+  );
+  return hasStorage && hasAiKey && !process.env["VITEST"];
+}
+
+function triggerBackgroundRecipeImage(recipeId: string, row: ReturnType<typeof toDbRecipe>) {
+  if (row.image_url || !recipeId || !canGenerateBackgroundImage()) return;
+  void import("@/lib/recipe-images.server")
+    .then(async (images) => {
+      const payload = {
+        id: recipeId,
+        name: row.name,
+        cuisine: row.cuisine,
+        category: row.category,
+        meal_type: row.meal_type,
+        description: row.description,
+        diet_tags: row.diet_tags,
+        ingredients: row.ingredients,
+        steps: row.steps,
+      };
+      const signature = images.recipeSignature(payload);
+      await images.generateAndSaveAiImage(payload, signature);
+    })
+    .catch((err) => {
+      console.warn("[MealMate AI] Background recipe photo generation skipped/failed:", {
+        recipeId,
+        error: err instanceof Error ? err.message : "UnknownError",
+      });
+    });
+}
+
 function toDbRecipe(r: GeneratedRecipe, userId: string | null) {
   const slug = `${slugify(r.name)}-${Math.random().toString(36).slice(2, 7)}`;
   return {
@@ -147,6 +184,7 @@ export const surpriseMe = createServerFn({ method: "POST" })
         .select("id,slug")
         .single();
       if (error) throw new Error(error.message);
+      triggerBackgroundRecipeImage(String(data.id), row);
       const { invalidateRecipeCatalogCache } = await import("@/lib/recipe-catalog.functions");
       invalidateRecipeCatalogCache();
       void trackEvent({
@@ -273,6 +311,7 @@ export const generateRecipe = createServerFn({ method: "POST" })
           .select("id,slug")
           .single();
         if (error) throw new Error(error.message);
+        triggerBackgroundRecipeImage(String(inserted.id), row);
         const { invalidateRecipeCatalogCache } = await import("@/lib/recipe-catalog.functions");
         invalidateRecipeCatalogCache();
         await auditLog({

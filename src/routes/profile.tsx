@@ -229,8 +229,7 @@ function SettingsPage() {
       if (auth.currentUser) {
         const { error } = await firebaseData
           .from("profiles")
-          .update({ currency: next } as never)
-          .eq("id", user.id);
+          .upsert({ id: user.id, currency: next } as never, { onConflict: "id" });
         if (error) throw error;
       } else {
         await saveMyAccountSettings({ data: { currency: next } });
@@ -256,8 +255,7 @@ function SettingsPage() {
       if (auth.currentUser) {
         const { error } = await firebaseData
           .from("profiles")
-          .update({ locale: normalized } as never)
-          .eq("id", user.id);
+          .upsert({ id: user.id, locale: normalized } as never, { onConflict: "id" });
         if (error) throw error;
       } else {
         await saveMyAccountSettings({ data: { locale: normalized } });
@@ -328,7 +326,7 @@ function SettingsPage() {
       label: "Culinary preferences",
       description: "Update goals, dietary filters, allergies and cuisines",
       icon: UserIcon,
-      to: "/settings",
+      to: "/settings?section=preferences",
     },
     {
       label: "MealMate Premium",

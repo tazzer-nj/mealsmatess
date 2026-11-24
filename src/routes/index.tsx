@@ -33,7 +33,7 @@ import { useSession } from "@/hooks/use-session";
 import { firebaseData } from "@/lib/firebase-data";
 import { waitForFirebaseAuth } from "@/lib/firebase";
 import { getContinueCooking } from "@/lib/continue-cooking";
-import { TrendingCard } from "@/components/recipe-card";
+import { TrendingCard, FeaturedRecipeCard } from "@/components/recipe-card";
 import { ChefMascot } from "@/components/chef-mascot";
 import { MotionReveal, MotionStagger } from "@/components/motion";
 import { MiaLoadingCard } from "@/components/mia-loading-card";
@@ -44,7 +44,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PlanStatusCard } from "@/components/plan-status-card";
 import { AdSlot } from "@/components/ad-slot";
 import { usePreferences } from "@/hooks/use-preferences";
-import { personalize } from "@/lib/preferences";
+import { isAvoided, personalize } from "@/lib/preferences";
 
 export const Route = createFileRoute("/")({
   head: ({ matches }) => ({
@@ -119,15 +119,26 @@ function Index() {
     staleTime: 60_000,
   });
 
-  const trending = personalize(hasPreferences ? preferences : null, trendingRaw, (r) => [
+  const safeTrending = hasPreferences
+    ? trendingRaw.filter((r) => !isAvoided(preferences, r.name, r.cuisine, r.description))
+    : trendingRaw;
+  const safeSouthAfrican = hasPreferences
+    ? southAfricanRaw.filter((r) => !isAvoided(preferences, r.name, r.cuisine, r.description))
+    : southAfricanRaw;
+
+  const trending = personalize(hasPreferences ? preferences : null, safeTrending, (r) => [
     r.name,
     r.cuisine,
     r.difficulty,
   ]);
-  const southAfrican = personalize(hasPreferences ? preferences : null, southAfricanRaw, (r) => [
+  const southAfrican = personalize(hasPreferences ? preferences : null, safeSouthAfrican, (r) => [
     r.name,
     r.cuisine,
   ]);
+  const pickedForYou = trending[0] ?? null;
+  const quickMeals = trending.filter(
+    (r) => typeof r.cooking_time_minutes === "number" && r.cooking_time_minutes <= 35,
+  );
 
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<"search" | "surprise" | null>(null);
@@ -176,8 +187,8 @@ function Index() {
         return;
       }
       throw new Error("No recipe returned");
-    } catch {
-      toast.error("Mia couldn't generate a surprise recipe right now. Try again in a moment.");
+    } catch (err) {
+      toastRecipeGenerationError(err);
     } finally {
       setBusy(null);
     }
@@ -411,6 +422,31 @@ function Index() {
         <AdSlot slot="home_feed" />
       </section>
 
+      {/* Picked For You editorial highlight */}
+      {pickedForYou && !trendingLoading && !trendingError && (
+        <section className="px-4 pt-8">
+          <div className="mb-3 flex items-end justify-between">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+                {hasPreferences ? "Tailored to your tastes" : "Chef's highlight"}
+              </p>
+              <h2 className="font-display text-2xl">Picked For You</h2>
+            </div>
+            <Link
+              to="/recipes"
+              className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              Explore <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+          <FeaturedRecipeCard
+            recipe={pickedForYou as any}
+            isFavorite={favoriteIds.has(pickedForYou.id)}
+            onToggleFavorite={toggleFavorite}
+          />
+        </section>
+      )}
+
       {/* Trending recipes */}
       <section className="pt-8">
         <div className="mb-3 flex items-end justify-between px-4">
@@ -459,6 +495,31 @@ function Index() {
           </div>
         )}
       </section>
+
+      {/* Quick 30-Min Meals */}
+      {quickMeals.length > 0 && !trendingLoading && (
+        <section className="pt-8">
+          <div className="mb-3 flex items-end justify-between px-4">
+            <h2 className="font-display text-2xl">Quick Weeknight Meals</h2>
+            <Link
+              to="/recipes"
+              className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              View all <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+          <div className="flex gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {quickMeals.map((r) => (
+              <TrendingCard
+                key={`quick-${r.id}`}
+                recipe={r as any}
+                isFavorite={favoriteIds.has(r.id)}
+                onToggleFavorite={toggleFavorite}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* South African favourites */}
       <section className="pt-8">

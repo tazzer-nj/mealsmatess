@@ -156,8 +156,7 @@ export function useCurrency(): {
       if (auth.currentUser) {
         await firebaseData
           .from("profiles")
-          .update({ currency: next } as never)
-          .eq("id", user.id);
+          .upsert({ id: user.id, currency: next } as never, { onConflict: "id" });
       } else {
         await saveMyAccountSettings({ data: { currency: next } }).catch(() => undefined);
       }

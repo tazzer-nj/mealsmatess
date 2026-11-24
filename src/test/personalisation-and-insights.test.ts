@@ -228,12 +228,20 @@ describe("Admin User Insights aggregator & CSV security", () => {
         { user_id: "u1", event_name: "paywall_viewed", created_at: "2026-10-10T10:05:00.000Z" },
         { user_id: "u3", event_name: "paywall_viewed", created_at: "2026-11-18T10:05:00.000Z" },
         { user_id: "u1", event_name: "trial_started", created_at: "2026-10-10T10:06:00.000Z" },
-        { user_id: "u1", event_name: "subscription_started", created_at: "2026-10-13T10:06:00.000Z" },
+        {
+          user_id: "u1",
+          event_name: "subscription_started",
+          created_at: "2026-10-13T10:06:00.000Z",
+        },
       ],
       userActivity: [
         // u1 active on D1, D7, D30
         { user_id: "u1", activity_type: "recipe_viewed", created_at: "2026-10-12T10:00:00.000Z" },
-        { user_id: "u1", activity_type: "meal_plan_created", created_at: "2026-10-18T10:00:00.000Z" },
+        {
+          user_id: "u1",
+          activity_type: "meal_plan_created",
+          created_at: "2026-10-18T10:00:00.000Z",
+        },
         { user_id: "u1", activity_type: "mia_interaction", created_at: "2026-11-19T15:00:00.000Z" },
         // u3 active on D1 + within last 24h
         { user_id: "u3", activity_type: "recipe_saved", created_at: "2026-11-20T09:00:00.000Z" },
@@ -242,7 +250,14 @@ describe("Admin User Insights aggregator & CSV security", () => {
         { user_id: "u1", tier: "monthly", status: "active" },
         { user_id: "u3", tier: "annual", status: "trialing" },
       ],
-      payments: [{ user_id: "u1", amount_usd: 9.99, currency: "USD", occurred_at: "2026-10-13T10:06:00.000Z" }],
+      payments: [
+        {
+          user_id: "u1",
+          amount_usd: 9.99,
+          currency: "USD",
+          occurred_at: "2026-10-13T10:06:00.000Z",
+        },
+      ],
     });
 
     expect(report.overview.totalUsers).toBe(3);
@@ -261,7 +276,10 @@ describe("Admin User Insights aggregator & CSV security", () => {
     expect(report.engagement.d1RetentionPct).toBe(66.7); // u1 & u3 retained out of 3 >=1d old
     expect(report.engagement.d30RetentionPct).toBe(100); // u1 is only >=30d cohort user and returned at day 40
 
-    expect(report.acquisition.channelPerformance.find((c) => c.channel === "TikTok")?.paidConversionRatePct).toBe(50);
+    expect(
+      report.acquisition.channelPerformance.find((c) => c.channel === "TikTok")
+        ?.paidConversionRatePct,
+    ).toBe(50);
     expect(report.actionableInsights.some((i) => i.id === "onboarding-dropoff")).toBe(true);
   });
 
@@ -276,7 +294,7 @@ describe("Admin User Insights aggregator & CSV security", () => {
       onboardingProfiles: [
         {
           user_id: "u1",
-          challenges: ["=HYPERLINK(\"http://evil\")"],
+          challenges: ['=HYPERLINK("http://evil")'],
           dietary_restrictions: ["Halal"],
           onboarding_completed: true,
         },
@@ -296,9 +314,8 @@ describe("Admin User Insights aggregator & CSV security", () => {
   });
 
   it("blocks non-admin access with 403 and masks UIDs without leaking emails or allergies", async () => {
-    const { adminInspectInsightUsers, getUserInsights } = await import(
-      "@/lib/user-insights.functions"
-    );
+    const { adminInspectInsightUsers, getUserInsights } =
+      await import("@/lib/user-insights.functions");
 
     rbacMocks.isAdminAccount.mockResolvedValueOnce(false);
     await expect(

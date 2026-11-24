@@ -199,9 +199,7 @@ export async function dispatchAnalyticsEvent(input: {
       { merge: true },
     );
 
-    if (
-      MEANINGFUL_ACTIVITY_TYPES.includes(input.eventName as MeaningfulActivityType)
-    ) {
+    if (MEANINGFUL_ACTIVITY_TYPES.includes(input.eventName as MeaningfulActivityType)) {
       await setDoc(
         doc(db, "user_activity", eventId),
         {
@@ -242,7 +240,9 @@ export async function saveStructuredOnboardingClientFallback(input: {
   const nowIso = new Date().toISOString();
   const p = input.preferences;
   const personalisationProfile =
-    input.status === "completed" ? buildPersonalisationProfile(p) : (p.personalisation_profile ?? null);
+    input.status === "completed"
+      ? buildPersonalisationProfile(p)
+      : (p.personalisation_profile ?? null);
 
   try {
     await setDoc(
@@ -371,10 +371,8 @@ export async function saveStructuredOnboardingClientFallback(input: {
             typeof existingData?.["other_detail"] === "string" && existingData["other_detail"]
               ? existingData["other_detail"]
               : (acq.other_detail ?? null),
-          utm_source:
-            (existingData?.["utm_source"] as string | null) ?? acq.utm_source ?? null,
-          utm_medium:
-            (existingData?.["utm_medium"] as string | null) ?? acq.utm_medium ?? null,
+          utm_source: (existingData?.["utm_source"] as string | null) ?? acq.utm_source ?? null,
+          utm_medium: (existingData?.["utm_medium"] as string | null) ?? acq.utm_medium ?? null,
           utm_campaign:
             (existingData?.["utm_campaign"] as string | null) ?? acq.utm_campaign ?? null,
           referrer: (existingData?.["referrer"] as string | null) ?? acq.referrer ?? null,

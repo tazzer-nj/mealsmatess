@@ -9,17 +9,59 @@ import { MiaVoiceSession, type MiaVoiceSnapshot } from "@/lib/mia/voice-session"
 import { openMiaMicrophone } from "@/lib/mia/microphone";
 import { speakMia } from "@/lib/mia/speech";
 
+const MIA_TURNS_STORAGE_PREFIX = "mealmate_mia_turns:";
+const isTestEnv = () => typeof process !== "undefined" && Boolean(process.env["VITEST"]);
+
+function loadStoredTurns(userId: string | undefined): MiaTurn[] {
+  if (!userId || isTestEnv() || typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(`${MIA_TURNS_STORAGE_PREFIX}${userId}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (item): item is MiaTurn =>
+          Boolean(item) &&
+          typeof item === "object" &&
+          typeof (item as MiaTurn).id === "string" &&
+          typeof (item as MiaTurn).question === "string" &&
+          typeof (item as MiaTurn).answer === "string",
+      )
+      .slice(-30);
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredTurns(userId: string | undefined, items: MiaTurn[]) {
+  if (!userId || isTestEnv() || typeof window === "undefined") return;
+  try {
+    const compact = items.slice(-30).map((t) => ({
+      id: t.id,
+      question: t.question,
+      answer: t.answer,
+      ...(t.error ? { error: t.error } : {}),
+    }));
+    window.localStorage.setItem(`${MIA_TURNS_STORAGE_PREFIX}${userId}`, JSON.stringify(compact));
+  } catch {
+    /* ignore storage quota errors */
+  }
+}
+
 /** Shared across Consumer routes; navigation never resets a hands-free conversation. */
 export function MiaProvider({ children }: { children: ReactNode }) {
   const { user } = useSession();
+  const userIdRef = useRef<string | undefined>(user?.id);
+  userIdRef.current = user?.id;
   const { isPremium } = usePremium();
   const path = useRouterState({ select: (state) => state.location.pathname });
   const allowed =
     !!user &&
     isPremium &&
     !/^\/(auth|welcome|premium|onboarding|admin|legal|reset-password)(\/|$)/.test(path);
-  const [turns, setTurns] = useState<MiaTurn[]>([]);
-  const turnsRef = useRef<MiaTurn[]>([]);
+  const [turns, setTurns] = useState<MiaTurn[]>(() => loadStoredTurns(user?.id));
+  const turnsRef = useRef<MiaTurn[]>(turns);
   const [busy, setBusy] = useState(false);
   const requestRef = useRef<AbortController | null>(null);
   const recipe = useRef<MiaRecipe | null>(null);
@@ -38,8 +80,10 @@ export function MiaProvider({ children }: { children: ReactNode }) {
   const allowedRef = useRef(allowed);
   allowedRef.current = allowed;
   const updateTurns = useCallback((update: (items: MiaTurn[]) => MiaTurn[]) => {
-    turnsRef.current = update(turnsRef.current);
-    setTurns(turnsRef.current);
+    const next = update(turnsRef.current);
+    turnsRef.current = next;
+    setTurns(next);
+    saveStoredTurns(userIdRef.current, next);
   }, []);
   const patch = useCallback(
     (id: string, next: Partial<MiaTurn>) => {
@@ -255,9 +299,11 @@ export function MiaProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     session.current?.stop();
     requestRef.current?.abort();
-    updateTurns(() => []);
+    const restored = loadStoredTurns(user?.id);
+    turnsRef.current = restored;
+    setTurns(restored);
     recipe.current = null;
-  }, [user?.id, updateTurns]);
+  }, [user?.id]);
 
   return (
     <MiaContext.Provider
@@ -286,7 +332,9 @@ export function MiaProvider({ children }: { children: ReactNode }) {
           void session.current?.start();
         },
         stopVoice: () => session.current?.stop(),
-        endConversation: () => session.current?.endConversation(),
+        endConversation: () => {
+          session.current?.endConversation();
+        },
         setRecipe,
       }}
     >

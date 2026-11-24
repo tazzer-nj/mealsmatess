@@ -124,24 +124,29 @@ export const adminInspectInsightUsers = createServerFn({ method: "POST" })
     await assertAdmin(context.userId, context.claims);
     const { firebaseAdmin } = await loadFirebaseAdmin();
 
-    const [{ data: profiles }, { data: onboardingProfiles }, { data: progress }, { data: acq }, { data: subs }] =
-      await Promise.all([
-        firebaseAdmin
-          .from("profiles")
-          .select("id, displayName, onboarding_completed, onboarding_step, goal, platform, country, updatedAt"),
-        firebaseAdmin
-          .from("user_onboarding_profiles")
-          .select("user_id, preferred_name, primary_goal, challenges, cooking_level, budget_range_zar, onboarding_completed, platform, country, updated_at"),
-        firebaseAdmin
-          .from("onboarding_progress")
-          .select("user_id, current_page, status, updated_at"),
-        firebaseAdmin
-          .from("user_acquisition_sources")
-          .select("user_id, self_reported_source, utm_source"),
-        firebaseAdmin
-          .from("subscriptions")
-          .select("user_id, status"),
-      ]);
+    const [
+      { data: profiles },
+      { data: onboardingProfiles },
+      { data: progress },
+      { data: acq },
+      { data: subs },
+    ] = await Promise.all([
+      firebaseAdmin
+        .from("profiles")
+        .select(
+          "id, displayName, onboarding_completed, onboarding_step, goal, platform, country, updatedAt",
+        ),
+      firebaseAdmin
+        .from("user_onboarding_profiles")
+        .select(
+          "user_id, preferred_name, primary_goal, challenges, cooking_level, budget_range_zar, onboarding_completed, platform, country, updated_at",
+        ),
+      firebaseAdmin.from("onboarding_progress").select("user_id, current_page, status, updated_at"),
+      firebaseAdmin
+        .from("user_acquisition_sources")
+        .select("user_id, self_reported_source, utm_source"),
+      firebaseAdmin.from("subscriptions").select("user_id, status"),
+    ]);
 
     const opMap = new Map<string, Record<string, unknown>>();
     for (const r of (onboardingProfiles ?? []) as Record<string, unknown>[]) {
@@ -170,9 +175,10 @@ export const adminInspectInsightUsers = createServerFn({ method: "POST" })
       const prog = progMap.get(uid);
       const acqRow = acqMap.get(uid);
 
-      const preferredName = String(
-        op?.["preferred_name"] ?? p["displayName"] ?? "Member",
-      ).slice(0, 40);
+      const preferredName = String(op?.["preferred_name"] ?? p["displayName"] ?? "Member").slice(
+        0,
+        40,
+      );
       const primaryGoal =
         (op?.["primary_goal"] as string | null) ?? (p["goal"] as string | null) ?? null;
       const channel = String(

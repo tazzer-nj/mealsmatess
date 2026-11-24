@@ -28,7 +28,7 @@ export function CookingInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder="What can I cook today?"
         maxLength={200}
-        className="h-11 min-w-0 border-0 bg-transparent px-2 text-base shadow-none focus-visible:ring-0"
+        className="h-11 min-w-0 border-0 bg-transparent px-2 text-base shadow-none focus-visible:bg-transparent focus-visible:ring-0"
       />
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
         <div className="flex min-w-0 gap-1">

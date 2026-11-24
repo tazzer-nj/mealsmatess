@@ -16,6 +16,11 @@ import {
   Share2,
   MessageCircleQuestion,
   Expand,
+  AlertTriangle,
+  PackagePlus,
+  CalendarPlus,
+  Minus,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { recipeBySlugQuery, myFavoritesQuery } from "@/lib/queries";
@@ -24,6 +29,8 @@ import { waitForFirebaseAuth } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
 import { usePremium } from "@/hooks/use-premium";
+import { usePreferences } from "@/hooks/use-preferences";
+import { evaluateRecipeAllergens } from "@/lib/preferences";
 import { regenerateRecipeImage } from "@/lib/ai.functions";
 import { postAuthenticatedAi } from "@/lib/ai-api";
 import { trackRecipeView } from "@/lib/engagement.functions";
@@ -41,9 +48,17 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SubstitutionsButton } from "@/components/substitutions-popover";
 import { RecipeRatings } from "@/components/recipe-ratings";
 
@@ -95,6 +110,68 @@ export const Route = createFileRoute("/recipe/$slug")({
 
 type Ingredient = { name: string; quantity?: string };
 
+const PLAN_SLOTS = ["Breakfast", "Lunch", "Dinner", "Snack"] as const;
+
+function parseNumericToken(token: string): number | null {
+  const trimmed = token.trim();
+  const mixed = trimmed.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (mixed) {
+    const den = Number(mixed[3]);
+    return den ? Number(mixed[1]) + Number(mixed[2]) / den : null;
+  }
+  const frac = trimmed.match(/^(\d+)\/(\d+)$/);
+  if (frac) {
+    const den = Number(frac[2]);
+    return den ? Number(frac[1]) / den : null;
+  }
+  const num = Number(trimmed);
+  return Number.isFinite(num) ? num : null;
+}
+
+function formatScaledAmount(value: number): string {
+  if (Math.abs(value - Math.round(value)) < 0.05) return String(Math.round(value));
+  return Number(value.toFixed(1)).toString();
+}
+
+function scaleQuantity(quantity: string | undefined, factor: number): string | undefined {
+  if (!quantity || Math.abs(factor - 1) < 0.01) return quantity;
+  return quantity.replace(/\b(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)\b/, (match) => {
+    const parsed = parseNumericToken(match);
+    if (parsed === null) return match;
+    return formatScaledAmount(parsed * factor);
+  });
+}
+
+function getTimeBreakdown(recipe: {
+  cooking_time_minutes?: number | null;
+  prep_time_minutes?: number | null;
+  cook_time_minutes?: number | null;
+}) {
+  const explicitPrep =
+    typeof recipe.prep_time_minutes === "number" && recipe.prep_time_minutes > 0
+      ? recipe.prep_time_minutes
+      : null;
+  const explicitCook =
+    typeof recipe.cook_time_minutes === "number" && recipe.cook_time_minutes > 0
+      ? recipe.cook_time_minutes
+      : null;
+  const total =
+    typeof recipe.cooking_time_minutes === "number" && recipe.cooking_time_minutes > 0
+      ? recipe.cooking_time_minutes
+      : explicitPrep !== null || explicitCook !== null
+        ? (explicitPrep ?? 0) + (explicitCook ?? 0)
+        : null;
+  if (!total) return null;
+  if (explicitPrep !== null && explicitCook !== null) {
+    return { prep: explicitPrep, cook: explicitCook, total };
+  }
+  if (total <= 10) {
+    return { prep: total, cook: 0, total };
+  }
+  const prep = Math.max(5, Math.min(total - 5, Math.round((total * 0.3) / 5) * 5));
+  return { prep, cook: Math.max(0, total - prep), total };
+}
+
 function RecipePage() {
   const { slug } = Route.useParams();
   const recipe = Route.useLoaderData();
@@ -105,17 +182,30 @@ function RecipePage() {
   });
   const r = data ?? recipe;
   const { isPremium } = usePremium();
+  const { preferences, hasPreferences } = usePreferences();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: favorites } = useQuery({ ...myFavoritesQuery(), enabled: !!user });
   const [savingFav, setSavingFav] = useState(false);
   const [addingList, setAddingList] = useState(false);
+  const [addingPantry, setAddingPantry] = useState(false);
+  const [plannerOpen, setPlannerOpen] = useState(false);
+  const [planDate, setPlanDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [planMealType, setPlanMealType] = useState<(typeof PLAN_SLOTS)[number]>("Dinner");
+  const [savingPlanner, setSavingPlanner] = useState(false);
   const [regen, setRegen] = useState(false);
   const [cookingOpen, setCookingOpen] = useState(false);
   const cookingModeEnabled = useFeatureFlag("cooking_mode", true);
   const [makingImage, setMakingImage] = useState(false);
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(() => new Set());
+  const baseServings = r?.servings && r.servings > 0 ? r.servings : 2;
+  const [targetServings, setTargetServings] = useState<number>(baseServings);
+
+  useEffect(() => {
+    setTargetServings(r?.servings && r.servings > 0 ? r.servings : 2);
+    setCheckedIngredients(new Set());
+  }, [r?.id, r?.servings]);
 
   const requestRecipeImage = useCallback(async () => {
     if (!r?.id || !user) return;
@@ -233,13 +323,31 @@ function RecipePage() {
   const ingredients = (Array.isArray(r.ingredients) ? r.ingredients : []) as Ingredient[];
   const steps = (Array.isArray(r.steps) ? r.steps : []) as string[];
   const isFav = favorites?.some((f) => f.recipe_id === r.id) ?? false;
+  const servingFactor = baseServings > 0 ? targetServings / baseServings : 1;
+  const scaledIngredients = ingredients.map((ing) => ({
+    ...ing,
+    quantity: scaleQuantity(ing.quantity, servingFactor),
+  }));
+  const timeInfo = getTimeBreakdown(r);
+  const allergenEval = evaluateRecipeAllergens(hasPreferences ? preferences : null, r);
 
   const stats = [
-    r.cooking_time_minutes && { icon: Clock, label: `${r.cooking_time_minutes} min` },
-    r.servings && { icon: Users, label: `${r.servings} servings` },
-    r.calories && { icon: Flame, label: `${r.calories} kcal` },
-    r.difficulty && { icon: ChefHat, label: r.difficulty },
-  ].filter(Boolean) as { icon: typeof Clock; label: string }[];
+    timeInfo && {
+      icon: Clock,
+      label: `${timeInfo.total} min total`,
+      sub:
+        timeInfo.cook > 0
+          ? `Prep ${timeInfo.prep}m · Cook ${timeInfo.cook}m`
+          : `Prep ${timeInfo.prep}m`,
+    },
+    {
+      icon: Users,
+      label: `${targetServings} servings`,
+      sub: targetServings !== baseServings ? `Base ${baseServings}` : undefined,
+    },
+    r.calories && { icon: Flame, label: `${r.calories} kcal`, sub: "per serving" },
+    r.difficulty && { icon: ChefHat, label: r.difficulty, sub: "difficulty" },
+  ].filter(Boolean) as { icon: typeof Clock; label: string; sub?: string }[];
 
   function toggleIngredient(index: number) {
     setCheckedIngredients((prev) => {
@@ -306,7 +414,7 @@ function RecipePage() {
     if (ingredients.length === 0) return;
     setAddingList(true);
     try {
-      const rows = ingredients.map((ing) => ({
+      const rows = scaledIngredients.map((ing) => ({
         user_id: user.id,
         name: ing.name,
         ...(ing.quantity?.trim() ? { quantity: ing.quantity.trim() } : {}),
@@ -321,6 +429,60 @@ function RecipePage() {
       toast.error("Couldn't add to grocery list");
     } finally {
       setAddingList(false);
+    }
+  }
+
+  async function addToPantry() {
+    if (!user || !r) {
+      navigate({ to: "/auth" });
+      return;
+    }
+    if (scaledIngredients.length === 0) return;
+    setAddingPantry(true);
+    try {
+      const rows = scaledIngredients.map((ing) => ({
+        user_id: user.id,
+        name: ing.name,
+        ...(ing.quantity?.trim() ? { quantity: ing.quantity.trim() } : {}),
+        source: "recipe",
+      }));
+      const { error } = await firebaseData.from("pantry_items").insert(rows);
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ["pantry"] });
+      toast.success(`Added ${rows.length} ingredients to your pantry`, {
+        action: { label: "View pantry", onClick: () => navigate({ to: "/pantry" }) },
+      });
+    } catch {
+      toast.error("Couldn't add ingredients to pantry");
+    } finally {
+      setAddingPantry(false);
+    }
+  }
+
+  async function addToPlanner() {
+    if (!user || !r) {
+      navigate({ to: "/auth" });
+      return;
+    }
+    setSavingPlanner(true);
+    try {
+      const { error } = await firebaseData.from("meal_plans").insert({
+        user_id: user.id,
+        plan_date: planDate,
+        meal_type: planMealType,
+        recipe_id: r.id,
+        custom_name: r.name,
+      });
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ["planner"] });
+      setPlannerOpen(false);
+      toast.success(`Scheduled ${r.name} for ${planMealType}`, {
+        action: { label: "Open planner", onClick: () => navigate({ to: "/planner" }) },
+      });
+    } catch {
+      toast.error("Couldn't add recipe to meal planner");
+    } finally {
+      setSavingPlanner(false);
     }
   }
 
@@ -400,16 +562,53 @@ function RecipePage() {
               </div>
             )}
 
+            {!allergenEval.safe && (
+              <div
+                role="alert"
+                className="mt-4 flex items-start gap-2.5 rounded-xl border border-destructive/40 bg-destructive/10 p-3.5 text-xs text-destructive"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <p className="font-semibold">
+                    Allergen alert: {allergenEval.matchedAllergens.join(", ")}
+                  </p>
+                  <p className="mt-0.5 opacity-90">
+                    Ingredients detected that match your saved allergies. Review or substitute
+                    before cooking.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {allergenEval.safe && allergenEval.uncertainIngredients.length > 0 && (
+              <div
+                role="note"
+                className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3.5 text-xs text-amber-800 dark:text-amber-300"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <p className="font-semibold">Check ingredient labels</p>
+                  <p className="mt-0.5 opacity-90">
+                    Compound items ({allergenEval.uncertainIngredients.join(", ")}) can vary by
+                    brand.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {stats.map((s) => (
                 <div
                   key={s.label}
-                  className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card p-3 text-center"
+                  className="flex flex-col items-center justify-center gap-1 rounded-xl border border-border bg-card p-3 text-center"
                 >
                   <s.icon className="h-4 w-4 text-foreground" />
-                  <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                  <span className="text-xs font-medium tabular-nums text-foreground">
                     {s.label}
                   </span>
+                  {s.sub && (
+                    <span className="text-[10px] leading-tight text-muted-foreground">{s.sub}</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -453,6 +652,28 @@ function RecipePage() {
                   <ShoppingCart className="mr-2 h-4 w-4" />
                 )}
                 Add to list
+              </Button>
+              <Button
+                onClick={addToPantry}
+                variant="outline"
+                disabled={addingPantry}
+                className="min-h-11 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
+              >
+                {addingPantry ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <PackagePlus className="mr-2 h-4 w-4" />
+                )}
+                Add to pantry
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPlannerOpen(true)}
+                className="min-h-11 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
+              >
+                <CalendarPlus className="mr-2 h-4 w-4" />
+                Add to planner
               </Button>
               <Button
                 asChild
@@ -500,14 +721,42 @@ function RecipePage() {
 
         <div className="mt-10 grid gap-10 md:grid-cols-[1fr_1.5fr]">
           <section className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium tracking-tight text-foreground">Ingredients</h2>
-              <span className="text-xs tabular-nums text-muted-foreground">
-                {checkedIngredients.size}/{ingredients.length}
-              </span>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-medium tracking-tight text-foreground">Ingredients</h2>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {checkedIngredients.size}/{scaledIngredients.length} ready
+                </span>
+              </div>
+              <div
+                aria-label="Adjust servings"
+                className="flex items-center gap-1.5 rounded-xl border border-border bg-secondary p-1"
+              >
+                <button
+                  type="button"
+                  aria-label="Decrease servings"
+                  disabled={targetServings <= 1}
+                  onClick={() => setTargetServings((s) => Math.max(1, s - 1))}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-card disabled:opacity-40"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+                <span className="min-w-[68px] text-center text-xs font-medium tabular-nums text-foreground">
+                  {targetServings} {targetServings === 1 ? "serving" : "servings"}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Increase servings"
+                  disabled={targetServings >= 24}
+                  onClick={() => setTargetServings((s) => Math.min(24, s + 1))}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-card disabled:opacity-40"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
             <ul className="mt-3 space-y-1">
-              {ingredients.map((ing, i) => {
+              {scaledIngredients.map((ing, i) => {
                 const checked = checkedIngredients.has(i);
                 return (
                   <li
@@ -600,6 +849,68 @@ function RecipePage() {
           />
         </Suspense>
       )}
+      <Dialog open={plannerOpen} onOpenChange={setPlannerOpen}>
+        <DialogContent className="rounded-2xl border-border bg-card text-foreground">
+          <DialogHeader>
+            <DialogTitle className="font-medium">Add to Meal Planner</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Schedule {r.name} onto your weekly meal plan.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground" htmlFor="planDateInput">
+                Day
+              </label>
+              <input
+                id="planDateInput"
+                type="date"
+                value={planDate}
+                onChange={(e) => setPlanDate(e.target.value)}
+                className="mt-1.5 h-11 w-full rounded-xl border border-border bg-secondary px-3 text-sm text-foreground"
+              />
+            </div>
+            <div>
+              <span className="text-xs font-medium text-muted-foreground">Meal slot</span>
+              <Select
+                value={planMealType}
+                onValueChange={(v) => setPlanMealType(v as (typeof PLAN_SLOTS)[number])}
+              >
+                <SelectTrigger className="mt-1.5 h-11 w-full rounded-xl border-border bg-secondary text-sm text-foreground">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-border bg-popover text-popover-foreground">
+                  {PLAN_SLOTS.map((slot) => (
+                    <SelectItem key={slot} value={slot}>
+                      {slot}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setPlannerOpen(false)}
+              className="rounded-xl text-muted-foreground"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={savingPlanner || !planDate}
+              onClick={() => void addToPlanner()}
+              className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {savingPlanner ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Save to planner
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={imagePreviewOpen && !!r.image_url} onOpenChange={setImagePreviewOpen}>
         <DialogContent className="max-w-xl border-border bg-card text-foreground">
           <DialogHeader>

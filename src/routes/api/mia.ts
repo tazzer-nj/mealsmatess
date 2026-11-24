@@ -54,10 +54,32 @@ function errorResponse(error: unknown) {
     typeof error === "object" && error !== null && "status" in error
       ? Number(error.status)
       : undefined;
-  console.error("[Mia API] Request failed", {
-    name: error instanceof Error ? error.name : "UnknownError",
-    status,
-  });
+  const errName = error instanceof Error ? error.name : "UnknownError";
+  const errMessage = error instanceof Error ? error.message : "";
+  console.error("[Mia API] Request failed", { name: errName, status });
+
+  if (
+    errName === "AbortError" ||
+    errName === "TimeoutError" ||
+    /timed out|timeout/i.test(errMessage)
+  ) {
+    return Response.json(
+      { error: "Mia took too long to respond. Please try again." },
+      { status: 504 },
+    );
+  }
+  if (status === 429 || /rate limit|too many requests|429/i.test(errMessage)) {
+    return Response.json(
+      { error: "Mia is handling too many requests right now. Please wait a moment and retry." },
+      { status: 429 },
+    );
+  }
+  if (status === 402 || /insufficient.*credit|payment required|402/i.test(errMessage)) {
+    return Response.json(
+      { error: "AI kitchen credits are exhausted. Check your plan or try again later." },
+      { status: 402 },
+    );
+  }
   const safeMessage =
     error instanceof Error && error.message.startsWith("MealMate AI ")
       ? error.message

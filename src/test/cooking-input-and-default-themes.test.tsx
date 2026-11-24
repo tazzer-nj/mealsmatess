@@ -104,19 +104,21 @@ describe("CookingInput surface & redesigned Default Kitchen Themes", () => {
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
-  it("applies Fresh Kitchen (light) and Midnight Kitchen (dark) tokens and status bar metadata", () => {
+  it("applies Default White (light) and Default Black (dark) tokens and status bar metadata", () => {
     const fresh = getMealMateTheme("classic-light");
     const midnight = getMealMateTheme("midnight-black");
 
-    expect(fresh.name).toBe("Fresh Kitchen");
-    expect(midnight.name).toBe("Midnight Kitchen");
+    expect(fresh.name).toBe("Default White");
+    expect(midnight.name).toBe("Default Black");
 
     applyMealMateThemeToDom("classic-light");
     expect(document.documentElement.classList.contains("dark")).toBe(false);
-    expect(document.documentElement.style.getPropertyValue("--background")).toBe("#faf7f1");
-    expect(document.documentElement.style.getPropertyValue("--primary")).toBe("#3b6644");
+    expect(document.documentElement.style.getPropertyValue("--background")).toBe(
+      "oklch(0.992 0.003 95)",
+    );
+    expect(document.documentElement.style.getPropertyValue("--primary")).toBe("oklch(0.12 0 0)");
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(
-      "#faf7f1",
+      "#fcfcfb",
     );
     expect(
       document
@@ -126,11 +128,11 @@ describe("CookingInput surface & redesigned Default Kitchen Themes", () => {
 
     applyMealMateThemeToDom("midnight-black");
     expect(document.documentElement.classList.contains("dark")).toBe(true);
-    expect(document.documentElement.style.getPropertyValue("--background")).toBe("#070e0a");
-    expect(document.documentElement.style.getPropertyValue("--card")).toBe("#0e1c14");
-    expect(document.documentElement.style.getPropertyValue("--primary")).toBe("#2ec47a");
+    expect(document.documentElement.style.getPropertyValue("--background")).toBe("oklch(0.08 0 0)");
+    expect(document.documentElement.style.getPropertyValue("--card")).toBe("oklch(0.14 0 0)");
+    expect(document.documentElement.style.getPropertyValue("--primary")).toBe("oklch(0.98 0 0)");
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(
-      "#070e0a",
+      "#0a0a0a",
     );
     expect(
       document
@@ -139,15 +141,15 @@ describe("CookingInput surface & redesigned Default Kitchen Themes", () => {
     ).toBe("black-translucent");
   });
 
-  it("switches quickly between Fresh and Midnight kitchen themes in ThemePicker", () => {
+  it("switches quickly between Default White and Default Black themes in ThemePicker", () => {
     render(
       <ThemeProvider>
         <ThemePicker />
       </ThemeProvider>,
     );
 
-    const midnightBtn = screen.getByRole("button", { name: "Midnight Kitchen" });
-    const freshBtn = screen.getByRole("button", { name: "Fresh Kitchen" });
+    const midnightBtn = screen.getByRole("button", { name: "Black" });
+    const freshBtn = screen.getByRole("button", { name: "White" });
 
     fireEvent.click(midnightBtn);
     expect(document.documentElement.dataset["appTheme"]).toBe("midnight-black");

@@ -22,6 +22,7 @@ import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
 import { generateRecipe } from "@/lib/ai.functions";
 import { pantryRecipeQuery } from "@/lib/pantry-recipe";
+import { toastRecipeGenerationError } from "@/lib/recipe-search";
 
 export const Route = createFileRoute("/pantry")({
   head: () => ({
@@ -155,8 +156,8 @@ function PantryPage() {
     try {
       const { slug } = await generateRecipe({ data: { query } });
       await navigate({ to: "/recipe/$slug", params: { slug } });
-    } catch {
-      toast.error("Mia couldn't generate a recipe right now. Please try again.");
+    } catch (err) {
+      toastRecipeGenerationError(err);
     } finally {
       setGenerating(false);
     }

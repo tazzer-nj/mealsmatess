@@ -125,7 +125,7 @@ describe("Theme registry & global ThemeProvider", () => {
   it("defines default black and white themes plus 6 logo-matched themes with complete tokens", () => {
     expect(FREE_THEMES.map((t) => t.id)).toEqual(["classic-light", "midnight-black"]);
     expect(PREMIUM_THEMES.map((t) => t.id)).toEqual([
-      "classic-green",
+      "lavender-dream",
       "sunset",
       "midnight-pro",
       "ocean-blue",
@@ -241,13 +241,13 @@ describe("Theme registry & global ThemeProvider", () => {
       );
     }
 
-    const classicGreen = MEALMATE_THEMES.find((t) => t.id === "classic-green")!;
+    const lavender = MEALMATE_THEMES.find((t) => t.id === "lavender-dream")!;
     const midnight = MEALMATE_THEMES.find((t) => t.id === "midnight-pro")!;
     const obsidian = MEALMATE_THEMES.find((t) => t.id === "obsidian")!;
     const logoSet = new Set(PREMIUM_THEMES.map((t) => t.mascotImage));
     expect(logoSet).toEqual(
       new Set([
-        "/mascots/mascot-classic.png",
+        "/mascots/mascot-lavender.jpg",
         "/mascots/mascot-midnight.webp",
         "/mascots/mascot-ocean.webp",
         "/mascots/mascot-matcha.webp",
@@ -255,8 +255,9 @@ describe("Theme registry & global ThemeProvider", () => {
         "/mascots/mascot-cherry.webp",
       ]),
     );
-    expect(classicGreen.tokens.primary).toBe("oklch(0.61 0.16 139)");
-    expect(classicGreen.tokens.periwinkle).toBe("oklch(0.61 0.16 139)");
+    expect(lavender.name).toBe("Lavender Dream");
+    expect(lavender.tokens.primary).toBe("oklch(0.54 0.17 295)");
+    expect(lavender.tokens.periwinkle).toBe("oklch(0.54 0.17 295)");
     expect(midnight.mascotImage).toBe("/mascots/mascot-midnight.webp");
     expect(midnight.tokens.periwinkle).toBe("oklch(0.7 0.15 275)");
     expect(obsidian.mascotImage).toBe("/mascots/mascot-cherry.webp");

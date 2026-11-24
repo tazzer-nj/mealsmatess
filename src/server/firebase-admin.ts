@@ -27,23 +27,93 @@ let initialized:
 
 let tokenVerifierAuth: ReturnType<typeof getAuth> | undefined;
 
-function resolvedProjectId(fallback?: string) {
+function isVercelProduction() {
   return (
-    process.env["FIREBASE_PROJECT_ID"]?.trim() ||
-    process.env["VITE_FIREBASE_PROJECT_ID"]?.trim() ||
-    fallback ||
-    firebaseAppletConfig.projectId?.trim() ||
-    ""
+    process.env["VERCEL_ENV"] === "production" ||
+    (process.env["VERCEL"] === "1" &&
+      process.env["NODE_ENV"] === "production" &&
+      !["preview", "development"].includes(process.env["VERCEL_ENV"] ?? ""))
   );
 }
 
-function resolvedDatabaseId() {
-  return (
+function isVercelRuntime() {
+  return process.env["VERCEL"] === "1" || Boolean(process.env["VERCEL_ENV"]?.trim());
+}
+
+function resolvedProjectId(fallback?: string) {
+  const fromEnv =
+    process.env["FIREBASE_PROJECT_ID"]?.trim() ||
+    process.env["VITE_FIREBASE_PROJECT_ID"]?.trim() ||
+    fallback?.trim();
+  if (fromEnv) return fromEnv;
+  if (isVercelProduction()) {
+    throw new Error(
+      "Missing Firebase project configuration in production: set FIREBASE_PROJECT_ID and VITE_FIREBASE_PROJECT_ID. Refusing to fall back to the AI Studio preview project.",
+    );
+  }
+  return firebaseAppletConfig.projectId?.trim() || "";
+}
+
+function resolvedDatabaseId(projectId?: string) {
+  const envDb =
+    process.env["FIREBASE_FIRESTORE_DATABASE_ID"]?.trim() ||
+    process.env["VITE_FIREBASE_FIRESTORE_DATABASE_ID"]?.trim();
+  const previewDb = firebaseAppletConfig.firestoreDatabaseId?.trim() || "";
+  const previewProject = firebaseAppletConfig.projectId?.trim() || "";
+
+  if (envDb) {
+    if (isVercelProduction() && previewDb && envDb === previewDb) {
+      throw new Error(
+        'Production Firestore cannot use the AI Studio preview database. Update FIREBASE_FIRESTORE_DATABASE_ID and VITE_FIREBASE_FIRESTORE_DATABASE_ID to your production database ID (for example "(default)").',
+      );
+    }
+    return envDb;
+  }
+
+  const targetingDifferentProject = Boolean(
+    projectId && previewProject && projectId !== previewProject,
+  );
+  if (isVercelRuntime() || targetingDifferentProject) {
+    throw new Error(
+      'Missing Firestore database configuration: set FIREBASE_FIRESTORE_DATABASE_ID and VITE_FIREBASE_FIRESTORE_DATABASE_ID (for example "(default)"). Refusing to fall back to the AI Studio preview database.',
+    );
+  }
+  return previewDb || "(default)";
+}
+
+export function getFirebaseAdminConfigStatus() {
+  const hasServiceAccount = Boolean(process.env["FIREBASE_SERVICE_ACCOUNT_JSON"]?.trim());
+  const envDb =
     process.env["FIREBASE_FIRESTORE_DATABASE_ID"]?.trim() ||
     process.env["VITE_FIREBASE_FIRESTORE_DATABASE_ID"]?.trim() ||
-    firebaseAppletConfig.firestoreDatabaseId?.trim() ||
-    "default"
-  );
+    "";
+  try {
+    const projectId = resolvedProjectId();
+    const databaseId = resolvedDatabaseId(projectId);
+    return {
+      configured: hasServiceAccount && Boolean(projectId && databaseId),
+      hasServiceAccount,
+      projectIdConfigured: Boolean(projectId),
+      databaseIdConfigured: Boolean(databaseId),
+      databaseIdSource: envDb ? "env" : "ai-studio-preview-config",
+      usesPreviewDatabaseFallback:
+        !envDb && databaseId === (firebaseAppletConfig.firestoreDatabaseId?.trim() || ""),
+      error: null as string | null,
+    };
+  } catch (error) {
+    return {
+      configured: false,
+      hasServiceAccount,
+      projectIdConfigured: Boolean(
+        process.env["FIREBASE_PROJECT_ID"]?.trim() ||
+        process.env["VITE_FIREBASE_PROJECT_ID"]?.trim(),
+      ),
+      databaseIdConfigured: false,
+      databaseIdSource: envDb ? "env" : "missing",
+      usesPreviewDatabaseFallback: false,
+      error: error instanceof Error ? error.message : "Firebase configuration error.",
+    };
+  }
 }
 
 function getTokenVerifierAuth() {
@@ -86,10 +156,13 @@ function getServices() {
     );
   }
 
+  const databaseId = resolvedDatabaseId(projectId);
+  const allowPreviewStorage =
+    !isVercelRuntime() && projectId === (firebaseAppletConfig.projectId?.trim() || "");
   const bucketName = (
     process.env["FIREBASE_STORAGE_BUCKET"] ||
     process.env["VITE_FIREBASE_STORAGE_BUCKET"] ||
-    firebaseAppletConfig.storageBucket ||
+    (allowPreviewStorage ? firebaseAppletConfig.storageBucket : "") ||
     `${projectId}.appspot.com`
   ).trim();
 
@@ -108,7 +181,6 @@ function getServices() {
       },
       "mealmate-admin",
     );
-  const databaseId = resolvedDatabaseId();
   initialized = {
     app,
     db:

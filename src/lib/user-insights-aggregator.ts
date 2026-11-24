@@ -173,7 +173,12 @@ export type UserInsightsReport = {
   };
   funnel: {
     milestones: Array<{ step: string; users: number; conversionFromPrevPct: number }>;
-    onboardingPages: Array<{ page: number; label: string; usersReached: number; dropOffPct: number }>;
+    onboardingPages: Array<{
+      page: number;
+      label: string;
+      usersReached: number;
+      dropOffPct: number;
+    }>;
     avgCompletionDurationSeconds: number | null;
     mostAbandonedPage: number | null;
   };
@@ -326,12 +331,7 @@ export function aggregateUserInsights(input: {
     const prefsRaw = (prof?.preferences ?? {}) as Record<string, unknown>;
     const prefsAcq = (prefsRaw["acquisition"] ?? {}) as Record<string, unknown>;
 
-    const platform = (
-      op?.platform ??
-      prof?.platform ??
-      acq?.platform ??
-      "web"
-    ).toLowerCase();
+    const platform = (op?.platform ?? prof?.platform ?? acq?.platform ?? "web").toLowerCase();
     const country = (op?.country ?? prof?.country ?? acq?.country ?? "ZA").toUpperCase();
     const utmSource =
       acq?.utm_source ??
@@ -344,9 +344,7 @@ export function aggregateUserInsights(input: {
     const channel = normalizeChannelName(selfReported || utmSource);
     const subStatus = (sub?.status ?? "free").toLowerCase();
     const subTier = (sub?.tier ?? "free").toLowerCase();
-    const onboardingCompleted = Boolean(
-      op?.onboarding_completed || prof?.onboarding_completed,
-    );
+    const onboardingCompleted = Boolean(op?.onboarding_completed || prof?.onboarding_completed);
     const createdAt =
       prof?.created_at ??
       prof?.createdAt ??
@@ -482,7 +480,9 @@ export function aggregateUserInsights(input: {
         : [];
     for (const d of diets) if (d) dietCounts.set(d, (dietCounts.get(d) ?? 0) + 1);
 
-    const habit = op?.eating_habits ?? (typeof prefs["eating_habits"] === "string" ? prefs["eating_habits"] : null);
+    const habit =
+      op?.eating_habits ??
+      (typeof prefs["eating_habits"] === "string" ? prefs["eating_habits"] : null);
     if (habit) eatingHabitCounts.set(habit, (eatingHabitCounts.get(habit) ?? 0) + 1);
 
     const freq =
@@ -572,7 +572,10 @@ export function aggregateUserInsights(input: {
     {
       step: "Trial Started",
       users: trialsCount,
-      conversionFromPrevPct: pct(trialsCount, Math.max(paywallViewedUsers, onboardingCompletedCount)),
+      conversionFromPrevPct: pct(
+        trialsCount,
+        Math.max(paywallViewedUsers, onboardingCompletedCount),
+      ),
     },
     {
       step: "Subscription Started",
@@ -603,13 +606,17 @@ export function aggregateUserInsights(input: {
       ) {
         durations.push(prog.completion_duration_seconds);
       }
-    } else if (onboardingByUser.get(uid)?.onboarding_completed || profileByUser.get(uid)?.onboarding_completed) {
+    } else if (
+      onboardingByUser.get(uid)?.onboarding_completed ||
+      profileByUser.get(uid)?.onboarding_completed
+    ) {
       for (let p = 1; p <= 8; p++) pageReachCounts[p - 1]!.add(uid);
     }
   }
   for (const evt of filteredEvents) {
     if (
-      (evt.event_name === "onboarding_page_viewed" || evt.event_name === "onboarding_page_completed") &&
+      (evt.event_name === "onboarding_page_viewed" ||
+        evt.event_name === "onboarding_page_completed") &&
       typeof evt.page_number === "number" &&
       evt.page_number >= 1 &&
       evt.page_number <= 8
@@ -623,8 +630,12 @@ export function aggregateUserInsights(input: {
 
   const onboardingPages = PAGE_LABELS.map((label, idx) => {
     const usersReached = pageReachCounts[idx]!.size;
-    const prevUsers = idx === 0 ? Math.max(startedUsersCount, usersReached) : pageReachCounts[idx - 1]!.size;
-    const drop = prevUsers > 0 ? Math.max(0, Math.round(((prevUsers - usersReached) / prevUsers) * 1000) / 10) : 0;
+    const prevUsers =
+      idx === 0 ? Math.max(startedUsersCount, usersReached) : pageReachCounts[idx - 1]!.size;
+    const drop =
+      prevUsers > 0
+        ? Math.max(0, Math.round(((prevUsers - usersReached) / prevUsers) * 1000) / 10)
+        : 0;
     return { page: idx + 1, label, usersReached, dropOffPct: drop };
   });
 
@@ -660,8 +671,12 @@ export function aggregateUserInsights(input: {
         .reduce((sum, p) => sum + (Number(p.amount_usd) || 0), 0) * 100,
     ) / 100;
 
-  const totalSubscribedOrCancelled = activePaidSubscribers + activeTrialSubscribers + cancelledCount;
-  const trialToPaidRatePct = pct(paidCount, Math.max(trialsCount, activePaidSubscribers + activeTrialSubscribers));
+  const totalSubscribedOrCancelled =
+    activePaidSubscribers + activeTrialSubscribers + cancelledCount;
+  const trialToPaidRatePct = pct(
+    paidCount,
+    Math.max(trialsCount, activePaidSubscribers + activeTrialSubscribers),
+  );
   const cancellationRatePct = pct(cancelledCount, totalSubscribedOrCancelled);
 
   // Section I: Engagement & Meaningful Cohort Retention (strictly from user_activity)
@@ -763,14 +778,13 @@ export function aggregateUserInsights(input: {
       severity: "medium",
       title: `Top user struggle: "${topChallenges[0].name}"`,
       evidence: `${topChallenges[0].pct}% (${topChallenges[0].count} users) flagged this challenge on Page 2.`,
-      recommendation:
-        /time/i.test(topChallenges[0].name)
-          ? "Feature 15-minute weeknight collections prominently at the top of Home & Recipes."
-          : /waste|ingredients/i.test(topChallenges[0].name)
-            ? "Prompt users to scan or add 3 pantry items immediately after Personalisation."
-            : /expensive/i.test(topChallenges[0].name)
-              ? "Highlight ZAR budget-friendly meal plans directly on the paywall benefits card."
-              : "Surface curated daily meal suggestions on the Home card to eliminate decision fatigue.",
+      recommendation: /time/i.test(topChallenges[0].name)
+        ? "Feature 15-minute weeknight collections prominently at the top of Home & Recipes."
+        : /waste|ingredients/i.test(topChallenges[0].name)
+          ? "Prompt users to scan or add 3 pantry items immediately after Personalisation."
+          : /expensive/i.test(topChallenges[0].name)
+            ? "Highlight ZAR budget-friendly meal plans directly on the paywall benefits card."
+            : "Surface curated daily meal suggestions on the Home card to eliminate decision fatigue.",
     });
   }
 
@@ -866,7 +880,10 @@ export function aggregateUserInsights(input: {
     },
     subscriptions: {
       byStatus: toCountShares(subStatusCounts, Math.max(1, totalUsers)),
-      byTier: toCountShares(subTierCounts, Math.max(1, activePaidSubscribers + activeTrialSubscribers)),
+      byTier: toCountShares(
+        subTierCounts,
+        Math.max(1, activePaidSubscribers + activeTrialSubscribers),
+      ),
       trialToPaidRatePct,
       cancellationRatePct,
       revenueInRangeUsd,
@@ -906,7 +923,12 @@ export function buildUserInsightsCsv(report: UserInsightsReport): string {
     ["Section", "Metric", "Value", "Detail"],
     ["Overview", "Total Users", report.overview.totalUsers, "Filtered cohort"],
     ["Overview", "New Users", report.overview.newUsersInRange, "In selected range"],
-    ["Overview", "Onboarding Completion Rate %", report.overview.onboardingCompletionRatePct, "Completed / Total"],
+    [
+      "Overview",
+      "Onboarding Completion Rate %",
+      report.overview.onboardingCompletionRatePct,
+      "Completed / Total",
+    ],
     ["Overview", "Trial Starts", report.overview.trialStarts, "RevenueCat trials"],
     ["Overview", "Paid Conversions", report.overview.paidConversions, "Confirmed paid"],
     ["Overview", "MRR (USD)", report.overview.mrrUsd, "Active monthly normalized"],
@@ -942,8 +964,18 @@ export function buildUserInsightsCsv(report: UserInsightsReport): string {
   for (const m of report.funnel.onboardingPages) {
     rows.push(["Onboarding Page", m.label, m.usersReached, `Drop-off ${m.dropOffPct}%`]);
   }
-  rows.push(["Retention", "DAU / WAU / MAU", `${report.engagement.dau} / ${report.engagement.wau} / ${report.engagement.mau}`, "Meaningful activity"]);
-  rows.push(["Retention", "D1 / D7 / D30 %", `${report.engagement.d1RetentionPct}% / ${report.engagement.d7RetentionPct}% / ${report.engagement.d30RetentionPct}%`, "Cohort retention"]);
+  rows.push([
+    "Retention",
+    "DAU / WAU / MAU",
+    `${report.engagement.dau} / ${report.engagement.wau} / ${report.engagement.mau}`,
+    "Meaningful activity",
+  ]);
+  rows.push([
+    "Retention",
+    "D1 / D7 / D30 %",
+    `${report.engagement.d1RetentionPct}% / ${report.engagement.d7RetentionPct}% / ${report.engagement.d30RetentionPct}%`,
+    "Cohort retention",
+  ]);
 
   return rows.map((row) => row.map(safeCsvCell).join(",")).join("\n");
 }

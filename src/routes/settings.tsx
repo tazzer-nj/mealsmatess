@@ -44,7 +44,7 @@ import { deleteUser } from "firebase/auth";
 import { auth, sendPasswordReset as sendFirebasePasswordReset } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
 import { saveUserProfile } from "@/lib/profile-avatar";
-import { saveMyAccountSettings } from "@/lib/account.functions";
+import { getMyAccountSettings, saveMyAccountSettings } from "@/lib/account.functions";
 import { ProfileAvatarUploader } from "@/components/profile-avatar-uploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -234,6 +234,13 @@ function SettingsPage() {
     setPlanningReminders(localStorage.getItem("mealmate_notif_planning") !== "false");
     setPromoAlerts(localStorage.getItem("mealmate_notif_promo") === "true");
 
+    if (
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("section") === "preferences"
+    ) {
+      setEditPreferencesOpen(true);
+    }
+
     if (navigator.permissions?.query) {
       void navigator.permissions
         .query({ name: "microphone" as PermissionName })
@@ -244,6 +251,60 @@ function SettingsPage() {
         .catch(() => setMicPermission("unknown"));
     }
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    void getMyAccountSettings()
+      .then((acct) => {
+        if (cancelled || !acct) return;
+        if (acct.units) {
+          setUnits(acct.units);
+          localStorage.setItem("mealmate_units", acct.units);
+        }
+        if (acct.locale) {
+          const normalized = normalizeAppLanguage(acct.locale);
+          setLanguage(normalized);
+          localStorage.setItem("mealmate-lang", normalized);
+          localStorage.setItem("mealmate_lang", normalized);
+        }
+        if (typeof acct.voiceResponses === "boolean") {
+          setVoiceResponses(acct.voiceResponses);
+          localStorage.setItem("mealmate_voice_responses", String(acct.voiceResponses));
+        }
+        if (typeof acct.isMuted === "boolean") {
+          setIsMuted(acct.isMuted);
+          localStorage.setItem("mealmate_voice_muted", String(acct.isMuted));
+        }
+        if (acct.speechSpeed) {
+          setSpeechSpeed(acct.speechSpeed);
+          localStorage.setItem("mealmate_speech_speed", acct.speechSpeed);
+        }
+        if (acct.notifications) {
+          setMealReminders(acct.notifications.mealReminders);
+          setRecipeAlerts(acct.notifications.recipeAlerts);
+          setPlanningReminders(acct.notifications.planningReminders);
+          setPromoAlerts(acct.notifications.promoAlerts);
+          localStorage.setItem(
+            "mealmate_notif_meal_reminders",
+            String(acct.notifications.mealReminders),
+          );
+          localStorage.setItem(
+            "mealmate_notif_recipe_alerts",
+            String(acct.notifications.recipeAlerts),
+          );
+          localStorage.setItem(
+            "mealmate_notif_planning",
+            String(acct.notifications.planningReminders),
+          );
+          localStorage.setItem("mealmate_notif_promo", String(acct.notifications.promoAlerts));
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (user?.displayName) setDisplayName(user.displayName);
@@ -266,13 +327,24 @@ function SettingsPage() {
         photoURL: photoURL.trim() || null,
         userId: user.id,
       });
-      if (auth.currentUser) {
-        await firebaseData
-          .from("profiles")
-          .update({ displayName: trimmed, name: trimmed } as never)
-          .eq("id", user.id);
-      }
+      await saveMyAccountSettings({
+        data: {
+          displayName: trimmed,
+          photoURL: photoURL.trim() || null,
+        },
+      }).catch(async (err) => {
+        if (auth.currentUser) {
+          await firebaseData
+            .from("profiles")
+            .upsert({ id: user.id, displayName: trimmed, name: trimmed } as never, {
+              onConflict: "id",
+            });
+          return;
+        }
+        throw err;
+      });
       await queryClient.invalidateQueries({ queryKey: ["user", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["profile-prefs", user.id] });
       toast.success("Profile updated");
       setEditProfileOpen(false);
     } catch (error) {
@@ -446,12 +518,20 @@ function SettingsPage() {
     }
   }
 
+  function persistAccountPatch(patch: Parameters<typeof saveMyAccountSettings>[0]["data"]) {
+    if (!user?.id) return;
+    void saveMyAccountSettings({ data: patch }).catch(() => {
+      toast.error("Couldn't sync that setting to your account right now.");
+    });
+  }
+
   function toggleVoiceMute(muted: boolean) {
     setIsMuted(muted);
     if (typeof window !== "undefined") {
       localStorage.setItem("mealmate_voice_muted", String(muted));
       if (muted && window.speechSynthesis) window.speechSynthesis.cancel();
     }
+    persistAccountPatch({ isMuted: muted });
     toast.info(muted ? "Mia audio muted" : "Mia audio unmuted");
   }
 
@@ -461,6 +541,7 @@ function SettingsPage() {
       localStorage.setItem("mealmate_voice_responses", String(val));
       if (!val && window.speechSynthesis) window.speechSynthesis.cancel();
     }
+    persistAccountPatch({ voiceResponses: val });
     toast.success(val ? "Voice responses enabled" : "Voice responses disabled");
   }
 
@@ -469,6 +550,7 @@ function SettingsPage() {
     if (typeof window !== "undefined") {
       localStorage.setItem("mealmate_units", nextUnits);
     }
+    persistAccountPatch({ units: nextUnits });
     toast.success(
       `Units updated to ${nextUnits === "metric" ? "Metric (g, ml)" : "Imperial (oz, lb)"}`,
     );
@@ -485,17 +567,10 @@ function SettingsPage() {
     void i18n.changeLanguage(normalized).catch(() => undefined);
     if (user?.id) {
       try {
-        if (auth.currentUser) {
-          await firebaseData
-            .from("profiles")
-            .update({ locale: normalized } as never)
-            .eq("id", user.id);
-        } else {
-          await saveMyAccountSettings({ data: { locale: normalized } });
-        }
+        await saveMyAccountSettings({ data: { locale: normalized } });
         void queryClient.invalidateQueries({ queryKey: ["profile-prefs", user.id] });
       } catch {
-        // Non-blocking: localStorage and active i18n session remain updated.
+        toast.error("Couldn't sync language setting to your account.");
       }
     }
     const label = APP_LANGUAGES.find((item) => item.code === normalized)?.name ?? normalized;
@@ -517,6 +592,19 @@ function SettingsPage() {
     setter(val);
     if (typeof window !== "undefined") {
       localStorage.setItem(key, String(val));
+    }
+    const fieldMap: Record<
+      string,
+      "mealReminders" | "recipeAlerts" | "planningReminders" | "promoAlerts"
+    > = {
+      mealmate_notif_meal_reminders: "mealReminders",
+      mealmate_notif_recipe_alerts: "recipeAlerts",
+      mealmate_notif_planning: "planningReminders",
+      mealmate_notif_promo: "promoAlerts",
+    };
+    const field = fieldMap[key];
+    if (field) {
+      persistAccountPatch({ notifications: { [field]: val } });
     }
     toast.success(`${label} ${val ? "enabled" : "turned off"}`);
   }
@@ -1560,6 +1648,7 @@ function SettingsPage() {
                     onClick={() => {
                       setSpeechSpeed(rate);
                       localStorage.setItem("mealmate_speech_speed", rate);
+                      persistAccountPatch({ speechSpeed: rate });
                     }}
                     className={`flex-1 rounded-xl border py-2.5 text-xs font-medium transition-colors ${
                       speechSpeed === rate

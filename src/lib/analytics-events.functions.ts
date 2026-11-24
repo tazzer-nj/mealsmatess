@@ -114,7 +114,9 @@ export const saveStructuredOnboardingState = createServerFn({ method: "POST" })
     const nowIso = new Date().toISOString();
     const p = normalizePreferences(data.preferences);
     const personalisationProfile =
-      data.status === "completed" ? buildPersonalisationProfile(p) : (p.personalisation_profile ?? null);
+      data.status === "completed"
+        ? buildPersonalisationProfile(p)
+        : (p.personalisation_profile ?? null);
 
     await Promise.all([
       firebaseAdmin.from("onboarding_progress").upsert(
@@ -215,13 +217,13 @@ export const saveStructuredOnboardingState = createServerFn({ method: "POST" })
     // Preserve immutable first-touch attribution in user_acquisition_sources.
     if (
       p.acquisition &&
-      (p.acquisition.self_reported_source ||
-        p.acquisition.utm_source ||
-        p.acquisition.referrer)
+      (p.acquisition.self_reported_source || p.acquisition.utm_source || p.acquisition.referrer)
     ) {
       const { data: existingAcq } = await firebaseAdmin
         .from("user_acquisition_sources")
-        .select("self_reported_source, other_detail, utm_source, utm_medium, utm_campaign, referrer, captured_at")
+        .select(
+          "self_reported_source, other_detail, utm_source, utm_medium, utm_campaign, referrer, captured_at",
+        )
         .eq("id", context.userId)
         .maybeSingle();
 
@@ -230,9 +232,7 @@ export const saveStructuredOnboardingState = createServerFn({ method: "POST" })
         p.acquisition.self_reported_source ||
         null;
       const lockedOther =
-        (existingAcq?.["other_detail"] as string | null) ||
-        p.acquisition.other_detail ||
-        null;
+        (existingAcq?.["other_detail"] as string | null) || p.acquisition.other_detail || null;
 
       await firebaseAdmin.from("user_acquisition_sources").upsert(
         {
@@ -245,9 +245,7 @@ export const saveStructuredOnboardingState = createServerFn({ method: "POST" })
           utm_medium:
             (existingAcq?.["utm_medium"] as string | null) ?? p.acquisition.utm_medium ?? null,
           utm_campaign:
-            (existingAcq?.["utm_campaign"] as string | null) ??
-            p.acquisition.utm_campaign ??
-            null,
+            (existingAcq?.["utm_campaign"] as string | null) ?? p.acquisition.utm_campaign ?? null,
           referrer: (existingAcq?.["referrer"] as string | null) ?? p.acquisition.referrer ?? null,
           platform: data.platform ?? null,
           country: data.country ?? null,

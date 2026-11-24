@@ -7,7 +7,18 @@ import { getMealMateTheme, isMealMateThemeId, normalizeThemeId } from "@/lib/the
 const loadPremiumService = createServerOnlyFn(() => import("@/server/revenuecat"));
 
 const prefsSchema = z.object({
-  goal: z.string().max(60).nullable().default(null),
+  goal: z.string().max(120).nullable().default(null),
+  goals: z.array(z.string().max(120)).max(20).optional().default([]),
+  challenges: z.array(z.string().max(160)).max(20).optional().default([]),
+  health_goals: z.array(z.string().max(120)).max(20).optional().default([]),
+  age_bracket: z.string().max(40).nullable().optional().default(null),
+  balanced_nutrition_safeguard: z.boolean().optional().default(false),
+  eating_habits: z.array(z.string().max(120)).max(20).optional().default([]),
+  cooking_frequency: z.string().max(60).nullable().optional().default(null),
+  biggest_challenge: z.string().max(160).nullable().optional().default(null),
+  meal_enjoyments: z.array(z.string().max(80)).max(30).optional().default([]),
+  preferred_cuisines: z.array(z.string().max(60)).max(30).optional().default([]),
+  budget_range_zar: z.string().max(80).nullable().optional().default(null),
   favorite_foods: z.array(z.string().max(60)).max(30).default([]),
   allergies: z.array(z.string().max(60)).max(40).default([]),
   dietary_restrictions: z.array(z.string().max(60)).max(30).default([]),
@@ -16,7 +27,7 @@ const prefsSchema = z.object({
   household_size: z.string().max(40).nullable().optional().default(null),
   cooking_level: z.string().max(40).nullable().default(null),
   cooking_time: z.string().max(40).nullable().default(null),
-  food_budget: z.string().max(40).nullable().default(null),
+  food_budget: z.string().max(80).nullable().default(null),
   preferred_features: z.array(z.string().max(40)).max(20).default([]),
   discovery_source: z.string().max(60).nullable().optional().default(null),
   onboarding_step: z.number().int().min(0).max(10).nullable().optional().default(null),

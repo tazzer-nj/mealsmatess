@@ -25,15 +25,71 @@ const envAppId = import.meta.env.VITE_FIREBASE_APP_ID?.trim();
 const envMeasurementId = import.meta.env.FIREBASE_MEASUREMENT_ID?.trim();
 const envDatabaseId = import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID?.trim();
 
+const deployEnv = (
+  (import.meta.env as Record<string, string | undefined>)["VITE_VERCEL_ENV"] ?? ""
+).trim();
+const hostname = typeof window !== "undefined" ? window.location.hostname : "";
+const isHostedVercel =
+  deployEnv === "production" ||
+  deployEnv === "preview" ||
+  deployEnv === "vercel" ||
+  /(^|\.)mealsmates\.site$|vercel\.app$/i.test(hostname);
+const isProductionDeploy = deployEnv === "production" || /(^|\.)mealsmates\.site$/i.test(hostname);
+const previewProjectId = firebaseAppletConfig.projectId?.trim() || "";
+const previewDatabaseId = firebaseAppletConfig.firestoreDatabaseId?.trim() || "";
+const targetingDifferentProject = Boolean(
+  envProjectId && previewProjectId && envProjectId !== previewProjectId,
+);
+const allowPreviewFallback = !isHostedVercel && !targetingDifferentProject;
+
+const missingClientVars: string[] = [];
+if (!allowPreviewFallback) {
+  if (!envApiKey) missingClientVars.push("VITE_FIREBASE_API_KEY");
+  if (!envAuthDomain) missingClientVars.push("VITE_FIREBASE_AUTH_DOMAIN");
+  if (!envProjectId) missingClientVars.push("VITE_FIREBASE_PROJECT_ID");
+  if (!envAppId) missingClientVars.push("VITE_FIREBASE_APP_ID");
+  if (!envDatabaseId) missingClientVars.push("VITE_FIREBASE_FIRESTORE_DATABASE_ID");
+}
+
+let resolvedConfigError: string | null = null;
+if (missingClientVars.length > 0) {
+  resolvedConfigError = `Missing Firebase client configuration (${missingClientVars.join(", ")}). Refusing to fall back to the AI Studio preview database.`;
+} else if (isProductionDeploy && previewDatabaseId && envDatabaseId === previewDatabaseId) {
+  resolvedConfigError =
+    'Production Firestore cannot use the AI Studio preview database. Update VITE_FIREBASE_FIRESTORE_DATABASE_ID to your production database ID (for example "(default)").';
+}
+
+export const firebaseConfigError: string | null = resolvedConfigError;
+if (firebaseConfigError && !import.meta.env.VITEST) {
+  console.error("[MealMate Firebase Config]", firebaseConfigError);
+}
+
 const firebaseConfig = {
-  apiKey: envApiKey || firebaseAppletConfig.apiKey,
-  authDomain: envAuthDomain || firebaseAppletConfig.authDomain,
-  projectId: envProjectId || firebaseAppletConfig.projectId,
-  storageBucket: envStorageBucket || firebaseAppletConfig.storageBucket,
-  messagingSenderId: envMessagingSenderId || firebaseAppletConfig.messagingSenderId,
-  appId: envAppId || firebaseAppletConfig.appId,
-  ...(envMeasurementId || firebaseAppletConfig.measurementId
-    ? { measurementId: envMeasurementId || firebaseAppletConfig.measurementId }
+  apiKey: envApiKey || (allowPreviewFallback ? firebaseAppletConfig.apiKey : "missing-api-key"),
+  authDomain:
+    envAuthDomain ||
+    (allowPreviewFallback
+      ? firebaseAppletConfig.authDomain
+      : "missing-auth-domain.firebaseapp.com"),
+  projectId:
+    envProjectId || (allowPreviewFallback ? firebaseAppletConfig.projectId : "missing-project-id"),
+  storageBucket:
+    envStorageBucket ||
+    (allowPreviewFallback
+      ? firebaseAppletConfig.storageBucket
+      : envProjectId
+        ? `${envProjectId}.appspot.com`
+        : "missing-storage-bucket"),
+  messagingSenderId:
+    envMessagingSenderId ||
+    (allowPreviewFallback ? firebaseAppletConfig.messagingSenderId : "000000000000"),
+  appId:
+    envAppId || (allowPreviewFallback ? firebaseAppletConfig.appId : "1:000000000000:web:missing"),
+  ...(envMeasurementId || (allowPreviewFallback ? firebaseAppletConfig.measurementId : "")
+    ? {
+        measurementId:
+          envMeasurementId || (allowPreviewFallback ? firebaseAppletConfig.measurementId : ""),
+      }
     : {}),
 } as {
   apiKey: string;
@@ -45,8 +101,20 @@ const firebaseConfig = {
   measurementId?: string;
 };
 
-const configuredDatabaseId =
-  envDatabaseId || firebaseAppletConfig.firestoreDatabaseId?.trim() || "";
+const configuredDatabaseId = firebaseConfigError
+  ? "(default)"
+  : envDatabaseId || (allowPreviewFallback ? previewDatabaseId : "") || "(default)";
+
+export function getFirebaseClientConfigStatus() {
+  return {
+    configured: !firebaseConfigError,
+    projectId: firebaseConfig.projectId,
+    databaseId: configuredDatabaseId,
+    usingPreviewFallback:
+      allowPreviewFallback && (!envDatabaseId || configuredDatabaseId === previewDatabaseId),
+    error: firebaseConfigError,
+  };
+}
 
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const analytics =
@@ -137,6 +205,10 @@ export function handleFirestoreError(
 }
 
 export async function testFirestoreConnection() {
+  if (firebaseConfigError) {
+    console.error("[MealMate Firebase Config]", firebaseConfigError);
+    return;
+  }
   try {
     await getDocFromServer(doc(db, "test", "connection"));
   } catch (error) {
@@ -150,15 +222,24 @@ if (typeof window !== "undefined" && !import.meta.env.SSR && !import.meta.env.VI
   void testFirestoreConnection();
 }
 
+function assertFirebaseConfigured() {
+  if (firebaseConfigError) {
+    throw new Error(firebaseConfigError);
+  }
+}
+
 export async function signInWithGoogle() {
+  assertFirebaseConfigured();
   return signInWithPopup(auth, googleProvider);
 }
 
 export async function signInWithEmail(email: string, pass: string) {
+  assertFirebaseConfigured();
   return signInWithEmailAndPassword(auth, email, pass);
 }
 
 export async function signUpWithEmail(email: string, pass: string, displayName?: string) {
+  assertFirebaseConfigured();
   const cred = await createUserWithEmailAndPassword(auth, email, pass);
   if (displayName && cred.user) {
     await updateProfile(cred.user, { displayName });
@@ -167,6 +248,7 @@ export async function signUpWithEmail(email: string, pass: string, displayName?:
 }
 
 export async function sendPasswordReset(email: string, continueUrl?: string) {
+  assertFirebaseConfigured();
   return sendPasswordResetEmail(
     auth,
     email,

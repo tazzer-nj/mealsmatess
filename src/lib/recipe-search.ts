@@ -70,9 +70,39 @@ export function toastRecipeGenerationError(err: unknown) {
     });
     return;
   }
+  if (/Too many requests|rate limit|slow down|429/i.test(message)) {
+    toast.error("Too many recipe requests", {
+      description: "Please wait a few seconds before asking Mia for another recipe.",
+    });
+    return;
+  }
+  if (/allergy/i.test(message)) {
+    toast.error("Allergy safety check triggered", {
+      description: message,
+    });
+    return;
+  }
   if (/402|premium|subscription/i.test(message)) {
     toast.error("Premium required to generate recipes", {
       description: "Upgrade to MealMate Premium to let Mia create custom recipes on demand.",
+    });
+    return;
+  }
+  if (/MealMate AI |not configured/i.test(message)) {
+    toast.error("AI recipe service unavailable", {
+      description: message,
+    });
+    return;
+  }
+  if (/timed out|timeout|AbortError|TimeoutError/i.test(message)) {
+    toast.error("Couldn't generate that recipe", {
+      description: "Mia took a little too long to finish that recipe. Please try again.",
+    });
+    return;
+  }
+  if (/Failed to fetch|NetworkError|offline/i.test(message)) {
+    toast.error("Connection issue", {
+      description: "Check your internet connection and try generating again.",
     });
     return;
   }

@@ -9,7 +9,7 @@ import {
 } from "@/lib/themes";
 
 export type MascotThemeId =
-  "classic" | "sunset" | "midnight" | "ocean" | "cherry" | "matcha" | MealMateThemeId;
+  "classic" | "lavender" | "sunset" | "midnight" | "ocean" | "cherry" | "matcha" | MealMateThemeId;
 
 export type MascotTheme = {
   id: MascotThemeId;
@@ -36,8 +36,19 @@ export const MASCOT_THEMES: MascotTheme[] = [
     colorScheme: "light",
   },
   {
+    id: "lavender",
+    name: "Lavender Dream",
+    image: "/mascots/mascot-lavender.jpg",
+    accent: "oklch(0.54 0.17 295)",
+    accentDark: "oklch(0.68 0.15 295)",
+    accentForeground: "oklch(0.99 0 0)",
+    premium: true,
+    subtitle: "Dreamy soft lavender & calm violet mist",
+    colorScheme: "light",
+  },
+  {
     id: "sunset",
-    name: "Sunset Kitchen",
+    name: "Sunset",
     image: "/mascots/mascot-sunset.webp",
     accent: "oklch(0.68 0.17 55)",
     accentDark: "oklch(0.76 0.16 60)",

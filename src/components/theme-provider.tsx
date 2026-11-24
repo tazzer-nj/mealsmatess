@@ -251,6 +251,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           writeLocalThemeStorage(remoteId);
           applyMealMateThemeToDom(remoteId, { animate: false });
         }
+        if (typeof process === "undefined" || !process.env["VITEST"]) {
+          try {
+            const { getMyAccountSettings } = await import("@/lib/account.functions");
+            const acct = await getMyAccountSettings().catch(() => null);
+            if (!cancelled && acct?.font && isAppFontId(acct.font)) {
+              setFontState(acct.font);
+              window.localStorage.setItem(APP_FONT_STORAGE_KEY, acct.font);
+              document.documentElement.dataset["font"] = acct.font;
+            }
+          } catch {
+            /* account font hydration is best-effort */
+          }
+        }
         setAccountLoaded(true);
       } catch (err) {
         if (cancelled) return;
@@ -424,15 +437,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     [user, persistToAccount],
   );
 
-  const setFont = useCallback((nextFont: AppFontId) => {
-    setFontState(nextFont);
-    try {
-      window.localStorage.setItem(APP_FONT_STORAGE_KEY, nextFont);
-    } catch {
-      /* ignore */
-    }
-    document.documentElement.dataset["font"] = nextFont;
-  }, []);
+  const setFont = useCallback(
+    (nextFont: AppFontId) => {
+      setFontState(nextFont);
+      try {
+        window.localStorage.setItem(APP_FONT_STORAGE_KEY, nextFont);
+      } catch {
+        /* ignore */
+      }
+      document.documentElement.dataset["font"] = nextFont;
+      if (user && (typeof process === "undefined" || !process.env["VITEST"])) {
+        void import("@/lib/account.functions")
+          .then(({ saveMyAccountSettings }) => saveMyAccountSettings({ data: { font: nextFont } }))
+          .catch(() => undefined);
+      }
+    },
+    [user],
+  );
 
   const value = useMemo<ThemeContextValue>(
     () => ({

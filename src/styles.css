@@ -825,13 +825,14 @@ html[data-keyboard="open"] .chat-composer {
 }
 
 /* ---------- Full theme palettes + scenic backdrops (aligned with https://mealsmates.lovable.app) ---------- */
-html[data-mascot="classic-green"] {
-  --background: #f8faf6;
-  --card: #ffffff;
-  --secondary: #edf3e9;
-  --muted: #eaf1e5;
-  --accent: #e2ecdb;
-  --border: #dae5d4;
+html[data-mascot="lavender"],
+html[data-app-theme="lavender-dream"] {
+  --background: oklch(0.968 0.025 298);
+  --card: oklch(0.986 0.015 298);
+  --secondary: oklch(0.925 0.045 296);
+  --muted: oklch(0.935 0.032 296);
+  --accent: oklch(0.91 0.055 295);
+  --border: oklch(0.885 0.042 296);
 }
 html[data-mascot="ocean"],
 html[data-mascot="ocean-blue"] {
@@ -945,10 +946,12 @@ html[data-mascot]:not([data-mascot="classic"]):not([data-mascot="classic-light"]
   .theme-backdrop::before {
   opacity: 1;
 }
-html[data-mascot="classic-green"] .theme-backdrop::before {
+html[data-mascot="lavender"] .theme-backdrop::before,
+html[data-app-theme="lavender-dream"] .theme-backdrop::before {
   background-image:
-    radial-gradient(ellipse at 90% 10%, oklch(0.82 0.12 136 / 24%), transparent 50%),
-    radial-gradient(ellipse at 10% 90%, oklch(0.75 0.13 136 / 18%), transparent 50%);
+    radial-gradient(ellipse at 85% 8%, oklch(0.76 0.14 298 / 28%), transparent 46%),
+    radial-gradient(ellipse at 12% 92%, oklch(0.78 0.12 315 / 22%), transparent 50%),
+    linear-gradient(to bottom, oklch(0.84 0.08 295 / 12%), transparent 60%);
 }
 html[data-mascot="ocean"] .theme-backdrop::before,
 html[data-mascot="ocean-blue"] .theme-backdrop::before {
