@@ -181,7 +181,7 @@ export function PremiumPaywall() {
             {
               id: "premium_yearly",
               kind: "yearly",
-              price: isUsd ? "$49.99" : "R399.00",
+              price: isUsd ? "$74.99" : "R399.00",
               period: "year",
               trialDays: 3,
               purchase: async () => {},
@@ -197,7 +197,7 @@ export function PremiumPaywall() {
             {
               id: "premium_family",
               kind: "family",
-              price: isUsd ? "$11.99" : "R249.00",
+              price: isUsd ? "$12.99" : "R249.00",
               period: "month",
               trialDays: 3,
               purchase: async () => {},
@@ -239,7 +239,7 @@ export function PremiumPaywall() {
               {
                 id: "premium_yearly",
                 kind: "yearly",
-                price: isUsd ? "$49.99" : "R399.00",
+                price: isUsd ? "$74.99" : "R399.00",
                 period: "year",
                 trialDays: 3,
                 purchase: async () => {},
@@ -255,7 +255,7 @@ export function PremiumPaywall() {
               {
                 id: "premium_family",
                 kind: "family",
-                price: isUsd ? "$11.99" : "R249.00",
+                price: isUsd ? "$12.99" : "R249.00",
                 period: "month",
                 trialDays: 3,
                 purchase: async () => {},

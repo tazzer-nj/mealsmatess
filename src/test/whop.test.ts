@@ -268,7 +268,7 @@ describe("Whop OAuth 2.1 + PKCE, Checkout, Webhooks & Gating", () => {
         variant: expect.objectContaining({
           billing_type: "renewal",
           initial_price: 0,
-          renewal_price: 49.99,
+          renewal_price: 74.99,
           billing_period: 365,
           trial_period_days: 3,
         }),

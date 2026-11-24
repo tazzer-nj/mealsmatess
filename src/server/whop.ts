@@ -25,7 +25,7 @@ const PLAN_CATALOG: Record<WhopPlanKind, PlanSpec> = {
     description: "3-day free trial, then billed annually. Unlimited Mia AI, scanner & planner.",
     billingPeriodDays: 365,
     trialDays: 3,
-    prices: { USD: 49.99, ZAR: 399.0 },
+    prices: { USD: 74.99, ZAR: 399.0 },
     planEnvKeys: ["WHOP_PLAN_ANNUAL_ID", "WHOP_PLAN_YEARLY_ID"],
   },
   monthly: {
@@ -43,7 +43,7 @@ const PLAN_CATALOG: Record<WhopPlanKind, PlanSpec> = {
     description: "3-day free trial for up to 5 accounts, then billed monthly.",
     billingPeriodDays: 30,
     trialDays: 3,
-    prices: { USD: 11.99, ZAR: 249.0 },
+    prices: { USD: 12.99, ZAR: 249.0 },
     planEnvKeys: ["WHOP_PLAN_FAMILY_ID"],
   },
 };

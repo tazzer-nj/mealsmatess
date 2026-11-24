@@ -36,8 +36,8 @@ const USD_RATES: Record<CurrencyCode, number> = {
 // Master price list — USD is canonical. RevenueCat / store products map
 // to these keys.
 export const PRICES_USD = {
-  premium_monthly: 9.99,
-  premium_annual: 75.0,
+  premium_monthly: 7.99,
+  premium_annual: 74.99,
   family_monthly: 12.99,
   family_annual: 99.99,
   referral_reward_days: 14,
