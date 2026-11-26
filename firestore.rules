@@ -74,7 +74,7 @@ service cloud.firestore {
         && validOptionalString(data, 'font', 24)
         && (!('units' in data) || data.units == null || data.units in ['metric', 'imperial'])
         && (!('voice_preferences' in data) || data.voice_preferences == null || (data.voice_preferences is map && data.voice_preferences.keys().hasOnly(['voiceResponses', 'isMuted', 'speechSpeed'])))
-        && (!('notification_preferences' in data) || data.notification_preferences == null || (data.notification_preferences is map && data.notification_preferences.keys().hasOnly(['mealReminders', 'recipeAlerts', 'planningReminders', 'promoAlerts', 'pushEnabled'])))
+        && (!('notification_preferences' in data) || data.notification_preferences == null || (data.notification_preferences is map && data.notification_preferences.keys().hasOnly(['mealReminders', 'recipeAlerts', 'planningReminders', 'promoAlerts', 'pantryExpiryReminders', 'weeklyInspiration', 'mealPlanSummaries', 'challengeReminders', 'frequency', 'analyticsConsent', 'pushEnabled'])))
         && validOptionalString(data, 'platform', 24)
         && validOptionalString(data, 'country', 12)
         && validOptionalString(data, 'household_size', 40)
@@ -93,6 +93,7 @@ service cloud.firestore {
           'eating_habits', 'cooking_frequency', 'primary_challenge', 'meal_enjoyments',
           'allergies', 'intolerances', 'dietary_restrictions', 'disliked_foods',
           'preferred_cuisines', 'cooking_time', 'cooking_level', 'budget_range_zar',
+          'identity_habit', 'weekly_cooking_goal',
           'onboarding_completed', 'onboarding_completed_at', 'personalisation_profile',
           'platform', 'country', 'created_at', 'updated_at'
         ])
@@ -118,6 +119,8 @@ service cloud.firestore {
         && validOptionalString(data, 'cooking_time', 60)
         && validOptionalString(data, 'cooking_level', 40)
         && validOptionalString(data, 'budget_range_zar', 60)
+        && validOptionalString(data, 'identity_habit', 160)
+        && (!('weekly_cooking_goal' in data) || data.weekly_cooking_goal == null || (data.weekly_cooking_goal is number && data.weekly_cooking_goal >= 1 && data.weekly_cooking_goal <= 21))
         && data.onboarding_completed is bool
         && validTimestampString(data, 'onboarding_completed_at')
         && validOptionalString(data, 'platform', 24)
@@ -204,12 +207,14 @@ service cloud.firestore {
             && validOptionalString(data, 'source', 40)
             && validTimestampString(data, 'created_at'))
           || (collectionName == 'mealPlans'
-            && data.keys().hasOnly(['id', 'user_id', 'plan_date', 'meal_type', 'recipe_id', 'custom_name', 'servings', 'created_at'])
+            && data.keys().hasOnly(['id', 'user_id', 'plan_date', 'meal_type', 'recipe_id', 'custom_name', 'servings', 'completed', 'completed_at', 'created_at'])
             && data.plan_date is string && data.plan_date.size() == 10
             && data.meal_type is string && data.meal_type.size() <= 40
             && validOptionalString(data, 'recipe_id', 128)
             && validOptionalString(data, 'custom_name', 160)
             && (!('servings' in data) || (data.servings is number && data.servings >= 1 && data.servings <= 50))
+            && (!('completed' in data) || data.completed is bool)
+            && validTimestampString(data, 'completed_at')
             && validTimestampString(data, 'created_at'))
           || (collectionName == 'nutritionLogs'
             && data.keys().hasOnly(['id', 'user_id', 'name', 'meal_type', 'logged_at', 'calories', 'protein_g', 'carbs_g', 'fat_g', 'servings', 'created_at'])
@@ -231,7 +236,7 @@ service cloud.firestore {
         || (collectionName == 'pantry'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'quantity', 'category', 'expires_at']))
         || (collectionName == 'mealPlans'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plan_date', 'meal_type', 'recipe_id', 'custom_name', 'servings']));
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plan_date', 'meal_type', 'recipe_id', 'custom_name', 'servings', 'completed', 'completed_at']));
     }
 
     function isCustomerOrder(orderId) {
@@ -272,10 +277,14 @@ service cloud.firestore {
           && isValidId(settingId)
           && request.resource.data.keys().hasOnly([
             'productUpdatesEnabled', 'pushEnabled', 'mealReminders', 'recipeAlerts',
-            'planningReminders', 'promoAlerts', 'trialReminderEnabled', 'trialReminderPlanId',
+            'planningReminders', 'promoAlerts', 'pantryExpiryReminders', 'weeklyInspiration',
+            'mealPlanSummaries', 'challengeReminders', 'frequency', 'analyticsConsent',
+            'trialReminderEnabled', 'trialReminderPlanId',
             'trialReminderAt', 'trialReminderChannel', 'trialReminderUpdatedAt',
             'pushConsentAt', 'pushConsentRevokedAt', 'updatedAt'
           ])
+          && (!('frequency' in request.resource.data) || request.resource.data.frequency in ['daily', 'weekly', 'essential_only'])
+          && (!('analyticsConsent' in request.resource.data) || request.resource.data.analyticsConsent is bool)
           && validTimestampString(request.resource.data, 'updatedAt');
         allow delete: if isOwner(uid);
       }
@@ -304,6 +313,47 @@ service cloud.firestore {
           && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 120
           && request.resource.data.slots is list && request.resource.data.slots.size() <= 40
           && validTimestampString(request.resource.data, 'created_at')
+          && validTimestampString(request.resource.data, 'updated_at');
+        allow delete: if isOwner(uid);
+      }
+
+      match /collections/{collectionId} {
+        allow get, list: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && isValidId(collectionId)
+          && request.resource.data.keys().hasAll(['id', 'user_id', 'name', 'recipe_ids', 'created_at', 'updated_at'])
+          && request.resource.data.keys().hasOnly(['id', 'user_id', 'name', 'description', 'recipe_ids', 'created_at', 'updated_at'])
+          && request.resource.data.id == collectionId
+          && request.resource.data.user_id == uid
+          && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
+          && validOptionalString(request.resource.data, 'description', 240)
+          && request.resource.data.recipe_ids is list && request.resource.data.recipe_ids.size() <= 120
+          && validTimestampString(request.resource.data, 'created_at')
+          && validTimestampString(request.resource.data, 'updated_at');
+        allow update: if isOwner(uid)
+          && request.resource.data.keys().hasOnly(['id', 'user_id', 'name', 'description', 'recipe_ids', 'created_at', 'updated_at'])
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.user_id == resource.data.user_id
+          && request.resource.data.created_at == resource.data.created_at
+          && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80
+          && validOptionalString(request.resource.data, 'description', 240)
+          && request.resource.data.recipe_ids is list && request.resource.data.recipe_ids.size() <= 120
+          && validTimestampString(request.resource.data, 'updated_at');
+        allow delete: if isOwner(uid);
+      }
+
+      match /weeklyGoals/{goalId} {
+        allow get, list: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && isValidId(goalId)
+          && request.resource.data.keys().hasAll(['id', 'week_key', 'user_id', 'target_meals', 'completed_meals', 'updated_at'])
+          && request.resource.data.keys().hasOnly(['id', 'week_key', 'user_id', 'target_meals', 'completed_meals', 'identity_habit', 'updated_at'])
+          && request.resource.data.id == goalId
+          && request.resource.data.user_id == uid
+          && request.resource.data.week_key is string && request.resource.data.week_key.size() > 0 && request.resource.data.week_key.size() <= 16
+          && request.resource.data.target_meals is number && request.resource.data.target_meals >= 1 && request.resource.data.target_meals <= 21
+          && request.resource.data.completed_meals is number && request.resource.data.completed_meals >= 0 && request.resource.data.completed_meals <= 50
+          && validOptionalString(request.resource.data, 'identity_habit', 160)
           && validTimestampString(request.resource.data, 'updated_at');
         allow delete: if isOwner(uid);
       }
@@ -386,11 +436,17 @@ service cloud.firestore {
           'paywall_viewed',
           'trial_started',
           'subscription_started',
+          'subscription_converted',
           'subscription_cancelled',
+          'first_recipe_viewed',
           'recipe_viewed',
           'recipe_saved',
           'meal_plan_created',
+          'meal_completed',
           'pantry_item_added',
+          'collection_created',
+          'weekly_goal_completed',
+          'share_card_created',
           'mia_interaction'
         ]
         && (!('page_number' in request.resource.data) || request.resource.data.page_number == null || (request.resource.data.page_number is number && request.resource.data.page_number >= 1 && request.resource.data.page_number <= 8))
@@ -411,10 +467,15 @@ service cloud.firestore {
         && request.resource.data.activity_id == activityId
         && request.resource.data.user_id == request.auth.uid
         && request.resource.data.activity_type in [
+          'first_recipe_viewed',
           'recipe_viewed',
           'recipe_saved',
           'meal_plan_created',
+          'meal_completed',
           'pantry_item_added',
+          'collection_created',
+          'weekly_goal_completed',
+          'share_card_created',
           'mia_interaction',
           'nutrition_coach_used',
           'scanner_used'
@@ -483,6 +544,18 @@ service cloud.firestore {
         && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 160
         && request.resource.data.description is string && request.resource.data.description.size() > 0 && request.resource.data.description.size() <= 2000;
       allow update, delete: if false;
+    }
+    match /community_recipes/{recipeId} {
+      allow get, list: if isSignedIn()
+        && (resource.data.is_published == true || resource.data.author_id == request.auth.uid);
+      allow create, update: if false;
+      allow delete: if isSignedIn() && resource.data.author_id == request.auth.uid;
+    }
+    match /user_stories/{storyId} {
+      allow get, list: if isSignedIn()
+        && (resource.data.is_published == true || resource.data.user_id == request.auth.uid);
+      allow create, update: if false;
+      allow delete: if isSignedIn() && resource.data.user_id == request.auth.uid;
     }
   }
 }

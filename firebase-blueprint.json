@@ -35,6 +35,12 @@
         "recipeAlerts": { "type": "boolean" },
         "planningReminders": { "type": "boolean" },
         "promoAlerts": { "type": "boolean" },
+        "pantryExpiryReminders": { "type": "boolean" },
+        "weeklyInspiration": { "type": "boolean" },
+        "mealPlanSummaries": { "type": "boolean" },
+        "challengeReminders": { "type": "boolean" },
+        "frequency": { "type": "string" },
+        "analyticsConsent": { "type": "boolean" },
         "trialReminderEnabled": { "type": "boolean" },
         "trialReminderPlanId": { "type": "string" },
         "trialReminderAt": { "type": "string" },
@@ -69,6 +75,8 @@
         "cooking_time": { "type": "string" },
         "cooking_level": { "type": "string" },
         "budget_range_zar": { "type": "string" },
+        "identity_habit": { "type": "string" },
+        "weekly_cooking_goal": { "type": "number" },
         "onboarding_completed": { "type": "boolean" },
         "onboarding_completed_at": { "type": "string" },
         "personalisation_profile": { "type": "object" },
@@ -254,6 +262,72 @@
         "created_at": { "type": "string" }
       },
       "required": ["id", "user_id", "category", "title", "description", "status"]
+    },
+    "RecipeCollection": {
+      "title": "RecipeCollection",
+      "description": "User-curated custom recipe collections",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "recipe_ids": { "type": "array" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "name", "recipe_ids"]
+    },
+    "WeeklyGoal": {
+      "title": "WeeklyGoal",
+      "description": "User weekly cooking goal progress and identity habit link",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "week_key": { "type": "string" },
+        "user_id": { "type": "string" },
+        "target_meals": { "type": "number" },
+        "completed_meals": { "type": "number" },
+        "identity_habit": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "week_key", "user_id", "target_meals", "completed_meals"]
+    },
+    "CommunityRecipe": {
+      "title": "CommunityRecipe",
+      "description": "User-submitted published community recipes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "author_id": { "type": "string" },
+        "author_name": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "cuisine": { "type": "string" },
+        "cooking_time_minutes": { "type": "number" },
+        "ingredients": { "type": "array" },
+        "steps": { "type": "array" },
+        "diet_tags": { "type": "array" },
+        "is_published": { "type": "boolean" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "author_id", "name", "is_published", "created_at"]
+    },
+    "UserStory": {
+      "title": "UserStory",
+      "description": "Real user testimonials and kitchen outcomes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "display_name": { "type": "string" },
+        "story": { "type": "string" },
+        "outcome": { "type": "string" },
+        "is_published": { "type": "boolean" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "display_name", "story", "is_published"]
     }
   },
   "firestore": {
@@ -308,6 +382,22 @@
     "/users/{userId}/plannerTemplates/{templateId}": {
       "schema": "PlannerTemplate",
       "description": "Saved reusable weekly meal plan templates"
+    },
+    "/users/{userId}/collections/{collectionId}": {
+      "schema": "RecipeCollection",
+      "description": "Custom user-curated recipe collections"
+    },
+    "/users/{userId}/weeklyGoals/{goalId}": {
+      "schema": "WeeklyGoal",
+      "description": "User weekly cooking goal targets and completions"
+    },
+    "/community_recipes/{recipeId}": {
+      "schema": "CommunityRecipe",
+      "description": "Real user-submitted community recipes"
+    },
+    "/user_stories/{storyId}": {
+      "schema": "UserStory",
+      "description": "Real user testimonials and cooking outcomes"
     },
     "/feedback_reports/{reportId}": {
       "schema": "FeedbackReport",

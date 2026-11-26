@@ -67,6 +67,8 @@ export type FoodPreferences = {
   discovery_source?: string | null;
   personalisation_profile?: PersonalisationProfile | null;
   onboarding_step?: number | null;
+  identity_habit?: string | null;
+  weekly_cooking_goal?: number | null;
   onboarding_completed: boolean;
   updated_at: string | null;
 };
@@ -103,6 +105,8 @@ export const EMPTY_PREFERENCES: FoodPreferences = {
   discovery_source: null,
   personalisation_profile: null,
   onboarding_step: null,
+  identity_habit: null,
+  weekly_cooking_goal: 4,
   onboarding_completed: false,
   updated_at: null,
 };
@@ -223,6 +227,14 @@ export function normalizePreferences(raw: unknown): FoodPreferences {
     discovery_source: asString(o["discovery_source"]),
     personalisation_profile: asPersonalisationProfile(o["personalisation_profile"]),
     onboarding_step: asStepNumber(o["onboarding_step"]),
+    identity_habit: asString(o["identity_habit"]),
+    weekly_cooking_goal:
+      typeof o["weekly_cooking_goal"] === "number" &&
+      Number.isInteger(o["weekly_cooking_goal"]) &&
+      o["weekly_cooking_goal"] >= 1 &&
+      o["weekly_cooking_goal"] <= 21
+        ? o["weekly_cooking_goal"]
+        : 4,
     onboarding_completed: o["onboarding_completed"] === true,
     updated_at: asString(o["updated_at"]),
   };
@@ -645,6 +657,7 @@ export function preferenceSummary(prefs: FoodPreferences): string {
   if (prefs.household_size) bits.push(`Household: ${prefs.household_size}`);
   if (prefs.cooking_time) bits.push(`Time to cook: ${prefs.cooking_time}`);
   if (prefs.cooking_level) bits.push(`Skill: ${prefs.cooking_level}`);
+  if (prefs.identity_habit) bits.push(`Identity goal: ${prefs.identity_habit}`);
   if (prefs.budget_range_zar) bits.push(`Monthly ZAR budget: ${prefs.budget_range_zar}`);
   else if (prefs.food_budget) bits.push(`Budget: ${prefs.food_budget}`);
   return bits.join(" · ");

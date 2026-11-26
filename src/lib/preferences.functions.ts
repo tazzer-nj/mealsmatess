@@ -57,6 +57,8 @@ const prefsSchema = z.object({
   shopping: shoppingSchema,
   acquisition: acquisitionSchema,
   onboarding_step: z.number().int().min(0).max(10).nullable().optional().default(null),
+  identity_habit: z.string().max(160).nullable().optional().default(null),
+  weekly_cooking_goal: z.number().int().min(1).max(21).nullable().optional().default(4),
   onboarding_completed: z.boolean().default(false),
   preferred_name: z.string().max(60).nullable().optional(),
   platform: z.string().max(24).nullable().optional(),
@@ -206,6 +208,8 @@ export const saveMyPreferences = createServerFn({ method: "POST" })
           cooking_time: payload.cooking_time,
           cooking_level: payload.cooking_level,
           budget_range_zar: payload.budget_range_zar ?? null,
+          identity_habit: payload.identity_habit ?? null,
+          weekly_cooking_goal: payload.weekly_cooking_goal ?? 4,
           onboarding_completed: Boolean(payload.onboarding_completed),
           onboarding_completed_at: payload.onboarding_completed ? nowIso : null,
           personalisation_profile: personalisationProfile,
@@ -304,6 +308,12 @@ const appSettingsSchema = z.object({
       recipeAlerts: z.boolean(),
       planningReminders: z.boolean(),
       promoAlerts: z.boolean(),
+      pantryExpiryReminders: z.boolean().optional(),
+      weeklyInspiration: z.boolean().optional(),
+      mealPlanSummaries: z.boolean().optional(),
+      challengeReminders: z.boolean().optional(),
+      frequency: z.enum(["daily", "weekly", "essential_only"]).optional(),
+      analyticsConsent: z.boolean().optional(),
       pushEnabled: z.boolean().optional(),
     })
     .optional(),
@@ -379,6 +389,46 @@ export const getMyAppSettings = createServerFn({ method: "GET" })
               ? storedNotif["planningReminders"]
               : true,
         promoAlerts,
+        pantryExpiryReminders:
+          typeof notifData["pantryExpiryReminders"] === "boolean"
+            ? notifData["pantryExpiryReminders"]
+            : typeof storedNotif["pantryExpiryReminders"] === "boolean"
+              ? storedNotif["pantryExpiryReminders"]
+              : true,
+        weeklyInspiration:
+          typeof notifData["weeklyInspiration"] === "boolean"
+            ? notifData["weeklyInspiration"]
+            : typeof storedNotif["weeklyInspiration"] === "boolean"
+              ? storedNotif["weeklyInspiration"]
+              : true,
+        mealPlanSummaries:
+          typeof notifData["mealPlanSummaries"] === "boolean"
+            ? notifData["mealPlanSummaries"]
+            : typeof storedNotif["mealPlanSummaries"] === "boolean"
+              ? storedNotif["mealPlanSummaries"]
+              : true,
+        challengeReminders:
+          typeof notifData["challengeReminders"] === "boolean"
+            ? notifData["challengeReminders"]
+            : typeof storedNotif["challengeReminders"] === "boolean"
+              ? storedNotif["challengeReminders"]
+              : false,
+        frequency:
+          notifData["frequency"] === "daily" ||
+          notifData["frequency"] === "weekly" ||
+          notifData["frequency"] === "essential_only"
+            ? notifData["frequency"]
+            : storedNotif["frequency"] === "daily" ||
+                storedNotif["frequency"] === "weekly" ||
+                storedNotif["frequency"] === "essential_only"
+              ? storedNotif["frequency"]
+              : ("weekly" as const),
+        analyticsConsent:
+          typeof notifData["analyticsConsent"] === "boolean"
+            ? notifData["analyticsConsent"]
+            : typeof storedNotif["analyticsConsent"] === "boolean"
+              ? storedNotif["analyticsConsent"]
+              : true,
         pushEnabled: notifData["pushEnabled"] === true,
       },
     };
@@ -428,6 +478,22 @@ export const saveMyAppSettings = createServerFn({ method: "POST" })
               planningReminders: np.planningReminders,
               promoAlerts: np.promoAlerts,
               productUpdatesEnabled: np.promoAlerts,
+              ...(typeof np.pantryExpiryReminders === "boolean"
+                ? { pantryExpiryReminders: np.pantryExpiryReminders }
+                : {}),
+              ...(typeof np.weeklyInspiration === "boolean"
+                ? { weeklyInspiration: np.weeklyInspiration }
+                : {}),
+              ...(typeof np.mealPlanSummaries === "boolean"
+                ? { mealPlanSummaries: np.mealPlanSummaries }
+                : {}),
+              ...(typeof np.challengeReminders === "boolean"
+                ? { challengeReminders: np.challengeReminders }
+                : {}),
+              ...(np.frequency ? { frequency: np.frequency } : {}),
+              ...(typeof np.analyticsConsent === "boolean"
+                ? { analyticsConsent: np.analyticsConsent }
+                : {}),
               ...(typeof np.pushEnabled === "boolean"
                 ? { pushEnabled: np.promoAlerts && np.pushEnabled }
                 : {}),
@@ -487,6 +553,8 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
       "nutritionLogs",
       "conversations",
       "plannerTemplates",
+      "collections",
+      "weeklyGoals",
       "notifications",
       "notification_settings",
       "push_tokens",

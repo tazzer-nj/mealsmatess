@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
@@ -18,15 +18,21 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { myPantryQuery } from "@/lib/queries";
+import { myPantryQuery, trendingRecipesQuery } from "@/lib/queries";
 import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
 import { usePremium } from "@/hooks/use-premium";
+import { usePreferences } from "@/hooks/use-preferences";
+import { useOptionalMia } from "@/hooks/use-mia";
 import { PremiumFeatureLock } from "@/components/premium-feature-lock";
+import { MiaCompanionPanel } from "@/components/mia-companion";
+import { RecipeCard } from "@/components/recipe-card";
 import { generateRecipe } from "@/lib/ai.functions";
 import { pantryRecipeQuery } from "@/lib/pantry-recipe";
 import { categorizeGroceryItem } from "@/lib/grocery-categorizer";
 import { getExpiryStatus } from "@/lib/pantry-matcher";
+import { pickPantryMatches } from "@/lib/mia-companion";
+import type { CatalogRecipe } from "@/lib/recipe-catalog";
 
 export const Route = createFileRoute("/pantry")({
   head: () => ({
@@ -51,6 +57,8 @@ export const Route = createFileRoute("/pantry")({
 function PantryPage() {
   const { user, loading } = useSession();
   const { isPremium, loading: premiumLoading } = usePremium();
+  const { preferences, hasPreferences } = usePreferences();
+  const mia = useOptionalMia();
   const navigate = useNavigate();
   const client = useQueryClient();
   const {
@@ -58,6 +66,10 @@ function PantryPage() {
     isLoading,
     error,
   } = useQuery({ ...myPantryQuery(), enabled: !!user && isPremium });
+  const { data: catalogRecipes = [] } = useQuery({
+    ...trendingRecipesQuery(),
+    enabled: !!user && isPremium,
+  });
 
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -67,6 +79,7 @@ function PantryPage() {
   const [busy, setBusy] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
+  const openedRef = useRef(false);
 
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -83,6 +96,27 @@ function PantryPage() {
       }).length,
     [items],
   );
+
+  const instantPantryMatches = useMemo(
+    () =>
+      pickPantryMatches(
+        catalogRecipes as CatalogRecipe[],
+        items.map((i) => i.name),
+        hasPreferences ? preferences : null,
+        4,
+      ),
+    [catalogRecipes, hasPreferences, items, preferences],
+  );
+
+  useEffect(() => {
+    if (isLoading || openedRef.current || !user || !isPremium) return;
+    openedRef.current = true;
+    mia?.reactToAction("pantry_opened", {
+      pantryCount: items.length,
+      expiringCount,
+      silent: true,
+    });
+  }, [expiringCount, isLoading, isPremium, items.length, mia, user]);
 
   const filteredItems = useMemo(() => {
     const q = searchFilter.trim().toLowerCase();
@@ -275,6 +309,26 @@ function PantryPage() {
             </Link>
           </Button>
         </div>
+      </div>
+
+      {/* Mia Pantry Companion */}
+      <div className="mt-5">
+        <MiaCompanionPanel
+          mood={expiringCount > 0 ? "concerned" : "happy"}
+          message={
+            expiringCount > 0
+              ? `Let's see what we can make today — ${expiringCount} ingredient${expiringCount === 1 ? "" : "s"} could be cooked soon.`
+              : "Let's see what we can make today."
+          }
+          primaryAction={
+            items.length > 0
+              ? {
+                  label: generating ? "Cooking up idea…" : "Cook with Mia",
+                  onClick: () => void cook(),
+                }
+              : { label: "Scan ingredients", to: "/scan?mode=ingredients" }
+          }
+        />
       </div>
 
       {/* Add Ingredient Form with optional expiry date */}
@@ -535,6 +589,39 @@ function PantryPage() {
             Create custom recipe with Mia
           </Button>
         </div>
+      )}
+
+      {instantPantryMatches.length > 0 && (
+        <section className="mt-8 space-y-3 border-t border-border pt-6">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h2 className="font-display text-xl text-foreground">
+                Cook right now from your pantry
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Matched from curated recipes using ingredients you already have.
+              </p>
+            </div>
+            <Link
+              to="/recipes"
+              search={{ pantry: "1" }}
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              See all
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {instantPantryMatches.map(({ recipe, match }) => (
+              <div key={recipe.id} className="space-y-1">
+                <RecipeCard recipe={recipe} />
+                <p className="px-1 text-xs text-muted-foreground tabular-nums">
+                  Uses {match.matchedCount}/{match.totalIngredients} pantry ingredients (
+                  {Math.round(match.matchRatio * 100)}%)
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
     </main>
   );

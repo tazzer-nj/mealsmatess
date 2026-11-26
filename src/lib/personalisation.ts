@@ -367,25 +367,28 @@ export function buildDynamicOnboardingSummary(prefs: FoodPreferences): string {
           .slice(0, 2)
           .map((g) => g.replace(/\.$/, "").toLowerCase())
           .join(" and ")
-      : "make everyday meals simpler";
+      : "turn everyday ingredients into meals you enjoy";
   const challenges = prefs.challenges ?? [];
   const challengeClause =
     challenges.length > 0
-      ? ` while easing challenges like ${challenges[0]!.replace(/\.$/, "").toLowerCase()}`
+      ? ` while taking stress out of "${challenges[0]!.replace(/\.$/, "").toLowerCase()}"`
       : "";
   const timeClause = prefs.cooking_time
     ? ` within ${prefs.cooking_time.toLowerCase()} cooking windows`
     : "";
   const allergyClause =
     prefs.allergies.length > 0
-      ? ` All recipes and plans automatically exclude ${prefs.allergies.join(", ")}.`
+      ? ` Every dish and plan automatically avoids ${prefs.allergies.join(", ")}.`
       : "";
+  const identityClause = prefs.identity_habit
+    ? ` Built around your focus: "${prefs.identity_habit}"`
+    : "";
   const youthNote = safeguard
     ? " Recommendations prioritise balanced nourishment and approachable home cooking."
     : "";
   const nameClause = prefs.preferred_name?.trim() ? ` for ${prefs.preferred_name.trim()}` : "";
 
-  return `We have tailored MealMate${nameClause} to help you ${primaryGoals}${challengeClause}${timeClause}.${allergyClause}${youthNote}`;
+  return `We shaped MealMate${nameClause} to help you ${primaryGoals}${challengeClause}${timeClause}.${allergyClause}${identityClause}${youthNote}`;
 }
 
 export function getRelevantOnboardingBenefits(prefs: FoodPreferences): string[] {
@@ -398,7 +401,7 @@ export function getRelevantOnboardingBenefits(prefs: FoodPreferences): string[] 
     (prefs.cooking_time && /(under 15|15[–-]30)/i.test(prefs.cooking_time))
   ) {
     benefits.push(
-      `Quick-cook prioritisation filtered for ${prefs.cooking_time ?? "busy weeknights"}.`,
+      `Quick dinner ideas that fit ${prefs.cooking_time ?? "busy weeknights"} without rushing.`,
     );
   }
   if (
@@ -407,7 +410,7 @@ export function getRelevantOnboardingBenefits(prefs: FoodPreferences): string[] 
     prefs.budget_range_zar
   ) {
     benefits.push(
-      `Budget-aware meal ideas calibrated around ${prefs.budget_range_zar ?? "everyday South African grocery prices"}.`,
+      `Stretch your grocery budget around ${prefs.budget_range_zar ?? "everyday South African staples"}.`,
     );
   }
   if (
@@ -415,17 +418,19 @@ export function getRelevantOnboardingBenefits(prefs: FoodPreferences): string[] 
     challenges.includes("I waste groceries.") ||
     challenges.includes("I don't know how to use ingredients I already have.")
   ) {
-    benefits.push("Pantry-first recipe suggestions to use ingredients you already own.");
+    benefits.push("Turn ingredients already in your kitchen into meals you'll genuinely enjoy.");
   }
   if (prefs.allergies.length > 0 || prefs.dietary_restrictions.length > 0) {
     const items = [...prefs.allergies, ...prefs.dietary_restrictions];
-    benefits.push(`Automatic ingredient safety filtering for ${items.join(", ")}.`);
+    benefits.push(`Cook with peace of mind — ${items.join(", ")} are filtered automatically.`);
   }
   if (benefits.length < 3) {
-    benefits.push("Mia AI coaching personalised to your eating routine and kitchen comfort.");
+    benefits.push("Get gentle daily suggestions from Mia based on your mood, pantry, and skill.");
   }
   if (benefits.length < 3) {
-    benefits.push("Weekly meal planner and aisle-sorted grocery list ready in one tap.");
+    benefits.push(
+      "Understand your cooking patterns and save time with aisle-sorted grocery lists.",
+    );
   }
   return benefits.slice(0, 4);
 }

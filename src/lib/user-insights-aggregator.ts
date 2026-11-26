@@ -142,6 +142,11 @@ export type UserInsightsReport = {
     activeTrialSubscribers: number;
     mrrUsd: number;
     arrUsd: number;
+    activatedUsers: number;
+    activationRatePct: number;
+    mealsCompleted: number;
+    collectionsCreated: number;
+    paywallToPaidConversionPct: number;
   };
   challenges: CountShare[];
   goals: {
@@ -200,6 +205,12 @@ export type UserInsightsReport = {
     completedVsIncompleteRetention: {
       completedActivePct: number;
       incompleteActivePct: number;
+    };
+    featureAdoption: {
+      miaUsers: number;
+      plannerUsers: number;
+      pantryUsers: number;
+      collectionsUsers: number;
     };
     dailyTrend: Array<{ date: string; activeUsers: number; signups: number }>;
   };
@@ -406,7 +417,24 @@ export function aggregateUserInsights(input: {
 
   const paywallViewedUsers = usersWithEvent("paywall_viewed").size;
   const trialStartedUsers = usersWithEvent("trial_started");
-  const subStartedUsers = usersWithEvent("subscription_started");
+  const subStartedUsers = new Set([
+    ...usersWithEvent("subscription_started"),
+    ...usersWithEvent("subscription_converted"),
+  ]);
+  const activatedUserSet = new Set([
+    ...usersWithEvent("first_recipe_viewed"),
+    ...usersWithEvent("recipe_viewed"),
+  ]);
+  const activatedUsers = activatedUserSet.size;
+  const activationRatePct = pct(activatedUsers, totalUsers);
+  const mealsCompleted = filteredEvents.filter((e) => e.event_name === "meal_completed").length;
+  const collectionsCreated = filteredEvents.filter(
+    (e) => e.event_name === "collection_created",
+  ).length;
+  const paywallToPaidConversionPct = pct(
+    Math.max(filteredUsers.filter((u) => u.subStatus === "active").length, subStartedUsers.size),
+    Math.max(paywallViewedUsers, 1),
+  );
 
   const activePaidSubscribers = filteredUsers.filter((u) => u.subStatus === "active").length;
   const activeTrialSubscribers = filteredUsers.filter((u) => u.subStatus === "trialing").length;
@@ -849,6 +877,11 @@ export function aggregateUserInsights(input: {
       activeTrialSubscribers,
       mrrUsd,
       arrUsd,
+      activatedUsers,
+      activationRatePct,
+      mealsCompleted,
+      collectionsCreated,
+      paywallToPaidConversionPct,
     },
     challenges: topChallenges,
     goals: {
@@ -900,6 +933,28 @@ export function aggregateUserInsights(input: {
         completedActivePct: pct(completedActiveUsers, completedUsers.length),
         incompleteActivePct: pct(incompleteActiveUsers, incompleteUsers.length),
       },
+      featureAdoption: {
+        miaUsers: new Set(
+          validActivities
+            .filter((a) => a.activity_type === "mia_interaction")
+            .map((a) => a.user_id),
+        ).size,
+        plannerUsers: new Set(
+          validActivities
+            .filter((a) => a.activity_type === "meal_plan_created")
+            .map((a) => a.user_id),
+        ).size,
+        pantryUsers: new Set(
+          validActivities
+            .filter((a) => a.activity_type === "pantry_item_added")
+            .map((a) => a.user_id),
+        ).size,
+        collectionsUsers: new Set(
+          validActivities
+            .filter((a) => a.activity_type === "collection_created")
+            .map((a) => a.user_id),
+        ).size,
+      },
       dailyTrend,
     },
     actionableInsights,
@@ -933,6 +988,25 @@ export function buildUserInsightsCsv(report: UserInsightsReport): string {
     ["Overview", "Paid Conversions", report.overview.paidConversions, "Confirmed paid"],
     ["Overview", "MRR (USD)", report.overview.mrrUsd, "Active monthly normalized"],
     ["Overview", "ARR (USD)", report.overview.arrUsd, "MRR x 12"],
+    [
+      "Overview",
+      "Recipe Activation %",
+      report.overview.activationRatePct,
+      `${report.overview.activatedUsers} activated users`,
+    ],
+    ["Overview", "Meals Completed", report.overview.mealsCompleted, "Cooking completions in range"],
+    [
+      "Overview",
+      "Collections Created",
+      report.overview.collectionsCreated,
+      "Custom cookbook collections",
+    ],
+    [
+      "Overview",
+      "Paywall to Paid %",
+      report.overview.paywallToPaidConversionPct,
+      "Paid / paywall views",
+    ],
   ];
 
   for (const item of report.challenges) {

@@ -1,12 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { Bell, CheckCheck, ChevronRight, Loader2, Utensils } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Bell, CheckCheck, ChevronRight, SlidersHorizontal, Utensils } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/use-session";
 import {
+  getMyNotificationPreferences,
   listMyNotifications,
   markAllMyNotificationsRead,
   setMyNotificationReadStatus,
@@ -32,7 +33,19 @@ export function NotificationCenter() {
     enabled: !!user,
     staleTime: 15_000,
   });
+  const notifPrefs = useQuery({
+    queryKey: ["notification-preferences", user?.id],
+    queryFn: () => getMyNotificationPreferences(),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
   const items = (notifications.data?.items ?? []) as UserNotification[];
+  const frequencyLabel =
+    notifPrefs.data?.frequency === "daily"
+      ? "Daily reminders"
+      : notifPrefs.data?.frequency === "essential_only"
+        ? "Essential only"
+        : "Weekly rhythm";
 
   async function open(item: UserNotification) {
     try {
@@ -113,6 +126,20 @@ export function NotificationCenter() {
           </Button>
         )}
       </header>
+
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-xs">
+        <span className="text-muted-foreground">
+          Delivery preference:{" "}
+          <strong className="font-medium text-foreground">{frequencyLabel}</strong>
+        </span>
+        <Link
+          to="/settings"
+          className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+          Manage categories &amp; frequency
+        </Link>
+      </div>
 
       {notifications.isLoading ? (
         <div className="flex flex-col gap-3">

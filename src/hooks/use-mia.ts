@@ -2,6 +2,7 @@ import { createContext, useContext } from "react";
 import type { VisualExplanation } from "@/lib/visual.functions";
 import type { MiaVoiceSnapshot } from "@/lib/mia/voice-session";
 import type { MiaQuotaSnapshot } from "@/lib/freemium";
+import type { MiaActionEvent, MiaMood, MiaReaction } from "@/lib/mia-companion";
 
 export type MiaRecipe = { name: string; steps: string[]; step: number };
 export type MiaTurn = {
@@ -22,9 +23,29 @@ export type MiaConversationSummary = {
   created_at?: string;
   updated_at?: string;
 };
+export type MiaCompanionToastState = MiaReaction & {
+  event: MiaActionEvent;
+  timestamp: number;
+};
 export type MiaContextValue = {
   turns: MiaTurn[];
   busy: boolean;
+  mood: MiaMood;
+  setMood: (mood: MiaMood) => void;
+  companionReaction: MiaCompanionToastState | null;
+  reactToAction: (
+    event: MiaActionEvent,
+    context?: {
+      recipeName?: string | null;
+      expiringCount?: number;
+      pantryCount?: number;
+      completedCount?: number;
+      goalTarget?: number;
+      collectionName?: string | null;
+      silent?: boolean;
+    },
+  ) => void;
+  clearCompanionReaction: () => void;
   activeConversationId: string | null;
   conversations: MiaConversationSummary[];
   historyLoading: boolean;

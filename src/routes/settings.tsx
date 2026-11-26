@@ -75,6 +75,9 @@ import {
 import type { FoodPreferences } from "@/lib/preferences";
 import { FEEDBACK_CATEGORIES, type FeedbackCategory } from "@/lib/feedback";
 import { submitFeedbackReport } from "@/lib/feedback.functions";
+import { IDENTITY_HABITS } from "@/lib/psychology";
+import { hasAnalyticsConsent, setAnalyticsConsentLocal } from "@/lib/analytics-events";
+import type { NotificationFrequency } from "@/lib/notifications.types";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -225,11 +228,18 @@ function SettingsPage() {
   );
   const [requestingMic, setRequestingMic] = useState(false);
 
-  // Notification toggles
+  // Notification & privacy toggles
   const [mealReminders, setMealReminders] = useState(true);
   const [recipeAlerts, setRecipeAlerts] = useState(true);
   const [planningReminders, setPlanningReminders] = useState(true);
   const [promoAlerts, setPromoAlerts] = useState(false);
+  const [pantryExpiryReminders, setPantryExpiryReminders] = useState(true);
+  const [weeklyInspiration, setWeeklyInspiration] = useState(true);
+  const [mealPlanSummaries, setMealPlanSummaries] = useState(true);
+  const [challengeReminders, setChallengeReminders] = useState(false);
+  const [notifFrequency, setNotifFrequency] = useState<NotificationFrequency>("weekly");
+  const [analyticsConsent, setAnalyticsConsent] = useState(true);
+  const [exportingData, setExportingData] = useState(false);
 
   // App localization
   const [units, setUnits] = useState<"metric" | "imperial">("metric");
@@ -271,6 +281,15 @@ function SettingsPage() {
     setRecipeAlerts(readSettingStorage("mealmate_notif_recipe_alerts") !== "false");
     setPlanningReminders(readSettingStorage("mealmate_notif_planning") !== "false");
     setPromoAlerts(readSettingStorage("mealmate_notif_promo") === "true");
+    setPantryExpiryReminders(readSettingStorage("mealmate_notif_pantry_expiry") !== "false");
+    setWeeklyInspiration(readSettingStorage("mealmate_notif_weekly_insp") !== "false");
+    setMealPlanSummaries(readSettingStorage("mealmate_notif_plan_summaries") !== "false");
+    setChallengeReminders(readSettingStorage("mealmate_notif_challenges") === "true");
+    const storedFreq = readSettingStorage("mealmate_notif_frequency");
+    if (storedFreq === "daily" || storedFreq === "weekly" || storedFreq === "essential_only") {
+      setNotifFrequency(storedFreq);
+    }
+    setAnalyticsConsent(hasAnalyticsConsent());
 
     if (navigator.permissions?.query) {
       void navigator.permissions
@@ -352,6 +371,46 @@ function SettingsPage() {
                       : typeof storedNotif["promoAlerts"] === "boolean"
                         ? storedNotif["promoAlerts"]
                         : false,
+                pantryExpiryReminders:
+                  typeof notifData["pantryExpiryReminders"] === "boolean"
+                    ? notifData["pantryExpiryReminders"]
+                    : typeof storedNotif["pantryExpiryReminders"] === "boolean"
+                      ? storedNotif["pantryExpiryReminders"]
+                      : true,
+                weeklyInspiration:
+                  typeof notifData["weeklyInspiration"] === "boolean"
+                    ? notifData["weeklyInspiration"]
+                    : typeof storedNotif["weeklyInspiration"] === "boolean"
+                      ? storedNotif["weeklyInspiration"]
+                      : true,
+                mealPlanSummaries:
+                  typeof notifData["mealPlanSummaries"] === "boolean"
+                    ? notifData["mealPlanSummaries"]
+                    : typeof storedNotif["mealPlanSummaries"] === "boolean"
+                      ? storedNotif["mealPlanSummaries"]
+                      : true,
+                challengeReminders:
+                  typeof notifData["challengeReminders"] === "boolean"
+                    ? notifData["challengeReminders"]
+                    : typeof storedNotif["challengeReminders"] === "boolean"
+                      ? storedNotif["challengeReminders"]
+                      : false,
+                frequency:
+                  notifData["frequency"] === "daily" ||
+                  notifData["frequency"] === "weekly" ||
+                  notifData["frequency"] === "essential_only"
+                    ? notifData["frequency"]
+                    : storedNotif["frequency"] === "daily" ||
+                        storedNotif["frequency"] === "weekly" ||
+                        storedNotif["frequency"] === "essential_only"
+                      ? storedNotif["frequency"]
+                      : "weekly",
+                analyticsConsent:
+                  typeof notifData["analyticsConsent"] === "boolean"
+                    ? notifData["analyticsConsent"]
+                    : typeof storedNotif["analyticsConsent"] === "boolean"
+                      ? storedNotif["analyticsConsent"]
+                      : true,
               },
             });
           } catch {
@@ -371,6 +430,12 @@ function SettingsPage() {
         recipeAlerts: boolean;
         planningReminders: boolean;
         promoAlerts: boolean;
+        pantryExpiryReminders?: boolean;
+        weeklyInspiration?: boolean;
+        mealPlanSummaries?: boolean;
+        challengeReminders?: boolean;
+        frequency?: NotificationFrequency;
+        analyticsConsent?: boolean;
       };
     }) {
       if (remote.units) {
@@ -395,26 +460,39 @@ function SettingsPage() {
         writeSettingStorage("mealmate_speech_speed", remote.voice_preferences.speechSpeed);
       }
       if (remote.notification_preferences) {
-        setMealReminders(remote.notification_preferences.mealReminders);
-        setRecipeAlerts(remote.notification_preferences.recipeAlerts);
-        setPlanningReminders(remote.notification_preferences.planningReminders);
-        setPromoAlerts(remote.notification_preferences.promoAlerts);
-        writeSettingStorage(
-          "mealmate_notif_meal_reminders",
-          String(remote.notification_preferences.mealReminders),
-        );
-        writeSettingStorage(
-          "mealmate_notif_recipe_alerts",
-          String(remote.notification_preferences.recipeAlerts),
-        );
-        writeSettingStorage(
-          "mealmate_notif_planning",
-          String(remote.notification_preferences.planningReminders),
-        );
-        writeSettingStorage(
-          "mealmate_notif_promo",
-          String(remote.notification_preferences.promoAlerts),
-        );
+        const np = remote.notification_preferences;
+        setMealReminders(np.mealReminders);
+        setRecipeAlerts(np.recipeAlerts);
+        setPlanningReminders(np.planningReminders);
+        setPromoAlerts(np.promoAlerts);
+        writeSettingStorage("mealmate_notif_meal_reminders", String(np.mealReminders));
+        writeSettingStorage("mealmate_notif_recipe_alerts", String(np.recipeAlerts));
+        writeSettingStorage("mealmate_notif_planning", String(np.planningReminders));
+        writeSettingStorage("mealmate_notif_promo", String(np.promoAlerts));
+        if (typeof np.pantryExpiryReminders === "boolean") {
+          setPantryExpiryReminders(np.pantryExpiryReminders);
+          writeSettingStorage("mealmate_notif_pantry_expiry", String(np.pantryExpiryReminders));
+        }
+        if (typeof np.weeklyInspiration === "boolean") {
+          setWeeklyInspiration(np.weeklyInspiration);
+          writeSettingStorage("mealmate_notif_weekly_insp", String(np.weeklyInspiration));
+        }
+        if (typeof np.mealPlanSummaries === "boolean") {
+          setMealPlanSummaries(np.mealPlanSummaries);
+          writeSettingStorage("mealmate_notif_plan_summaries", String(np.mealPlanSummaries));
+        }
+        if (typeof np.challengeReminders === "boolean") {
+          setChallengeReminders(np.challengeReminders);
+          writeSettingStorage("mealmate_notif_challenges", String(np.challengeReminders));
+        }
+        if (np.frequency) {
+          setNotifFrequency(np.frequency);
+          writeSettingStorage("mealmate_notif_frequency", np.frequency);
+        }
+        if (typeof np.analyticsConsent === "boolean") {
+          setAnalyticsConsent(np.analyticsConsent);
+          setAnalyticsConsentLocal(np.analyticsConsent);
+        }
       }
     }
 
@@ -464,6 +542,22 @@ function SettingsPage() {
                   planningReminders: np.planningReminders,
                   promoAlerts: np.promoAlerts,
                   productUpdatesEnabled: np.promoAlerts,
+                  ...(typeof np.pantryExpiryReminders === "boolean"
+                    ? { pantryExpiryReminders: np.pantryExpiryReminders }
+                    : {}),
+                  ...(typeof np.weeklyInspiration === "boolean"
+                    ? { weeklyInspiration: np.weeklyInspiration }
+                    : {}),
+                  ...(typeof np.mealPlanSummaries === "boolean"
+                    ? { mealPlanSummaries: np.mealPlanSummaries }
+                    : {}),
+                  ...(typeof np.challengeReminders === "boolean"
+                    ? { challengeReminders: np.challengeReminders }
+                    : {}),
+                  ...(np.frequency ? { frequency: np.frequency } : {}),
+                  ...(typeof np.analyticsConsent === "boolean"
+                    ? { analyticsConsent: np.analyticsConsent }
+                    : {}),
                   updatedAt: nowIso,
                 },
                 { merge: true },
@@ -639,6 +733,8 @@ function SettingsPage() {
           "nutritionLogs",
           "conversations",
           "plannerTemplates",
+          "collections",
+          "weeklyGoals",
           "notifications",
           "notification_settings",
         ];
@@ -883,8 +979,45 @@ function SettingsPage() {
     toast.success(`Font set to ${match?.label ?? nextFont}`);
   }
 
+  function buildNotificationPreferencesPayload(
+    overrides?: Partial<{
+      mealReminders: boolean;
+      recipeAlerts: boolean;
+      planningReminders: boolean;
+      promoAlerts: boolean;
+      pantryExpiryReminders: boolean;
+      weeklyInspiration: boolean;
+      mealPlanSummaries: boolean;
+      challengeReminders: boolean;
+      frequency: NotificationFrequency;
+      analyticsConsent: boolean;
+    }>,
+  ) {
+    return {
+      mealReminders,
+      recipeAlerts,
+      planningReminders,
+      promoAlerts,
+      pantryExpiryReminders,
+      weeklyInspiration,
+      mealPlanSummaries,
+      challengeReminders,
+      frequency: notifFrequency,
+      analyticsConsent,
+      ...overrides,
+    };
+  }
+
   async function handleNotificationToggle(
-    field: "mealReminders" | "recipeAlerts" | "planningReminders" | "promoAlerts",
+    field:
+      | "mealReminders"
+      | "recipeAlerts"
+      | "planningReminders"
+      | "promoAlerts"
+      | "pantryExpiryReminders"
+      | "weeklyInspiration"
+      | "mealPlanSummaries"
+      | "challengeReminders",
     storageKey: string,
     setter: (v: boolean) => void,
     currentVal: boolean,
@@ -895,13 +1028,7 @@ function SettingsPage() {
     if (typeof window !== "undefined") {
       writeSettingStorage(storageKey, String(val));
     }
-    const nextPrefs = {
-      mealReminders,
-      recipeAlerts,
-      planningReminders,
-      promoAlerts,
-      [field]: val,
-    };
+    const nextPrefs = buildNotificationPreferencesPayload({ [field]: val });
     const ok = await persistAppSettings({ notification_preferences: nextPrefs });
     if (!ok) {
       setter(currentVal);
@@ -914,20 +1041,89 @@ function SettingsPage() {
     toast.success(`${label} ${val ? "enabled" : "turned off"}`);
   }
 
-  function handleExportData() {
-    const data = {
-      user: { id: user?.id, email: user?.email, displayName: user?.displayName },
-      preferences,
-      exportedAt: new Date().toISOString(),
+  async function handleNotificationFrequencyChange(nextFreq: NotificationFrequency) {
+    const prev = notifFrequency;
+    setNotifFrequency(nextFreq);
+    writeSettingStorage("mealmate_notif_frequency", nextFreq);
+    const nextPrefs = buildNotificationPreferencesPayload({ frequency: nextFreq });
+    const ok = await persistAppSettings({ notification_preferences: nextPrefs });
+    if (!ok) {
+      setNotifFrequency(prev);
+      writeSettingStorage("mealmate_notif_frequency", prev);
+      toast.error("Couldn't save notification frequency.");
+      return;
+    }
+    const labels: Record<NotificationFrequency, string> = {
+      daily: "Daily reminders",
+      weekly: "Weekly rhythm",
+      essential_only: "Essential only",
     };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `mealmate-data-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Account export downloaded");
+    toast.success(`Notification rhythm set to ${labels[nextFreq]}`);
+  }
+
+  async function handleAnalyticsConsentToggle(val: boolean) {
+    const prev = analyticsConsent;
+    setAnalyticsConsent(val);
+    setAnalyticsConsentLocal(val);
+    const nextPrefs = buildNotificationPreferencesPayload({ analyticsConsent: val });
+    const ok = await persistAppSettings({ notification_preferences: nextPrefs });
+    if (!ok) {
+      setAnalyticsConsent(prev);
+      setAnalyticsConsentLocal(prev);
+      toast.error("Couldn't update analytics consent preference.");
+      return;
+    }
+    toast.success(
+      val
+        ? "Privacy-conscious product analytics enabled"
+        : "Product analytics paused for your account",
+    );
+  }
+
+  async function handleExportData() {
+    if (exportingData) return;
+    setExportingData(true);
+    try {
+      const readSubcollection = async (sub: string) => {
+        if (!user?.id || auth.currentUser?.uid !== user.id) return [];
+        try {
+          const snap = await getDocs(collection(db, "users", user.id, sub));
+          return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        } catch {
+          return [];
+        }
+      };
+
+      const [favorites, pantry, mealPlans, collections, weeklyGoals] = await Promise.all([
+        readSubcollection("favorites"),
+        readSubcollection("pantry"),
+        readSubcollection("mealPlans"),
+        readSubcollection("collections"),
+        readSubcollection("weeklyGoals"),
+      ]);
+
+      const data = {
+        user: { id: user?.id, email: user?.email, displayName: user?.displayName },
+        preferences,
+        notificationPreferences: buildNotificationPreferencesPayload(),
+        favorites,
+        pantry,
+        mealPlans,
+        collections,
+        weeklyGoals,
+        exportedAt: new Date().toISOString(),
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mealmate-data-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Complete kitchen data export downloaded");
+    } finally {
+      setExportingData(false);
+    }
   }
 
   function handleClearCache() {
@@ -1385,13 +1581,46 @@ function SettingsPage() {
             Notifications
           </h2>
           <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="p-4 sm:px-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-foreground">Delivery rhythm</div>
+                  <div className="text-xs text-muted-foreground">
+                    Choose how often MealMate sends gentle kitchen reminders
+                  </div>
+                </div>
+                <div className="flex shrink-0 rounded-xl border border-border bg-secondary p-0.5 text-xs">
+                  {(
+                    [
+                      { id: "daily", label: "Daily" },
+                      { id: "weekly", label: "Weekly" },
+                      { id: "essential_only", label: "Essential" },
+                    ] as const
+                  ).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => void handleNotificationFrequencyChange(opt.id)}
+                      className={`min-h-8 rounded-lg px-2.5 py-1.5 font-medium transition-colors ${
+                        notifFrequency === opt.id
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between p-4 sm:px-5">
               <div className="flex items-center gap-3">
                 <Bell size={16} className="text-muted-foreground" />
                 <div>
-                  <div className="text-sm font-medium text-foreground">Meal reminders</div>
+                  <div className="text-sm font-medium text-foreground">Planned meal reminders</div>
                   <div className="text-xs text-muted-foreground">
-                    Timely nudges for breakfast, lunch, and dinner prep
+                    Gentle prompts for dishes you scheduled on your weekly plan
                   </div>
                 </div>
               </div>
@@ -1404,10 +1633,106 @@ function SettingsPage() {
                     setMealReminders,
                     mealReminders,
                     v,
-                    "Meal reminders",
+                    "Planned meal reminders",
                   )
                 }
                 aria-label="Toggle meal reminders"
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 sm:px-5">
+              <div>
+                <div className="text-sm font-medium text-foreground">Pantry expiry reminders</div>
+                <div className="text-xs text-muted-foreground">
+                  Helpful alerts when pantry ingredients should be cooked soon
+                </div>
+              </div>
+              <Switch
+                checked={pantryExpiryReminders}
+                onCheckedChange={(v) =>
+                  void handleNotificationToggle(
+                    "pantryExpiryReminders",
+                    "mealmate_notif_pantry_expiry",
+                    setPantryExpiryReminders,
+                    pantryExpiryReminders,
+                    v,
+                    "Pantry expiry reminders",
+                  )
+                }
+                aria-label="Toggle pantry expiry reminders"
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 sm:px-5">
+              <div>
+                <div className="text-sm font-medium text-foreground">
+                  Weekly cooking inspiration
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Fresh seasonal collections and dishes tuned to your kitchen
+                </div>
+              </div>
+              <Switch
+                checked={weeklyInspiration}
+                onCheckedChange={(v) =>
+                  void handleNotificationToggle(
+                    "weeklyInspiration",
+                    "mealmate_notif_weekly_insp",
+                    setWeeklyInspiration,
+                    weeklyInspiration,
+                    v,
+                    "Weekly cooking inspiration",
+                  )
+                }
+                aria-label="Toggle weekly cooking inspiration"
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 sm:px-5">
+              <div>
+                <div className="text-sm font-medium text-foreground">Meal-plan summaries</div>
+                <div className="text-xs text-muted-foreground">
+                  End-of-week wrap-ups and fresh start encouragement
+                </div>
+              </div>
+              <Switch
+                checked={mealPlanSummaries}
+                onCheckedChange={(v) =>
+                  void handleNotificationToggle(
+                    "mealPlanSummaries",
+                    "mealmate_notif_plan_summaries",
+                    setMealPlanSummaries,
+                    mealPlanSummaries,
+                    v,
+                    "Meal-plan summaries",
+                  )
+                }
+                aria-label="Toggle meal-plan summaries"
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 sm:px-5">
+              <div>
+                <div className="text-sm font-medium text-foreground">
+                  Optional cooking challenges
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Weekly themed cooking prompts with zero pressure
+                </div>
+              </div>
+              <Switch
+                checked={challengeReminders}
+                onCheckedChange={(v) =>
+                  void handleNotificationToggle(
+                    "challengeReminders",
+                    "mealmate_notif_challenges",
+                    setChallengeReminders,
+                    challengeReminders,
+                    v,
+                    "Cooking challenge reminders",
+                  )
+                }
+                aria-label="Toggle optional cooking challenges"
               />
             </div>
 
@@ -1607,16 +1932,42 @@ function SettingsPage() {
               <ExternalLink size={15} className="text-muted-foreground" />
             </Link>
 
+            <div className="flex items-center justify-between gap-3 p-4 sm:px-5">
+              <div>
+                <div className="text-sm font-medium text-foreground">
+                  Privacy-conscious product analytics
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Helps improve recipe matching without third-party ad tracking
+                </div>
+              </div>
+              <Switch
+                checked={analyticsConsent}
+                onCheckedChange={(v) => void handleAnalyticsConsentToggle(v)}
+                aria-label="Toggle privacy-conscious product analytics"
+              />
+            </div>
+
             <button
               type="button"
-              onClick={handleExportData}
-              className="flex w-full items-center justify-between p-4 text-left text-sm text-foreground transition-colors hover:bg-secondary sm:px-5"
+              disabled={exportingData}
+              onClick={() => void handleExportData()}
+              className="flex w-full items-center justify-between p-4 text-left text-sm text-foreground transition-colors hover:bg-secondary disabled:opacity-60 sm:px-5"
             >
               <div className="flex items-center gap-3">
                 <Download size={16} className="text-muted-foreground" />
-                <span>Data export</span>
+                <div>
+                  <div>{exportingData ? "Preparing data export…" : "Data export"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Download preferences, saved recipes, pantry, meal plans &amp; collections
+                  </div>
+                </div>
               </div>
-              <ChevronRight size={16} className="text-muted-foreground" />
+              {exportingData ? (
+                <Loader2 size={16} className="animate-spin text-foreground" />
+              ) : (
+                <ChevronRight size={16} className="text-muted-foreground" />
+              )}
             </button>
 
             <button
@@ -2133,6 +2484,61 @@ function SettingsPage() {
                       }`}
                     >
                       {time}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Kitchen identity habit
+              </Label>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {IDENTITY_HABITS.map((habit) => {
+                  const active = draftPrefs.identity_habit === habit;
+                  return (
+                    <button
+                      key={habit}
+                      type="button"
+                      onClick={() =>
+                        setDraftPrefs((p) => ({
+                          ...p,
+                          identity_habit: p.identity_habit === habit ? null : habit,
+                        }))
+                      }
+                      className={`rounded-xl border px-3 py-2 text-left text-xs font-medium transition-colors ${
+                        active
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {habit}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Weekly home-cooked meals target
+              </Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[2, 3, 4, 5, 7].map((n) => {
+                  const active = (draftPrefs.weekly_cooking_goal ?? 4) === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setDraftPrefs((p) => ({ ...p, weekly_cooking_goal: n }))}
+                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                        active
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {n} meals / week
                     </button>
                   );
                 })}

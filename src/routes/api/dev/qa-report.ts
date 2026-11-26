@@ -94,12 +94,12 @@ async function runLiveServerChecks(): Promise<DevLiveCheck[]> {
     viewport: "server",
     status: hasSixExclusive && totalThemes ? "PASSED" : "FAILED",
     expected: "Exactly 6 exclusive themes and 8 total themes",
-    actual: `${EXCLUSIVE_PREMIUM_THEMES.length} exclusive / ${MEALMATE_THEMES.length} total`,
+    actual: `${PREMIUM_THEMES.length} exclusive / ${MEALMATE_THEMES.length} total`,
     durationMs: Date.now() - themeStart,
     ...(!(hasSixExclusive && totalThemes)
       ? {
           error: "Theme count mismatch in src/lib/themes.ts",
-          suggestedFix: "Ensure EXCLUSIVE_PREMIUM_THEMES has exactly 6 themes.",
+          suggestedFix: "Ensure PREMIUM_THEMES has exactly 6 themes.",
         }
       : {}),
   });

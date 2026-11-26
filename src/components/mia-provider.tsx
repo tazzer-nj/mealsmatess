@@ -3,10 +3,13 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useRouterState } from "@tanstack/react-router";
 import {
   MiaContext,
+  type MiaCompanionToastState,
   type MiaConversationSummary,
   type MiaRecipe,
   type MiaTurn,
 } from "@/hooks/use-mia";
+import { MiaReactionToast } from "@/components/mia-companion";
+import { getMiaReaction, type MiaActionEvent, type MiaMood } from "@/lib/mia-companion";
 import { useSession } from "@/hooks/use-session";
 import { usePremium } from "@/hooks/use-premium";
 import { useOptionalUpgradeModal } from "@/components/upgrade-modal";
@@ -82,6 +85,56 @@ export function MiaProvider({ children }: { children: ReactNode }) {
     transcript: "",
     error: "",
   });
+  const [explicitMood, setExplicitMood] = useState<MiaMood>("happy");
+  const [companionReaction, setCompanionReaction] = useState<MiaCompanionToastState | null>(null);
+  const reactionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastReactionAtRef = useRef<number>(0);
+
+  const clearCompanionReaction = useCallback(() => {
+    if (reactionTimerRef.current) clearTimeout(reactionTimerRef.current);
+    setCompanionReaction(null);
+  }, []);
+
+  const reactToAction = useCallback(
+    (
+      event: MiaActionEvent,
+      context?: {
+        recipeName?: string | null;
+        expiringCount?: number;
+        pantryCount?: number;
+        completedCount?: number;
+        goalTarget?: number;
+        collectionName?: string | null;
+        silent?: boolean;
+      },
+    ) => {
+      const reaction = getMiaReaction(event, context);
+      setExplicitMood(reaction.mood);
+      if (context?.silent) return;
+      const now = Date.now();
+      // Non-intrusive cadence guard: avoid rapid back-to-back toast stacking unless celebrating
+      if (
+        event !== "meal_completed" &&
+        event !== "weekly_goal_completed" &&
+        now - lastReactionAtRef.current < 2500
+      ) {
+        return;
+      }
+      lastReactionAtRef.current = now;
+      if (reactionTimerRef.current) clearTimeout(reactionTimerRef.current);
+      setCompanionReaction({ ...reaction, event, timestamp: now });
+      reactionTimerRef.current = setTimeout(() => {
+        setCompanionReaction(null);
+      }, 5500);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (reactionTimerRef.current) clearTimeout(reactionTimerRef.current);
+    };
+  }, []);
   const session = useRef<MiaVoiceSession | null>(null);
   const nativeLifecycleReady = useRef(!Capacitor.isNativePlatform());
   const allowedRef = useRef(allowed);
@@ -270,7 +323,7 @@ export function MiaProvider({ children }: { children: ReactNode }) {
       );
       if (!reply?.trim()) throw new Error("Mia returned an empty response. Please try again.");
       if (!isPremiumRef.current && !quotaReceivedFromServer) {
-        setQuota((prev) => {
+        setQuota((prev: MiaQuotaSnapshot | null) => {
           const prevUsed = prev?.freeUsed ?? 0;
           const freeLimit = prev?.freeLimit ?? FREE_MIA_SEARCH_LIMIT;
           const freeUsed = Math.min(freeLimit, prevUsed + 1);
@@ -586,11 +639,27 @@ export function MiaProvider({ children }: { children: ReactNode }) {
     };
   }, [user?.id, allowed, updateTurns]);
 
+  const derivedMood: MiaMood =
+    voice.state === "listening"
+      ? "listening"
+      : voice.state === "speaking"
+        ? "speaking"
+        : voice.state === "thinking" || voice.state === "loading" || busy
+          ? "thinking"
+          : voice.state === "error" || voice.state === "denied"
+            ? "concerned"
+            : explicitMood;
+
   return (
     <MiaContext.Provider
       value={{
         turns,
         busy,
+        mood: derivedMood,
+        setMood: setExplicitMood,
+        companionReaction,
+        reactToAction,
+        clearCompanionReaction,
         activeConversationId,
         conversations,
         historyLoading,
@@ -639,6 +708,7 @@ export function MiaProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      {allowed && <MiaReactionToast />}
     </MiaContext.Provider>
   );
 }

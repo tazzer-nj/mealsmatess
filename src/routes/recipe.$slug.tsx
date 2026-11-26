@@ -19,31 +19,42 @@ import {
   AlertTriangle,
   PackagePlus,
   CalendarPlus,
+  FolderPlus,
   Minus,
   Plus,
 } from "lucide-react";
 import { toast } from "sonner";
-import { recipeBySlugQuery, myFavoritesQuery } from "@/lib/queries";
+import { recipeBySlugQuery, myFavoritesQuery, trendingRecipesQuery } from "@/lib/queries";
 import { curatedRecipeImageUrl } from "@/lib/recipe-image";
 import { waitForFirebaseAuth } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
 import { usePremium } from "@/hooks/use-premium";
 import { usePreferences } from "@/hooks/use-preferences";
+import { useOptionalMia } from "@/hooks/use-mia";
 import { evaluateRecipeAllergens } from "@/lib/preferences";
 import { regenerateRecipeImage } from "@/lib/ai.functions";
 import { postAuthenticatedAi } from "@/lib/ai-api";
 import { trackRecipeView } from "@/lib/engagement.functions";
 import { setContinueCooking } from "@/lib/continue-cooking";
+import { dispatchAnalyticsEvent } from "@/lib/analytics-events";
+import { pickRelatedRecipes } from "@/lib/mia-companion";
+import type { CatalogRecipe } from "@/lib/recipe-catalog";
+import {
+  createRecipeCollection,
+  myCollectionsQuery,
+  toggleRecipeInCollection,
+} from "@/lib/psychology-storage";
 // Full-screen step-by-step mode — split out of the initial recipe page bundle.
 const CookingMode = lazy(() =>
   import("@/components/cooking-mode").then((m) => ({ default: m.CookingMode })),
 );
 import { RecipeImage } from "@/components/recipe-image";
 import { ChangeImageButton, ImageCredit } from "@/components/recipe-image-tools";
-import { awardXp } from "@/lib/xp.functions";
+import { awardXp, unlockStatusAchievement } from "@/lib/xp.functions";
 import { useFeatureFlag } from "@/hooks/use-feature-flag";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +72,9 @@ import {
 } from "@/components/ui/select";
 import { SubstitutionsButton } from "@/components/substitutions-popover";
 import { RecipeRatings } from "@/components/recipe-ratings";
+import { RecipeCard } from "@/components/recipe-card";
+import { MiaCompanionPanel } from "@/components/mia-companion";
+import { ShareCardModal } from "@/components/share-card-modal";
 
 export const Route = createFileRoute("/recipe/$slug")({
   ssr: false,
@@ -183,13 +197,23 @@ function RecipePage() {
   const r = data ?? recipe;
   const { isPremium } = usePremium();
   const { preferences, hasPreferences } = usePreferences();
+  const mia = useOptionalMia();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: favorites } = useQuery({ ...myFavoritesQuery(), enabled: !!user });
+  const { data: collections = [] } = useQuery({ ...myCollectionsQuery(), enabled: !!user });
+  const { data: catalogRecipes = [] } = useQuery({
+    ...trendingRecipesQuery(),
+    enabled: !!user,
+  });
   const [savingFav, setSavingFav] = useState(false);
   const [addingList, setAddingList] = useState(false);
   const [addingPantry, setAddingPantry] = useState(false);
   const [plannerOpen, setPlannerOpen] = useState(false);
+  const [collectionOpen, setCollectionOpen] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState("");
+  const [savingCollection, setSavingCollection] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [planDate, setPlanDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [planMealType, setPlanMealType] = useState<(typeof PLAN_SLOTS)[number]>("Dinner");
   const [savingPlanner, setSavingPlanner] = useState(false);
@@ -272,6 +296,26 @@ function RecipePage() {
     });
     if (user && r.id) {
       void trackRecipeView({ data: { recipeId: r.id } }).catch(() => {});
+      void dispatchAnalyticsEvent({
+        userId: user.id,
+        eventName: "recipe_viewed",
+        dedupeKey: `view_${r.id}_${new Date().toISOString().slice(0, 10)}`,
+        entityId: r.id,
+      });
+      try {
+        const firstKey = `mealmate.first_recipe_viewed.${user.id}`;
+        if (!window.localStorage.getItem(firstKey)) {
+          window.localStorage.setItem(firstKey, new Date().toISOString());
+          void dispatchAnalyticsEvent({
+            userId: user.id,
+            eventName: "first_recipe_viewed",
+            dedupeKey: `first_recipe_${user.id}`,
+            entityId: r.id,
+          });
+        }
+      } catch {
+        // Ignore storage error
+      }
     }
   }, [r, user]);
 
@@ -349,6 +393,13 @@ function RecipePage() {
     r.difficulty && { icon: ChefHat, label: r.difficulty, sub: "difficulty" },
   ].filter(Boolean) as { icon: typeof Clock; label: string; sub?: string }[];
 
+  const relatedRecipes = pickRelatedRecipes(
+    r as unknown as CatalogRecipe,
+    catalogRecipes as CatalogRecipe[],
+    hasPreferences ? preferences : null,
+    4,
+  );
+
   function toggleIngredient(index: number) {
     setCheckedIngredients((prev) => {
       const next = new Set(prev);
@@ -358,24 +409,9 @@ function RecipePage() {
     });
   }
 
-  async function handleShare() {
+  function handleShare() {
     if (!r) return;
-    const url = window.location.href;
-    const payload = {
-      title: r.name,
-      text: r.description || `Check out ${r.name} on MealMate`,
-      url,
-    };
-    try {
-      if (navigator.share) {
-        await navigator.share(payload);
-      } else {
-        await navigator.clipboard.writeText(url);
-        toast.success("Recipe link copied");
-      }
-    } catch {
-      /* cancelled */
-    }
+    setShareModalOpen(true);
   }
 
   async function toggleFavorite() {
@@ -397,12 +433,69 @@ function RecipePage() {
           .from("favorites")
           .insert({ recipe_id: r.id, user_id: user.id });
         if (error) throw error;
+        mia?.reactToAction("recipe_saved", { recipeName: r.name });
+        void dispatchAnalyticsEvent({
+          userId: user.id,
+          eventName: "recipe_saved",
+          entityId: r.id,
+        });
+        void unlockStatusAchievement({ data: { code: "recipe_collector" } }).catch(() => {});
       }
       await queryClient.invalidateQueries({ queryKey: ["favorites"] });
     } catch {
       toast.error("Couldn't update favorites");
     } finally {
       setSavingFav(false);
+    }
+  }
+
+  async function handleToggleCollection(colId: string) {
+    if (!user || !r) return;
+    const target = collections.find((c) => c.id === colId);
+    if (!target) return;
+    setSavingCollection(true);
+    try {
+      const updated = await toggleRecipeInCollection(target, r.id);
+      await queryClient.invalidateQueries({ queryKey: ["collections"] });
+      const added = updated.recipe_ids.includes(r.id);
+      toast.success(added ? `Added to "${updated.name}"` : `Removed from "${updated.name}"`);
+      if (added) {
+        mia?.reactToAction("recipe_saved", { recipeName: r.name });
+        void unlockStatusAchievement({ data: { code: "recipe_collector" } }).catch(() => {});
+      }
+    } catch {
+      toast.error("Could not update collection");
+    } finally {
+      setSavingCollection(false);
+    }
+  }
+
+  async function handleCreateCollection(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user || !r || !newCollectionName.trim()) return;
+    setSavingCollection(true);
+    try {
+      const created = await createRecipeCollection({
+        name: newCollectionName.trim(),
+        initialRecipeId: r.id,
+      });
+      setNewCollectionName("");
+      await queryClient.invalidateQueries({ queryKey: ["collections"] });
+      toast.success(`Created "${created.name}" and added ${r.name}`);
+      mia?.reactToAction("collection_created", { collectionName: created.name });
+      void dispatchAnalyticsEvent({
+        userId: user.id,
+        eventName: "collection_created",
+        entityId: created.id,
+      });
+      void awardXp({ data: { action: "collection_created", entityId: created.id } }).catch(
+        () => {},
+      );
+      void unlockStatusAchievement({ data: { code: "recipe_collector" } }).catch(() => {});
+    } catch {
+      toast.error("Could not create collection");
+    } finally {
+      setSavingCollection(false);
     }
   }
 
@@ -641,6 +734,21 @@ function RecipePage() {
                 {isFav ? "Saved" : "Save"}
               </Button>
               <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (!user) {
+                    navigate({ to: "/auth" });
+                    return;
+                  }
+                  setCollectionOpen(true);
+                }}
+                className="min-h-11 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
+              >
+                <FolderPlus className="mr-2 h-4 w-4" />
+                Collect
+              </Button>
+              <Button
                 onClick={addToGrocery}
                 variant="outline"
                 disabled={addingList}
@@ -824,7 +932,50 @@ function RecipePage() {
           </div>
         )}
 
+        <div className="mt-8">
+          <MiaCompanionPanel
+            mood="happy"
+            headline={`Cooking ${r.name} together`}
+            message={
+              steps.length > 0
+                ? "Tap Start cooking for step-by-step timers, or ask me for ingredient swaps and pan tips anytime."
+                : "Ask me for substitutions, side dishes, or prep shortcuts for this recipe."
+            }
+            primaryAction={
+              cookingModeEnabled && steps.length > 0
+                ? { label: "Start guided cooking", onClick: () => setCookingOpen(true) }
+                : undefined
+            }
+            secondaryAction={{ label: "Ask Mia", to: `/chat` }}
+          />
+        </div>
+
         <RecipeRatings recipeId={r.id} />
+
+        {relatedRecipes.length > 0 && (
+          <section className="mt-10">
+            <div className="mb-4 flex items-baseline justify-between gap-2">
+              <div>
+                <h2 className="font-display text-2xl">Related recipes</h2>
+                <p className="text-xs text-muted-foreground">
+                  Safe matches from the MealMate kitchen tuned to your taste
+                </p>
+              </div>
+              <Link to="/recipes" className="text-sm font-medium text-primary hover:underline">
+                Browse all
+              </Link>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {relatedRecipes.map((rel) => (
+                <RecipeCard
+                  key={rel.id}
+                  recipe={rel}
+                  isFavorite={favorites?.some((f) => f.recipe_id === rel.id)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
       {cookingOpen && (
         <Suspense fallback={null}>
@@ -928,6 +1079,78 @@ function RecipePage() {
           <ImageCredit source={r.image_source} attribution={r.image_attribution} />
         </DialogContent>
       </Dialog>
+
+      <Dialog open={collectionOpen} onOpenChange={setCollectionOpen}>
+        <DialogContent className="rounded-2xl border-border bg-card text-foreground">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Save to collection</DialogTitle>
+            <DialogDescription>
+              Organise {r.name} into your personal MealMate collections.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {collections.length > 0 ? (
+              <ul className="space-y-2">
+                {collections.map((col) => {
+                  const included = col.recipe_ids.includes(r.id);
+                  return (
+                    <li key={col.id}>
+                      <button
+                        type="button"
+                        disabled={savingCollection}
+                        onClick={() => void handleToggleCollection(col.id)}
+                        className="flex min-h-11 w-full items-center justify-between rounded-xl border border-border bg-secondary/50 px-3.5 py-2 text-left text-sm transition-colors hover:bg-secondary"
+                      >
+                        <span className="font-medium text-foreground">{col.name}</span>
+                        <span className="text-xs font-medium text-primary">
+                          {included ? "Saved ✓" : "Add"}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Create your first collection below to organise recipes your way.
+              </p>
+            )}
+            <form onSubmit={handleCreateCollection} className="flex gap-2 pt-2">
+              <Input
+                value={newCollectionName}
+                onChange={(e) => setNewCollectionName(e.target.value)}
+                placeholder="e.g. Weeknight 20-Min, Sunday Braai"
+                maxLength={80}
+                className="min-h-11 flex-1 rounded-xl"
+              />
+              <Button
+                type="submit"
+                disabled={savingCollection || !newCollectionName.trim()}
+                className="min-h-11 rounded-xl"
+              >
+                Create
+              </Button>
+            </form>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <ShareCardModal
+        open={shareModalOpen}
+        onOpenChange={setShareModalOpen}
+        payload={{
+          kind: "recipe",
+          title: r.name,
+          subtitle: r.description,
+          meta: [
+            r.cuisine || r.category || "MealMate",
+            r.cooking_time_minutes ? `${r.cooking_time_minutes} min` : "",
+            r.difficulty || "",
+            r.calories ? `${r.calories} kcal` : "",
+          ].filter(Boolean),
+          shareUrl: typeof window !== "undefined" ? window.location.href : undefined,
+        }}
+      />
     </main>
   );
 }

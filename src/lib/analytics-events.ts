@@ -15,27 +15,58 @@ export const ANALYTICS_EVENT_NAMES = [
   "paywall_viewed",
   "trial_started",
   "subscription_started",
+  "subscription_converted",
   "subscription_cancelled",
+  "first_recipe_viewed",
   "recipe_viewed",
   "recipe_saved",
   "meal_plan_created",
+  "meal_completed",
   "pantry_item_added",
+  "collection_created",
+  "weekly_goal_completed",
+  "share_card_created",
   "mia_interaction",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
 
 export const MEANINGFUL_ACTIVITY_TYPES = [
+  "first_recipe_viewed",
   "recipe_viewed",
   "recipe_saved",
   "meal_plan_created",
+  "meal_completed",
   "pantry_item_added",
+  "collection_created",
+  "weekly_goal_completed",
+  "share_card_created",
   "mia_interaction",
   "nutrition_coach_used",
   "scanner_used",
 ] as const;
 
 export type MeaningfulActivityType = (typeof MEANINGFUL_ACTIVITY_TYPES)[number];
+
+export const ANALYTICS_CONSENT_STORAGE_KEY = "mealmate_analytics_consent";
+
+export function hasAnalyticsConsent(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return window.localStorage.getItem(ANALYTICS_CONSENT_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+export function setAnalyticsConsentLocal(allowed: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(ANALYTICS_CONSENT_STORAGE_KEY, allowed ? "true" : "false");
+  } catch {
+    // Storage may be restricted in WebViews
+  }
+}
 
 const UTM_STORAGE_KEY = "mealmate.attribution.utm.v1";
 
@@ -151,6 +182,7 @@ export async function dispatchAnalyticsEvent(input: {
 }): Promise<void> {
   if (typeof window === "undefined") return;
   if (import.meta.env?.MODE === "test") return;
+  if (!hasAnalyticsConsent()) return;
 
   const uid = input.userId ?? auth?.currentUser?.uid;
   if (!uid || auth?.currentUser?.uid !== uid) return;
@@ -334,6 +366,8 @@ export async function saveStructuredOnboardingClientFallback(input: {
         cooking_time: p.cooking_time ?? null,
         cooking_level: p.cooking_level ?? null,
         budget_range_zar: p.budget_range_zar ?? null,
+        identity_habit: p.identity_habit ?? null,
+        weekly_cooking_goal: p.weekly_cooking_goal ?? 4,
         onboarding_completed: input.status === "completed",
         onboarding_completed_at: input.completedAt ?? null,
         personalisation_profile: personalisationProfile,

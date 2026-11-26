@@ -74,10 +74,40 @@ export const analytics =
     : import("firebase/analytics").then(async ({ getAnalytics, isSupported }) =>
         (await isSupported()) ? getAnalytics(app) : null,
       );
+const rawEnvDatabaseId = (import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || "").trim();
+const isClientVercelProd = import.meta.env.VITE_VERCEL_ENV === "production";
+const previewDatabaseId = (firebaseAppletConfig.firestoreDatabaseId || "").trim();
+const isCustomClientProject =
+  Boolean(import.meta.env.VITE_FIREBASE_PROJECT_ID) &&
+  import.meta.env.VITE_FIREBASE_PROJECT_ID !== firebaseAppletConfig.projectId;
+
+let clientConfigError: string | null = null;
+if (isClientVercelProd && !rawEnvDatabaseId) {
+  clientConfigError =
+    "Missing VITE_FIREBASE_FIRESTORE_DATABASE_ID in Vercel production environment.";
+} else if (isClientVercelProd && previewDatabaseId && rawEnvDatabaseId === previewDatabaseId) {
+  clientConfigError =
+    "Production deployment cannot use the AI Studio preview database ID in VITE_FIREBASE_FIRESTORE_DATABASE_ID.";
+} else if (!rawEnvDatabaseId && isCustomClientProject) {
+  clientConfigError =
+    "VITE_FIREBASE_FIRESTORE_DATABASE_ID is required when overriding VITE_FIREBASE_PROJECT_ID.";
+}
+
+export const firebaseConfigError: string | null = clientConfigError;
+
+export function getFirebaseClientConfigStatus() {
+  const databaseId = clientConfigError ? rawEnvDatabaseId : rawEnvDatabaseId || previewDatabaseId;
+  return {
+    configured: clientConfigError === null,
+    databaseId,
+    usingPreviewFallback:
+      clientConfigError === null && !rawEnvDatabaseId && Boolean(previewDatabaseId),
+    error: clientConfigError,
+  };
+}
+
 const rawFirestoreDatabaseId = (
-  import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID ||
-  firebaseAppletConfig.firestoreDatabaseId ||
-  ""
+  rawEnvDatabaseId || (clientConfigError ? "" : previewDatabaseId)
 ).trim();
 export const db =
   rawFirestoreDatabaseId &&
@@ -189,6 +219,9 @@ export async function signInWithGoogle() {
 }
 
 export async function signInWithEmail(email: string, pass: string) {
+  if (firebaseConfigError) {
+    throw new Error(firebaseConfigError);
+  }
   return signInWithEmailAndPassword(auth, email, pass);
 }
 

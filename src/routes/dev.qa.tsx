@@ -126,7 +126,7 @@ function DevQaDashboard() {
 
     // 2. Theme tokens & 6 exclusive themes DOM verification
     const t0 = performance.now();
-    const okThemes = EXCLUSIVE_PREMIUM_THEMES.length === 6 && MEALMATE_THEMES.length === 8;
+    const okThemes = PREMIUM_THEMES.length === 6 && MEALMATE_THEMES.length === 8;
     results.push({
       id: "client-theme-tokens",
       page: "/settings",
@@ -134,7 +134,7 @@ function DevQaDashboard() {
       viewport: `${window.innerWidth}x${window.innerHeight}`,
       status: okThemes ? "PASSED" : "FAILED",
       expected: "6 exclusive themes + 2 defaults loaded in client bundle",
-      actual: `${EXCLUSIVE_PREMIUM_THEMES.length} exclusive, ${MEALMATE_THEMES.length} total`,
+      actual: `${PREMIUM_THEMES.length} exclusive, ${MEALMATE_THEMES.length} total`,
       durationMs: Math.round(performance.now() - t0),
     });
 

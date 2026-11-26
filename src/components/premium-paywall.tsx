@@ -61,6 +61,7 @@ import {
   verifyWhopCheckoutCompletion,
   type WhopCheckoutSessionResponse,
 } from "@/lib/whop-client";
+import { dispatchAnalyticsEvent } from "@/lib/analytics-events";
 
 const TRIAL_REMINDER_STORAGE_KEY = "mealmate.trial_reminder.v1";
 
@@ -521,6 +522,16 @@ export function PremiumPaywall() {
       if (access.isPremium) {
         if (userId) {
           queryClient.setQueryData(["entitlement", userId], access);
+          void dispatchAnalyticsEvent({
+            userId,
+            eventName: "subscription_converted",
+            dedupeKey: `sub_converted_${access.tier ?? "premium"}`,
+            metadata: {
+              tier: access.tier ?? null,
+              store: access.store ?? null,
+              promoCode: appliedPromo?.code ?? null,
+            },
+          });
         }
         await queryClient.invalidateQueries({ queryKey: ["entitlement"] });
         if (userId) {
@@ -615,6 +626,19 @@ export function PremiumPaywall() {
           overridePlan ?? store?.plans.find((p) => p.kind === selected) ?? store?.plans[0];
         if (!targetPlan) throw new Error("Selected subscription plan is unavailable.");
 
+        if (userId) {
+          void dispatchAnalyticsEvent({
+            userId,
+            eventName: "subscription_started",
+            entityId: targetPlan.id,
+            metadata: {
+              kind: targetPlan.kind,
+              provider: targetPlan.provider ?? store?.provider ?? "revenuecat",
+              promoCode: appliedPromo?.code ?? null,
+            },
+          });
+        }
+
         if (targetPlan.provider === "whop" || store?.provider === "whop") {
           if (!userId) {
             await navigate({ to: "/auth", replace: false });
@@ -681,6 +705,16 @@ export function PremiumPaywall() {
       if (access.isPremium) {
         if (userId) {
           queryClient.setQueryData(["entitlement", userId], access);
+          void dispatchAnalyticsEvent({
+            userId,
+            eventName: "subscription_converted",
+            dedupeKey: `sub_converted_${access.tier ?? "premium"}`,
+            metadata: {
+              tier: access.tier ?? null,
+              store: access.store ?? "whop",
+              promoCode: appliedPromo?.code ?? null,
+            },
+          });
         }
         await queryClient.invalidateQueries({ queryKey: ["entitlement"] });
         if (userId) {
@@ -2017,6 +2051,58 @@ export function PremiumPaywall() {
                 </div>
               );
             })}
+          </div>
+
+          {/* Transparent Free vs Premium Comparison (No fake prices) */}
+          <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-[#0b1120]">
+            <div className="border-b border-white/10 px-4 py-3 sm:px-5">
+              <h3 className="text-sm font-semibold text-white">Compare Free vs MealMate Premium</h3>
+              <p className="mt-0.5 text-xs text-slate-400">
+                Keep cooking with generous free recipes, or unlock Mia&apos;s full kitchen planner.
+              </p>
+            </div>
+            <div className="divide-y divide-white/10 text-xs">
+              {[
+                {
+                  feature: "Curated recipes, ratings & Cookbook collections",
+                  free: "Included",
+                  premium: "Included",
+                },
+                {
+                  feature: "Mia AI cooking guidance",
+                  free: "10 prompts / day",
+                  premium: "Unlimited + Voice Mode",
+                },
+                {
+                  feature: "Weekly meal planner & auto grocery lists",
+                  free: "Manual planning",
+                  premium: "Full AI Plan & Shop + Aisle Sort",
+                },
+                {
+                  feature: "Smart pantry tracking & expiry alerts",
+                  free: "—",
+                  premium: "Included",
+                },
+                {
+                  feature: "Pricing",
+                  free: "Free forever",
+                  premium: yearlyPlan
+                    ? `${yearlyPlan.price}/${yearlyPlan.period}${annualSavingsPct ? ` (Save ${annualSavingsPct}%)` : ""}`
+                    : monthlyPlan
+                      ? `${monthlyPlan.price}/${monthlyPlan.period}`
+                      : "Live store rate",
+                },
+              ].map((row) => (
+                <div
+                  key={row.feature}
+                  className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,1fr)] items-center gap-2 px-4 py-3 sm:px-5"
+                >
+                  <span className="font-medium text-slate-200">{row.feature}</span>
+                  <span className="text-slate-400">{row.free}</span>
+                  <span className="font-semibold text-[#a5b4fc] tabular-nums">{row.premium}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 

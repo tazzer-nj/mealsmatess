@@ -24,6 +24,7 @@ const CLIENT_ACTIONS = [
   "planned_meal_completed",
   "grocery_list_completed",
   "weekly_plan_completed",
+  "collection_created",
 ] as const;
 
 export const awardXp = createServerFn({ method: "POST" })
@@ -40,6 +41,21 @@ export const awardXp = createServerFn({ method: "POST" })
     const { awardXpFor, dayKey } = await import("@/lib/xp.server");
     const refKey = data.entityId ? `${data.entityId}:${dayKey()}` : `${context.userId}:${dayKey()}`;
     return awardXpFor(firebaseUserId(context.userId), data.action, refKey);
+  });
+
+export const unlockStatusAchievement = createServerFn({ method: "POST" })
+  .middleware([requireFirebaseAuth])
+  .validator((v: unknown) =>
+    z
+      .object({
+        code: z.enum(["kitchen_explorer", "recipe_collector"]),
+      })
+      .parse(v),
+  )
+  .handler(async ({ data, context }) => {
+    const { unlockMilestoneAchievement } = await import("@/lib/xp.server");
+    await unlockMilestoneAchievement(context.userId, data.code);
+    return { ok: true as const };
   });
 
 function firebaseUserId(userId: string) {

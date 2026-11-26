@@ -5,9 +5,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookMarked,
   Calendar,
-  ChefHat,
+  Check,
   Clock,
   Edit3,
+  Folder,
+  FolderPlus,
   Heart,
   Link2,
   Loader2,
@@ -20,7 +22,17 @@ import {
 import { toast } from "sonner";
 import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
+import { useOptionalMia } from "@/hooks/use-mia";
 import { myFavoritesQuery } from "@/lib/queries";
+import {
+  createRecipeCollection,
+  deleteRecipeCollection,
+  myCollectionsQuery,
+  toggleRecipeInCollection,
+} from "@/lib/psychology-storage";
+import { awardXp, unlockStatusAchievement } from "@/lib/xp.functions";
+import { dispatchAnalyticsEvent } from "@/lib/analytics-events";
+import type { RecipeCollection } from "@/lib/psychology";
 import {
   importRecipeFromUrl,
   updateRecipeBasics,
@@ -84,6 +96,7 @@ type CookbookItem = {
 
 function CookbookPage() {
   const { user, loading } = useSession();
+  const mia = useOptionalMia();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -92,6 +105,11 @@ function CookbookPage() {
   const [importing, setImporting] = useState(false);
 
   const [query, setQuery] = useState("");
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [newCollectionOpen, setNewCollectionOpen] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState("");
+  const [creatingCollection, setCreatingCollection] = useState(false);
+  const [collectingItem, setCollectingItem] = useState<CookbookItem | null>(null);
   const [editing, setEditing] = useState<CookbookItem | null>(null);
   const [planning, setPlanning] = useState<CookbookItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<CookbookItem | null>(null);
@@ -99,6 +117,11 @@ function CookbookPage() {
 
   const { data: favorites, isLoading } = useQuery({
     ...myFavoritesQuery(),
+    enabled: !!user,
+  });
+
+  const { data: collections = [] } = useQuery({
+    ...myCollectionsQuery(),
     enabled: !!user,
   });
 
@@ -127,11 +150,20 @@ function CookbookPage() {
     },
   });
 
+  const activeCollection = useMemo(
+    () => collections.find((c) => c.id === activeCollectionId) ?? null,
+    [collections, activeCollectionId],
+  );
+
   const merged = useMemo(() => {
     const map = new Map<string, CookbookItem>();
     for (const it of items) map.set(it.id, it);
     for (const it of owned ?? []) map.set(it.id, it);
     let arr = Array.from(map.values());
+    if (activeCollection) {
+      const idSet = new Set(activeCollection.recipe_ids);
+      arr = arr.filter((r) => idSet.has(r.id));
+    }
     if (query.trim()) {
       const q = query.toLowerCase();
       arr = arr.filter(
@@ -142,7 +174,59 @@ function CookbookPage() {
       );
     }
     return arr;
-  }, [items, owned, query]);
+  }, [activeCollection, items, owned, query]);
+
+  async function handleCreateCollection(e: React.FormEvent) {
+    e.preventDefault();
+    const clean = newCollectionName.trim();
+    if (!clean || !user || creatingCollection) return;
+    setCreatingCollection(true);
+    try {
+      const created = await createRecipeCollection({
+        name: clean,
+        initialRecipeId: collectingItem?.id ?? null,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["collections"] });
+      void awardXp({ data: { action: "collection_created", entityId: created.id } }).catch(
+        () => undefined,
+      );
+      void unlockStatusAchievement({ data: { code: "recipe_collector" } }).catch(() => undefined);
+      void dispatchAnalyticsEvent({
+        userId: user.id,
+        eventName: "collection_created",
+        entityId: created.id,
+        metadata: { name: created.name },
+      });
+      mia?.reactToAction("collection_created", { collectionName: created.name });
+      setNewCollectionName("");
+      setNewCollectionOpen(false);
+      setActiveCollectionId(created.id);
+    } catch {
+      toast.error("Couldn't create collection");
+    } finally {
+      setCreatingCollection(false);
+    }
+  }
+
+  async function handleToggleInCollection(col: RecipeCollection, item: CookbookItem) {
+    try {
+      await toggleRecipeInCollection(col, item.id);
+      await queryClient.invalidateQueries({ queryKey: ["collections"] });
+    } catch {
+      toast.error("Couldn't update collection");
+    }
+  }
+
+  async function handleDeleteCollection(colId: string) {
+    try {
+      await deleteRecipeCollection(colId);
+      if (activeCollectionId === colId) setActiveCollectionId(null);
+      await queryClient.invalidateQueries({ queryKey: ["collections"] });
+      toast.success("Collection removed");
+    } catch {
+      toast.error("Couldn't delete collection");
+    }
+  }
 
   async function handleImport() {
     const url = importUrl.trim();
@@ -298,6 +382,60 @@ function CookbookPage() {
         />
       </div>
 
+      {/* Custom Recipe Collections (IKEA effect) */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveCollectionId(null)}
+          className={`inline-flex min-h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-colors ${
+            activeCollectionId === null
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          All saved ({items.length + (owned?.length ?? 0)})
+        </button>
+        {collections.map((col) => {
+          const isSelected = activeCollectionId === col.id;
+          return (
+            <button
+              key={col.id}
+              type="button"
+              onClick={() => setActiveCollectionId(isSelected ? null : col.id)}
+              className={`inline-flex min-h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-medium transition-colors ${
+                isSelected
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:bg-secondary"
+              }`}
+            >
+              <Folder className="h-3.5 w-3.5" aria-hidden="true" />
+              {col.name} ({col.recipe_ids.length})
+            </button>
+          );
+        })}
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => setNewCollectionOpen(true)}
+          className="h-9 rounded-xl text-xs"
+        >
+          <FolderPlus className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+          New collection
+        </Button>
+        {activeCollection && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => void handleDeleteCollection(activeCollection.id)}
+            className="h-9 rounded-xl text-xs text-muted-foreground hover:text-destructive"
+          >
+            Delete folder
+          </Button>
+        )}
+      </div>
+
       {isLoading ? (
         <div className="mt-5 space-y-3" aria-label="Loading cookbook">
           {Array.from({ length: 4 }).map((_, idx) => (
@@ -354,6 +492,12 @@ function CookbookPage() {
                     {item.cuisine && <span>{item.cuisine}</span>}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
+                    <IconAction
+                      title="Organise in collection"
+                      onClick={() => setCollectingItem(item)}
+                      icon={FolderPlus}
+                      disabled={busyId === item.id}
+                    />
                     <IconAction
                       title="Add to planner"
                       onClick={() => setPlanning(item)}
@@ -492,6 +636,98 @@ function CookbookPage() {
             >
               {busyId === confirmDelete?.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Delete recipe
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* New collection dialog */}
+      <Dialog open={newCollectionOpen} onOpenChange={setNewCollectionOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create recipe collection</DialogTitle>
+            <DialogDescription>
+              Group favourites by occasion, mood, or weeknight speed.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateCollection} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="new-col-name">Collection name</Label>
+              <Input
+                id="new-col-name"
+                autoFocus
+                required
+                maxLength={80}
+                value={newCollectionName}
+                onChange={(e) => setNewCollectionName(e.target.value)}
+                placeholder="e.g. 20-Min Weeknights, Braai Sunday"
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setNewCollectionOpen(false)}
+                disabled={creatingCollection}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={creatingCollection || !newCollectionName.trim()}>
+                {creatingCollection && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Organise item into collections */}
+      <Dialog open={!!collectingItem} onOpenChange={(o) => !o && setCollectingItem(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Organise in collections</DialogTitle>
+            <DialogDescription>{collectingItem?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {collections.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No collections yet. Create one below to save this dish into it.
+              </p>
+            ) : (
+              collections.map((col) => {
+                const inside = collectingItem ? col.recipe_ids.includes(collectingItem.id) : false;
+                return (
+                  <button
+                    key={col.id}
+                    type="button"
+                    onClick={() =>
+                      collectingItem && void handleToggleInCollection(col, collectingItem)
+                    }
+                    className={`flex min-h-11 w-full items-center justify-between rounded-xl border px-3.5 text-sm transition-colors ${
+                      inside
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border bg-card text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    <span>{col.name}</span>
+                    {inside && <Check className="h-4 w-4 text-primary" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setNewCollectionOpen(true);
+              }}
+            >
+              <FolderPlus className="mr-1.5 h-4 w-4" />
+              New collection
+            </Button>
+            <Button type="button" onClick={() => setCollectingItem(null)}>
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>

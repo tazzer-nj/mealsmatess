@@ -31,3 +31,20 @@ export type UserNotification = {
   pushStatus?:
     "pending" | "not_opted_in" | "no_active_device" | "attempted" | "accepted" | "failed";
 };
+
+export type NotificationFrequency = "daily" | "weekly" | "essential_only";
+
+export type NotificationPreferencesState = {
+  productUpdatesEnabled: boolean;
+  pushEnabled: boolean;
+  mealReminders: boolean;
+  recipeAlerts: boolean;
+  planningReminders: boolean;
+  promoAlerts: boolean;
+  pantryExpiryReminders: boolean;
+  weeklyInspiration: boolean;
+  mealPlanSummaries: boolean;
+  challengeReminders: boolean;
+  frequency: NotificationFrequency;
+  analyticsConsent: boolean;
+};

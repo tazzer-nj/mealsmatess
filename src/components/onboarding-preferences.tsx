@@ -22,6 +22,7 @@ import {
   getRelevantOnboardingBenefits,
   isBalancedNutritionSafeguardRequired,
 } from "@/lib/personalisation";
+import { IDENTITY_HABITS } from "@/lib/psychology";
 import { captureInitialAttribution } from "@/lib/analytics-events";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -184,6 +185,57 @@ export function OnboardingStepContent({
                 onClick={() => toggleMulti("goals", goal)}
               >
                 {goal}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="onboarding-field-group">
+          <Label className="mb-1 flex items-center gap-2 text-[13px] font-medium text-foreground">
+            <Sparkles size={15} className="text-[var(--periwinkle)]" /> What kitchen rhythm are you
+            building?
+          </Label>
+          <p className="mb-2.5 text-xs text-muted-foreground">
+            Choose an intention that guides your weekly milestones.
+          </p>
+          <div className="onboarding-chips">
+            {IDENTITY_HABITS.map((habit) => (
+              <button
+                type="button"
+                key={habit}
+                disabled={disabled}
+                aria-pressed={preferences.identity_habit === habit}
+                onClick={() =>
+                  onChange({
+                    ...preferences,
+                    identity_habit: preferences.identity_habit === habit ? null : habit,
+                  })
+                }
+              >
+                {habit}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="onboarding-field-group">
+          <Label className="mb-1 flex items-center gap-2 text-[13px] font-medium text-foreground">
+            <ChefHat size={15} className="text-[var(--periwinkle)]" /> Weekly home-cooked meals
+            target
+          </Label>
+          <p className="mb-2.5 text-xs text-muted-foreground">
+            Start gently — you can change your weekly goal anytime.
+          </p>
+          <div className="onboarding-chips">
+            {[2, 3, 4, 5, 7].map((n) => (
+              <button
+                type="button"
+                key={n}
+                disabled={disabled}
+                aria-pressed={(preferences.weekly_cooking_goal ?? 4) === n}
+                onClick={() => onChange({ ...preferences, weekly_cooking_goal: n })}
+              >
+                {n} meals / week
               </button>
             ))}
           </div>
@@ -689,11 +741,17 @@ export function OnboardingStepContent({
       <div className="onboarding-step-body space-y-5">
         <div className="rounded-xl border border-border bg-secondary/50 p-4">
           <p className="text-sm font-medium leading-relaxed text-foreground">{summaryText}</p>
+          {(preferences.identity_habit || preferences.weekly_cooking_goal) && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {preferences.identity_habit ? `Focus: “${preferences.identity_habit}” · ` : ""}
+              Weekly goal: {preferences.weekly_cooking_goal ?? 4} home-cooked meals
+            </p>
+          )}
         </div>
 
         <div className="space-y-2.5">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            What MealMate is setting up for you
+            Turn ingredients in your kitchen into meals you&apos;ll love
           </p>
           <ul className="space-y-2">
             {benefits.map((benefit) => (

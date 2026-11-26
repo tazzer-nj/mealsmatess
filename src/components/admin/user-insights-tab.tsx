@@ -410,6 +410,32 @@ export function UserInsightsTab() {
                 icon={TrendingUp}
               />
             </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <MetricCard
+                label="Recipe activation"
+                value={`${report.overview.activationRatePct.toFixed(1)}%`}
+                hint={`${report.overview.activatedUsers.toLocaleString()} viewed first recipe`}
+                icon={Compass}
+              />
+              <MetricCard
+                label="Cooking completions"
+                value={report.overview.mealsCompleted.toLocaleString()}
+                hint={`${report.engagement.featureAdoption.plannerUsers} planners active`}
+                icon={Flame}
+              />
+              <MetricCard
+                label="Collections created"
+                value={report.overview.collectionsCreated.toLocaleString()}
+                hint={`${report.engagement.featureAdoption.collectionsUsers} collectors · ${report.engagement.featureAdoption.pantryUsers} pantry cooks`}
+                icon={Sparkles}
+              />
+              <MetricCard
+                label="Paywall conversion"
+                value={`${report.overview.paywallToPaidConversionPct.toFixed(1)}%`}
+                hint={`${report.engagement.featureAdoption.miaUsers} used Mia assistant`}
+                icon={Target}
+              />
+            </div>
           </section>
 
           {/* Section B & C: Challenges & Goals */}

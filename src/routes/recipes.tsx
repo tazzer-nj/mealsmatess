@@ -1,22 +1,56 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Refrigerator, RotateCcw, Search, ShieldCheck } from "lucide-react";
+import {
+  Award,
+  Calendar,
+  Loader2,
+  MessageSquareQuote,
+  Plus,
+  Refrigerator,
+  RotateCcw,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
 import { usePremium } from "@/hooks/use-premium";
 import { useOptionalUpgradeModal } from "@/components/upgrade-modal";
 import { usePreferences } from "@/hooks/use-preferences";
+import { useOptionalMia } from "@/hooks/use-mia";
+import { firebaseData } from "@/lib/firebase-data";
 import { loadRecipeSearchImages } from "@/lib/recipe-search-images";
-import { myPantryQuery, recipesByCategoryQuery } from "@/lib/queries";
+import { myFavoritesQuery, myPantryQuery, recipesByCategoryQuery } from "@/lib/queries";
 import { generateRecipe, surpriseMe } from "@/lib/ai.functions";
 import { evaluateRecipeAllergens, isAvoided, personalize } from "@/lib/preferences";
 import { matchRecipeToPantry } from "@/lib/pantry-matcher";
+import type { CatalogRecipe } from "@/lib/recipe-catalog";
+import { getSeasonalCollectionsForDate } from "@/lib/seasonal-collections";
+import { getActiveWeeklyChallenge } from "@/lib/psychology";
+import {
+  listCommunityRecipes,
+  listUserStories,
+  submitCommunityRecipe,
+  submitUserStory,
+} from "@/lib/community.functions";
+import { unlockStatusAchievement } from "@/lib/xp.functions";
 import { RecipeCard } from "@/components/recipe-card";
 import { MiaLoadingCard } from "@/components/mia-loading-card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 
 const CATEGORIES = [
   "All",
@@ -104,6 +138,7 @@ function RecipesPage() {
   const { isPremium } = usePremium();
   const upgradeModal = useOptionalUpgradeModal();
   const { preferences, hasPreferences } = usePreferences();
+  const mia = useOptionalMia();
 
   const [storedFilters, setStoredFilters] = useState<StoredRecipeFilters>(() =>
     readStoredFilters(),
@@ -121,19 +156,61 @@ function RecipesPage() {
     enabled: !!user,
   });
 
+  const { data: favorites = [] } = useQuery({
+    ...myFavoritesQuery(),
+    enabled: !!user,
+  });
+
   const { data: pantryItems = [] } = useQuery({
     ...myPantryQuery(),
     enabled: !!user && isPremium,
   });
 
+  const { data: communityRecipes = [] } = useQuery({
+    queryKey: ["community", "recipes"],
+    queryFn: () => listCommunityRecipes(),
+    enabled: !!user,
+    staleTime: 120_000,
+  });
+
+  const { data: userStories = [] } = useQuery({
+    queryKey: ["community", "stories"],
+    queryFn: () => listUserStories(),
+    enabled: !!user,
+    staleTime: 120_000,
+  });
+
+  const favoriteIds = useMemo(() => new Set(favorites.map((f) => f.recipe_id)), [favorites]);
+
   const loadingRecipes = sessionLoading || isLoading;
   const [query, setQuery] = useState(q ?? "");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
+  const [communityRecipeOpen, setCommunityRecipeOpen] = useState(false);
+  const [storyOpen, setStoryOpen] = useState(false);
+  const [submittingCommunity, setSubmittingCommunity] = useState(false);
+  const [crName, setCrName] = useState("");
+  const [crDesc, setCrDesc] = useState("");
+  const [crTime, setCrTime] = useState("30");
+  const [crIngredients, setCrIngredients] = useState("");
+  const [crSteps, setCrSteps] = useState("");
+  const [storyName, setStoryName] = useState("");
+  const [storyOutcome, setStoryOutcome] = useState("");
+  const [storyText, setStoryText] = useState("");
+  const explorerUnlockedRef = useRef(false);
 
   useEffect(() => {
     setQuery(q ?? "");
     setVisibleCount(PAGE_SIZE);
   }, [q, active]);
+
+  useEffect(() => {
+    if (!user || explorerUnlockedRef.current) return;
+    if (q || active !== "All") {
+      explorerUnlockedRef.current = true;
+      void unlockStatusAchievement({ data: { code: "kitchen_explorer" } }).catch(() => undefined);
+    }
+  }, [active, q, user]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -149,8 +226,25 @@ function RecipesPage() {
 
   const pantryNames = useMemo(() => pantryItems.map((i) => i.name), [pantryItems]);
 
+  const seasonalCollections = useMemo(
+    () =>
+      getSeasonalCollectionsForDate(
+        new Date(),
+        (recipes ?? []) as CatalogRecipe[],
+        hasPreferences ? preferences : null,
+      ),
+    [hasPreferences, preferences, recipes],
+  );
+
+  const activeSeasonCollection = useMemo(
+    () => seasonalCollections.find((col) => col.id === selectedSeasonId) ?? null,
+    [seasonalCollections, selectedSeasonId],
+  );
+
+  const weeklyChallenge = useMemo(() => getActiveWeeklyChallenge(new Date()), []);
+
   const filteredRecipes = useMemo(() => {
-    const base = recipes ?? [];
+    const base = activeSeasonCollection ? activeSeasonCollection.recipes : (recipes ?? []);
     const maxMins = storedFilters.maxTime !== "any" ? Number(storedFilters.maxTime) : null;
 
     const afterBasic = base.filter((r) => {
@@ -205,7 +299,15 @@ function RecipesPage() {
     return ranked
       .map((r) => ({ recipe: r, match: matchRecipeToPantry(r, pantryNames) }))
       .sort((a, b) => (b.match?.matchRatio ?? 0) - (a.match?.matchRatio ?? 0));
-  }, [hasPreferences, pantryNames, preferences, recipes, storedFilters, usePantry]);
+  }, [
+    activeSeasonCollection,
+    hasPreferences,
+    pantryNames,
+    preferences,
+    recipes,
+    storedFilters,
+    usePantry,
+  ]);
 
   const visibleRecipes = useMemo(
     () => filteredRecipes.slice(0, visibleCount),
@@ -303,6 +405,7 @@ function RecipesPage() {
 
   function resetAllFilters() {
     setQuery("");
+    setSelectedSeasonId(null);
     setStoredFilters({
       maxTime: "any",
       difficulty: "any",
@@ -310,6 +413,90 @@ function RecipesPage() {
       usePantry: false,
     });
     void navigate({ to: "/recipes", search: {} });
+  }
+
+  async function handleToggleFavorite(recipeId: string, recipeName?: string) {
+    if (!user) return;
+    const exists = favoriteIds.has(recipeId);
+    if (exists) {
+      await firebaseData
+        .from("favorites")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("recipe_id", recipeId);
+      toast.success("Removed from saved recipes");
+    } else {
+      await firebaseData.from("favorites").insert({ user_id: user.id, recipe_id: recipeId });
+      void unlockStatusAchievement({ data: { code: "recipe_collector" } }).catch(() => undefined);
+      mia?.reactToAction("recipe_saved", { recipeName });
+    }
+    await queryClient.invalidateQueries({ queryKey: ["favorites"] });
+  }
+
+  async function handleCreateCommunityRecipe(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user || submittingCommunity) return;
+    const ingredients = crIngredients
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const steps = crSteps
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (ingredients.length < 2 || steps.length < 2) {
+      toast.error("Please add at least 2 ingredients and 2 steps (one per line).");
+      return;
+    }
+    setSubmittingCommunity(true);
+    try {
+      await submitCommunityRecipe({
+        data: {
+          name: crName.trim(),
+          description: crDesc.trim(),
+          cooking_time_minutes: Math.max(5, Number(crTime) || 30),
+          ingredients,
+          steps,
+          author_name: user.displayName ?? undefined,
+        },
+      });
+      toast.success("Recipe shared with the MealMate community!");
+      setCommunityRecipeOpen(false);
+      setCrName("");
+      setCrDesc("");
+      setCrIngredients("");
+      setCrSteps("");
+      await queryClient.invalidateQueries({ queryKey: ["community", "recipes"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not share recipe");
+    } finally {
+      setSubmittingCommunity(false);
+    }
+  }
+
+  async function handleCreateStory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user || submittingCommunity) return;
+    setSubmittingCommunity(true);
+    try {
+      await submitUserStory({
+        data: {
+          display_name: storyName.trim() || user.displayName || "MealMate Cook",
+          outcome: storyOutcome.trim(),
+          story: storyText.trim(),
+        },
+      });
+      toast.success("Thank you for sharing your kitchen story!");
+      setStoryOpen(false);
+      setStoryName("");
+      setStoryOutcome("");
+      setStoryText("");
+      await queryClient.invalidateQueries({ queryKey: ["community", "stories"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not submit story");
+    } finally {
+      setSubmittingCommunity(false);
+    }
   }
 
   return (
@@ -363,6 +550,73 @@ function RecipesPage() {
         </Button>
       </form>
 
+      {/* Weekly Cooking Challenge & Seasonal Collections */}
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
+                <Award className="h-3.5 w-3.5" aria-hidden="true" />
+                Optional weekly challenge
+              </p>
+              <h2 className="mt-1 font-display text-lg text-foreground">{weeklyChallenge.title}</h2>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                {weeklyChallenge.description}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                if (weeklyChallenge.maxTimeMinutes) {
+                  setStoredFilters((prev) => ({ ...prev, maxTime: "35" }));
+                } else if (weeklyChallenge.id === "challenge-pantry-rescue") {
+                  setStoredFilters((prev) => ({ ...prev, usePantry: true }));
+                } else if (weeklyChallenge.categoryFilter) {
+                  void navigate({
+                    to: "/recipes",
+                    search: { c: weeklyChallenge.categoryFilter },
+                  });
+                }
+              }}
+              className="min-h-10 shrink-0 rounded-xl text-xs"
+            >
+              Explore picks
+            </Button>
+          </div>
+        </div>
+
+        {seasonalCollections.length > 0 && (
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <p className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Calendar className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+              Seasonal collections
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {seasonalCollections.map((col) => {
+                const isSelected = selectedSeasonId === col.id;
+                return (
+                  <button
+                    key={col.id}
+                    type="button"
+                    onClick={() => setSelectedSeasonId(isSelected ? null : col.id)}
+                    className={`min-h-10 rounded-xl border px-3 py-1.5 text-left text-xs transition-colors ${
+                      isSelected
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-secondary/70 text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    <span className="font-medium">{col.title}</span>
+                    <span className="ml-1.5 opacity-80">({col.monthsLabel})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Category tabs */}
       <div className="mt-5 flex flex-wrap gap-2">
         {CATEGORIES.map((cat) => (
@@ -374,8 +628,9 @@ function RecipesPage() {
               ...(q ? { q } : {}),
               ...(usePantry ? { pantry: "1" } : {}),
             }}
+            onClick={() => setSelectedSeasonId(null)}
             className={`min-h-10 inline-flex items-center rounded-xl border px-3.5 py-2 text-xs font-medium transition-colors ${
-              active === cat
+              active === cat && !selectedSeasonId
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground"
             }`}
@@ -466,6 +721,7 @@ function RecipesPage() {
 
         {(q ||
           active !== "All" ||
+          selectedSeasonId ||
           storedFilters.maxTime !== "any" ||
           storedFilters.difficulty !== "any" ||
           usePantry) && (
@@ -508,7 +764,12 @@ function RecipesPage() {
             <div className="cv-auto grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {visibleRecipes.map(({ recipe: r, match }, index) => (
                 <div key={r.id} className="flex flex-col gap-1.5">
-                  <RecipeCard recipe={r} priority={index < 2} />
+                  <RecipeCard
+                    recipe={r}
+                    priority={index < 2}
+                    isFavorite={favoriteIds.has(r.id)}
+                    onToggleFavorite={(id) => void handleToggleFavorite(id, r.name)}
+                  />
                   {match && match.totalIngredients > 0 && (
                     <p className="px-1 text-xs text-muted-foreground tabular-nums">
                       Pantry match: {match.matchedCount}/{match.totalIngredients} ingredients (
@@ -548,6 +809,218 @@ function RecipesPage() {
           </div>
         )}
       </div>
+
+      {/* Real Community Recipes & Stories (Zero fabricated data) */}
+      <section className="mt-12 space-y-6 border-t border-border pt-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-2xl text-foreground">Community kitchen</h2>
+            <p className="text-sm text-muted-foreground">
+              Real recipes and stories shared by fellow MealMate home cooks.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setStoryOpen(true)}
+              className="min-h-10 rounded-xl"
+            >
+              <MessageSquareQuote className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+              Share your story
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setCommunityRecipeOpen(true)}
+              className="min-h-10 rounded-xl"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+              Submit recipe
+            </Button>
+          </div>
+        </div>
+
+        {communityRecipes.length === 0 && userStories.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center">
+            <Users className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden="true" />
+            <p className="mt-2 text-sm font-medium text-foreground">
+              Be the first cook to share a home recipe or story
+            </p>
+            <p className="mx-auto mt-1 max-w-md text-xs text-muted-foreground">
+              MealMate only displays real member submissions — never synthetic reviews or counts.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {communityRecipes.slice(0, 4).map((item) => (
+              <div key={item.id} className="rounded-2xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {item.cuisine} · {item.cooking_time_minutes}m
+                  </span>
+                  <span>By {item.author_name}</span>
+                </div>
+                <h3 className="mt-1 font-display text-lg text-foreground">{item.name}</h3>
+                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                  {item.description}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {item.ingredients.length} ingredients · {item.steps.length} steps
+                </p>
+              </div>
+            ))}
+            {userStories.slice(0, 4).map((story) => (
+              <div key={story.id} className="rounded-2xl border border-border bg-card p-4">
+                <p className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                  {story.outcome}
+                </p>
+                <p className="mt-1.5 text-sm leading-relaxed text-foreground">
+                  &ldquo;{story.story}&rdquo;
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">— {story.display_name}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <Dialog open={communityRecipeOpen} onOpenChange={setCommunityRecipeOpen}>
+        <DialogContent className="max-w-md rounded-2xl border-border bg-card text-foreground">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Share a community recipe</DialogTitle>
+            <DialogDescription>
+              Submit a real dish you cook at home for other MealMate members.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateCommunityRecipe} className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="cr-name">Recipe name</Label>
+              <Input
+                id="cr-name"
+                required
+                minLength={3}
+                value={crName}
+                onChange={(e) => setCrName(e.target.value)}
+                placeholder="e.g. Weeknight Tomato Bredie"
+              />
+            </div>
+            <div className="grid grid-cols-[minmax(0,1fr)_100px] gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="cr-desc">Short summary</Label>
+                <Input
+                  id="cr-desc"
+                  required
+                  minLength={10}
+                  value={crDesc}
+                  onChange={(e) => setCrDesc(e.target.value)}
+                  placeholder="Why you love cooking this dish"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="cr-time">Minutes</Label>
+                <Input
+                  id="cr-time"
+                  type="number"
+                  min={5}
+                  max={360}
+                  value={crTime}
+                  onChange={(e) => setCrTime(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="cr-ing">Ingredients (one per line)</Label>
+              <Textarea
+                id="cr-ing"
+                rows={3}
+                required
+                value={crIngredients}
+                onChange={(e) => setCrIngredients(e.target.value)}
+                placeholder={"500g beef chuck\n2 tomatoes\n1 onion"}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="cr-steps">Steps (one per line)</Label>
+              <Textarea
+                id="cr-steps"
+                rows={3}
+                required
+                value={crSteps}
+                onChange={(e) => setCrSteps(e.target.value)}
+                placeholder={"Brown onions in a pot.\nSimmer beef and tomatoes until tender."}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCommunityRecipeOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submittingCommunity}>
+                {submittingCommunity && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Publish recipe
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={storyOpen} onOpenChange={setStoryOpen}>
+        <DialogContent className="max-w-md rounded-2xl border-border bg-card text-foreground">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Share your kitchen story</DialogTitle>
+            <DialogDescription>
+              Tell others how meal planning or pantry cooking works in your kitchen.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateStory} className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="st-name">First name or nickname</Label>
+              <Input
+                id="st-name"
+                required
+                minLength={2}
+                value={storyName}
+                onChange={(e) => setStoryName(e.target.value)}
+                placeholder="e.g. Thabo"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="st-outcome">Biggest win</Label>
+              <Input
+                id="st-outcome"
+                required
+                minLength={3}
+                value={storyOutcome}
+                onChange={(e) => setStoryOutcome(e.target.value)}
+                placeholder="e.g. Cooked 4 weeknight dinners from pantry staples"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="st-text">Your story</Label>
+              <Textarea
+                id="st-text"
+                rows={3}
+                required
+                minLength={12}
+                value={storyText}
+                onChange={(e) => setStoryText(e.target.value)}
+                placeholder="What changed in your weekly cooking routine?"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setStoryOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={submittingCommunity}>
+                {submittingCommunity && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Submit story
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

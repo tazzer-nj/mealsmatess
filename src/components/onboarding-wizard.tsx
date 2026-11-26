@@ -15,6 +15,7 @@ import {
 import { auth } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
 import { type AppLanguageCode } from "@/lib/i18n";
+import { useOptionalMia } from "@/hooks/use-mia";
 import {
   clearOnboardingDraft,
   readOnboardingDraft,
@@ -69,6 +70,7 @@ export function OnboardingWizard({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const mia = useOptionalMia();
 
   const [step, setStep] = useState(0);
   const [phase, setPhase] = useState<WizardPhase>("questions");
@@ -727,6 +729,7 @@ export function OnboardingWizard({
       }),
     ]);
     updateProcessingStep(4, "done");
+    mia?.reactToAction("onboarding_completed", { silent: true });
 
     toast.success(t("onboarding.preferencesSaved"));
     if (onCompleted) {

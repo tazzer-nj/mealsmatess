@@ -772,6 +772,8 @@ export const CURATED_RECIPES: CatalogRecipe[] = CURATED_SEEDS.map((seed) => ({
   steps: seed.steps,
   fun_fact: seed.fun_fact,
   created_by: null,
+  rating: null,
+  is_premium: false,
   image_url: curatedRecipeImageUrl({ slug: seed.slug, name: seed.name }, "hero"),
   image_source: null,
   image_attribution: null,

@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { Clock, Flame, Heart } from "lucide-react";
+import { Bookmark, Clock, Flame, Heart } from "lucide-react";
 import { RecipeImage } from "@/components/recipe-image";
-import { mealTagPillClass, getRecipeUniqueTheme } from "@/lib/tag-styles";
+import { getRecipeUniqueTheme } from "@/lib/tag-styles";
 
 export interface RecipeCardData {
   id?: string;
@@ -10,6 +10,8 @@ export interface RecipeCardData {
   image_url: string | null;
   image_source?: string | null;
   cooking_time_minutes: number | null;
+  difficulty?: string | null;
+  calories?: number | null;
   cuisine: string | null;
   category: string | null;
   diet_tags?: string[] | null;
@@ -26,12 +28,15 @@ export interface TrendingCardData {
   difficulty: string | null;
   cuisine?: string | null;
   category?: string | null;
+  diet_tags?: string[] | null;
 }
 
-const DIFFICULTY_DOTS: Record<string, number> = { Easy: 1, Medium: 2, Hard: 3 };
+export type FeaturedRecipeData = RecipeCardData & {
+  id: string;
+  description?: string | null;
+};
 
-/** Horizontal-rail card used on the home screen: image with overlaid time/cal
- * badge and a favorite heart, name, and a difficulty pill below. */
+/** Clean editorial recipe rail card with unboxed middot metadata and 44px touch target. */
 export function TrendingCard({
   recipe,
   isFavorite,
@@ -41,25 +46,32 @@ export function TrendingCard({
   recipe: TrendingCardData;
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
-  /** Above-the-fold cards load eagerly; everything else lazily. */
   priority?: boolean;
 }) {
-  const dots = recipe.difficulty ? (DIFFICULTY_DOTS[recipe.difficulty] ?? 1) : 1;
   const uniqueTheme = getRecipeUniqueTheme(recipe.id ?? recipe.slug ?? recipe.name);
+  const metaParts = [
+    recipe.category || recipe.cuisine,
+    recipe.difficulty,
+    recipe.diet_tags?.[0],
+  ].filter(Boolean);
 
   return (
-    <div className="w-40 flex-shrink-0">
+    <div className="w-44 flex-shrink-0">
       <Link
         to="/recipe/$slug"
         params={{ slug: recipe.slug }}
-        className={`md3-surface recipe-card-lift group relative block aspect-square w-40 overflow-hidden rounded-2xl border bg-gradient-to-br ${uniqueTheme.bg} ${uniqueTheme.border}`}
+        className={`md3-surface recipe-card-lift group relative block aspect-square w-44 overflow-hidden rounded-2xl border bg-gradient-to-br ${uniqueTheme.bg} ${uniqueTheme.border}`}
       >
         <RecipeImage
           recipe={recipe}
           size="card"
-          sizes="160px"
+          sizes="176px"
           priority={priority}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent"
         />
 
         <button
@@ -68,120 +80,175 @@ export function TrendingCard({
             e.preventDefault();
             onToggleFavorite(recipe.id);
           }}
-          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          aria-label={isFavorite ? "Remove from saved recipes" : "Save recipe"}
           aria-pressed={isFavorite}
-          className="tap-spring absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-background/90 text-foreground backdrop-blur transition-transform hover:scale-110 active:scale-90 shadow-sm"
+          className="tap-spring absolute right-1.5 top-1.5 flex h-11 w-11 items-center justify-center rounded-full bg-background/90 text-foreground backdrop-blur transition-transform hover:scale-105 active:scale-95 shadow-sm"
         >
           <Heart
             className={isFavorite ? "heart-pop h-4 w-4 fill-primary text-primary" : "h-4 w-4"}
           />
         </button>
+
         {(recipe.cooking_time_minutes || recipe.calories) && (
-          <div className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-full bg-ink/85 px-2.5 py-1 text-[11px] font-medium text-cream backdrop-blur shadow-sm">
+          <div className="pointer-events-none absolute bottom-2.5 left-2.5 right-2.5 flex items-center gap-2 text-xs font-medium text-white tabular-nums">
             {recipe.cooking_time_minutes ? (
               <span className="inline-flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {recipe.cooking_time_minutes} min
+                <Clock className="h-3 w-3" aria-hidden="true" />
+                {recipe.cooking_time_minutes}m
               </span>
+            ) : null}
+            {recipe.cooking_time_minutes && recipe.calories ? (
+              <span aria-hidden="true">&middot;</span>
             ) : null}
             {recipe.calories ? (
               <span className="inline-flex items-center gap-1">
-                <Flame className="h-3 w-3 text-primary" />
-                {recipe.calories} cal
+                <Flame className="h-3 w-3 text-amber-300" aria-hidden="true" />
+                {recipe.calories} kcal
               </span>
             ) : null}
           </div>
         )}
       </Link>
-      <h3 className="mt-2 line-clamp-2 font-display text-base leading-tight">{recipe.name}</h3>
-      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        {recipe.category && (
-          <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${uniqueTheme.badge}`}
-          >
-            {recipe.category}
-          </span>
-        )}
-        {recipe.difficulty && (
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-secondary-foreground border border-border/50">
-            {recipe.difficulty}
-            <span className="flex items-center gap-0.5">
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    i < dots ? "bg-primary" : "bg-muted-foreground/30"
-                  }`}
-                />
-              ))}
-            </span>
-          </div>
-        )}
-      </div>
+      <Link to="/recipe/$slug" params={{ slug: recipe.slug }} className="block">
+        <h3 className="mt-2 line-clamp-2 font-display text-base leading-snug text-foreground hover:text-primary">
+          {recipe.name}
+        </h3>
+      </Link>
+      {metaParts.length > 0 && (
+        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+          {metaParts.slice(0, 2).join(" · ")}
+        </p>
+      )}
     </div>
   );
 }
 
+/** Featured hero card used on the Home screen daily recommendation slot. */
+export function FeaturedRecipeCard({
+  recipe,
+  isFavorite,
+  onToggleFavorite,
+  reason,
+}: {
+  recipe: FeaturedRecipeData;
+  isFavorite: boolean;
+  onToggleFavorite: (id: string) => void;
+  reason?: string;
+}) {
+  const metaParts = [
+    recipe.cooking_time_minutes ? `${recipe.cooking_time_minutes} min` : null,
+    recipe.difficulty,
+    recipe.cuisine || recipe.category,
+    ...(recipe.diet_tags?.slice(0, 2) ?? []),
+  ].filter(Boolean);
+
+  return (
+    <div className="md3-surface group relative overflow-hidden rounded-2xl border border-border bg-card">
+      <Link to="/recipe/$slug" params={{ slug: recipe.slug }} className="block">
+        <div className="relative aspect-[16/10] w-full overflow-hidden bg-muted sm:aspect-[16/9]">
+          <RecipeImage
+            recipe={recipe}
+            size="hero"
+            sizes="(max-width: 768px) 100vw, 720px"
+            priority
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"
+          />
+          <div className="absolute bottom-3 left-4 right-14 text-white">
+            {reason && <p className="text-xs font-medium text-white/85">{reason}</p>}
+            <h3 className="mt-0.5 font-display text-2xl leading-tight text-balance">
+              {recipe.name}
+            </h3>
+            {metaParts.length > 0 && (
+              <p className="mt-1 text-xs text-white/80 tabular-nums">{metaParts.join(" · ")}</p>
+            )}
+          </div>
+        </div>
+      </Link>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          onToggleFavorite(recipe.id);
+        }}
+        aria-label={isFavorite ? "Remove from saved recipes" : "Save recipe"}
+        aria-pressed={isFavorite}
+        className="tap-spring absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full bg-background/95 text-foreground shadow-sm backdrop-blur transition-transform hover:scale-105 active:scale-95"
+      >
+        <Bookmark
+          className={isFavorite ? "h-4 w-4 fill-primary text-primary" : "h-4 w-4"}
+          aria-hidden="true"
+        />
+      </button>
+    </div>
+  );
+}
+
+/** Standard discovery grid card with unboxed middot metadata and optional save button. */
 export function RecipeCard({
   recipe,
   priority = false,
+  isFavorite,
+  onToggleFavorite,
 }: {
   recipe: RecipeCardData;
   priority?: boolean;
+  isFavorite?: boolean;
+  onToggleFavorite?: (id: string) => void;
 }) {
   const uniqueTheme = getRecipeUniqueTheme(recipe.id ?? recipe.slug ?? recipe.name);
+  const topMeta = [
+    recipe.cuisine || recipe.category,
+    recipe.difficulty,
+    recipe.cooking_time_minutes ? `${recipe.cooking_time_minutes}m` : null,
+  ].filter(Boolean);
+  const dietaryLine = (recipe.diet_tags ?? []).slice(0, 3).join(" · ");
 
   return (
-    <Link
-      to="/recipe/$slug"
-      params={{ slug: recipe.slug }}
-      className={`md3-surface group flex flex-col overflow-hidden rounded-2xl border bg-gradient-to-br ${uniqueTheme.bg} ${uniqueTheme.border} bg-card transition-all hover:-translate-y-1 hover:shadow-xl`}
+    <div
+      className={`md3-surface group relative flex flex-col overflow-hidden rounded-2xl border bg-gradient-to-br ${uniqueTheme.bg} ${uniqueTheme.border} bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg`}
     >
-      <div className="aspect-[4/3] w-full overflow-hidden bg-muted relative">
-        <div
-          className={`absolute top-2 left-2 z-10 h-2.5 w-2.5 rounded-full ${uniqueTheme.accent} shadow-sm ring-2 ring-background`}
-        />
-        <RecipeImage
-          recipe={recipe}
-          size="card"
-          sizes="(max-width: 639px) calc(100vw - 32px), (max-width: 1023px) 50vw, 320px"
-          priority={priority}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-      </div>
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          {recipe.category && (
-            <span
-              className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${uniqueTheme.badge}`}
-            >
-              {recipe.category}
-            </span>
-          )}
-          {recipe.cuisine && (
-            <span className="font-medium text-foreground/80">{recipe.cuisine}</span>
-          )}
-          {recipe.cooking_time_minutes ? (
-            <span className="inline-flex items-center gap-1 ml-auto">
-              <Clock className="h-3 w-3 text-primary" />
-              {recipe.cooking_time_minutes}m
-            </span>
-          ) : null}
+      <Link to="/recipe/$slug" params={{ slug: recipe.slug }} className="flex flex-1 flex-col">
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+          <RecipeImage
+            recipe={recipe}
+            size="card"
+            sizes="(max-width: 639px) calc(100vw - 32px), (max-width: 1023px) 50vw, 320px"
+            priority={priority}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
         </div>
-        <h3 className="font-display text-xl leading-tight">{recipe.name}</h3>
-        {recipe.diet_tags && recipe.diet_tags.length > 0 && (
-          <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
-            {recipe.diet_tags.slice(0, 3).map((t) => (
-              <span
-                key={t}
-                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${mealTagPillClass(t)}`}
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    </Link>
+        <div className="flex flex-1 flex-col gap-1.5 p-4">
+          {topMeta.length > 0 && (
+            <p className="text-xs font-medium text-muted-foreground tabular-nums">
+              {topMeta.join(" · ")}
+            </p>
+          )}
+          <h3 className="font-display text-xl leading-snug text-foreground">{recipe.name}</h3>
+          {dietaryLine && (
+            <p className="mt-auto pt-1 text-xs text-muted-foreground">{dietaryLine}</p>
+          )}
+        </div>
+      </Link>
+      {recipe.id && onToggleFavorite && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            onToggleFavorite(recipe.id!);
+          }}
+          aria-label={isFavorite ? "Remove from saved recipes" : "Save recipe"}
+          aria-pressed={Boolean(isFavorite)}
+          className="tap-spring absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm backdrop-blur transition-transform hover:scale-105 active:scale-95"
+        >
+          <Heart
+            className={isFavorite ? "heart-pop h-4 w-4 fill-primary text-primary" : "h-4 w-4"}
+          />
+        </button>
+      )}
+    </div>
   );
 }

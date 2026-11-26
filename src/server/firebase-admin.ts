@@ -103,6 +103,60 @@ function getServices() {
   return initialized;
 }
 
+export function getFirebaseAdminConfigStatus() {
+  const vercelProd = process.env["VERCEL_ENV"] === "production";
+  const previewDb = (firebaseAppletConfig.firestoreDatabaseId || "").trim();
+  const envDb = (
+    process.env["FIREBASE_FIRESTORE_DATABASE_ID"] ||
+    process.env["VITE_FIREBASE_FIRESTORE_DATABASE_ID"] ||
+    ""
+  ).trim();
+  const projectId = (
+    process.env["FIREBASE_PROJECT_ID"] ||
+    process.env["VITE_FIREBASE_PROJECT_ID"] ||
+    firebaseAppletConfig.projectId ||
+    ""
+  ).trim();
+  const isCustomProject =
+    Boolean(projectId) &&
+    Boolean(firebaseAppletConfig.projectId) &&
+    projectId !== firebaseAppletConfig.projectId;
+  const hasServiceAccount = Boolean(process.env["FIREBASE_SERVICE_ACCOUNT_JSON"]?.trim());
+
+  let error: string | null = null;
+  let usesPreviewDatabaseFallback = false;
+  let databaseId = envDb;
+  let databaseIdSource: "env" | "preview-config" | "none" = envDb ? "env" : "none";
+
+  if (!envDb) {
+    if (vercelProd || isCustomProject) {
+      error =
+        "Missing FIREBASE_FIRESTORE_DATABASE_ID and VITE_FIREBASE_FIRESTORE_DATABASE_ID for target project.";
+    } else if (previewDb) {
+      databaseId = previewDb;
+      databaseIdSource = "preview-config";
+      usesPreviewDatabaseFallback = true;
+    }
+  } else if (vercelProd && previewDb && envDb === previewDb) {
+    error =
+      "Vercel production cannot use the AI Studio preview database in FIREBASE_FIRESTORE_DATABASE_ID.";
+  }
+
+  if (!error && !hasServiceAccount) {
+    error = "FIREBASE_SERVICE_ACCOUNT_JSON not configured in local container.";
+  }
+
+  return {
+    configured: error === null,
+    projectId,
+    databaseId,
+    databaseIdConfigured: Boolean(databaseId),
+    databaseIdSource,
+    usesPreviewDatabaseFallback,
+    error,
+  };
+}
+
 const USER_SUBCOLLECTIONS: Record<string, string> = {
   favorites: "favorites",
   grocery_items: "grocery",

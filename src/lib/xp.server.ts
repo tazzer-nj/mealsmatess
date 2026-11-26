@@ -145,6 +145,10 @@ async function progressChallenges(userId: string, action: XpAction) {
   }
 }
 
+export async function unlockMilestoneAchievement(userId: string, code: string) {
+  await unlock(userId, code);
+}
+
 /**
  * Award XP for an action. `refKey` makes the award idempotent — the same
  * recipe cooked twice in a day, or a replayed request, never double-pays.
@@ -168,16 +172,18 @@ export async function awardXpFor(
   const totalXp = stats?.total_xp ?? 0;
   await syncLevelAchievements(userId, totalXp);
 
-  if (action === "recipe_cooked") {
+  if (action === "recipe_cooked" || action === "planned_meal_completed") {
     const { count } = await firebaseAdmin
       .from("xp_events")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("action", "recipe_cooked");
     if ((count ?? 0) >= 1) await unlock(userId, "cook_1");
+    if ((count ?? 0) >= 5) await unlock(userId, "cook_5");
     if ((count ?? 0) >= 10) await unlock(userId, "cook_10");
   }
   if (action === "weekly_plan_completed") await unlock(userId, "plan_1");
+  if (action === "collection_created") await unlock(userId, "recipe_collector");
   if (action === "grocery_list_completed") {
     const { count } = await firebaseAdmin
       .from("xp_events")

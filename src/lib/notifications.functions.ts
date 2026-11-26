@@ -138,6 +138,20 @@ export const markAllMyNotificationsRead = createServerFn({ method: "POST" })
 export const getMyNotificationPreferences = createServerFn({ method: "GET" })
   .middleware([requireFirebaseAuth])
   .handler(async ({ context }) => {
+    const defaults = {
+      productUpdatesEnabled: true,
+      pushEnabled: false,
+      mealReminders: true,
+      recipeAlerts: true,
+      planningReminders: true,
+      promoAlerts: false,
+      pantryExpiryReminders: true,
+      weeklyInspiration: true,
+      mealPlanSummaries: true,
+      challengeReminders: false,
+      frequency: "weekly" as const,
+      analyticsConsent: true,
+    };
     try {
       const { getFirebaseAdminFirestore } = await loadFirebaseAdmin();
       const ref = getFirebaseAdminFirestore()
@@ -147,13 +161,29 @@ export const getMyNotificationPreferences = createServerFn({ method: "GET" })
         .doc("preferences");
       const snapshot = await ref.get();
       const data = snapshot.data() ?? {};
+      const freq =
+        data["frequency"] === "daily" ||
+        data["frequency"] === "weekly" ||
+        data["frequency"] === "essential_only"
+          ? data["frequency"]
+          : ("weekly" as const);
       return {
         productUpdatesEnabled: data["productUpdatesEnabled"] !== false,
         pushEnabled: data["pushEnabled"] === true,
+        mealReminders: data["mealReminders"] !== false,
+        recipeAlerts: data["recipeAlerts"] !== false,
+        planningReminders: data["planningReminders"] !== false,
+        promoAlerts: data["promoAlerts"] === true,
+        pantryExpiryReminders: data["pantryExpiryReminders"] !== false,
+        weeklyInspiration: data["weeklyInspiration"] !== false,
+        mealPlanSummaries: data["mealPlanSummaries"] !== false,
+        challengeReminders: data["challengeReminders"] === true,
+        frequency: freq,
+        analyticsConsent: data["analyticsConsent"] !== false,
       };
     } catch (error) {
       if (error instanceof Error && /Firebase Admin is not configured/i.test(error.message)) {
-        return { productUpdatesEnabled: true, pushEnabled: false };
+        return defaults;
       }
       throw error;
     }
@@ -162,7 +192,22 @@ export const getMyNotificationPreferences = createServerFn({ method: "GET" })
 export const saveMyNotificationPreferences = createServerFn({ method: "POST" })
   .middleware([requireFirebaseAuth])
   .validator((value: unknown) =>
-    z.object({ productUpdatesEnabled: z.boolean(), pushEnabled: z.boolean() }).parse(value),
+    z
+      .object({
+        productUpdatesEnabled: z.boolean(),
+        pushEnabled: z.boolean(),
+        mealReminders: z.boolean().optional(),
+        recipeAlerts: z.boolean().optional(),
+        planningReminders: z.boolean().optional(),
+        promoAlerts: z.boolean().optional(),
+        pantryExpiryReminders: z.boolean().optional(),
+        weeklyInspiration: z.boolean().optional(),
+        mealPlanSummaries: z.boolean().optional(),
+        challengeReminders: z.boolean().optional(),
+        frequency: z.enum(["daily", "weekly", "essential_only"]).optional(),
+        analyticsConsent: z.boolean().optional(),
+      })
+      .parse(value),
   )
   .handler(async ({ data, context }) => {
     if (data.pushEnabled && !data.productUpdatesEnabled) {
@@ -188,6 +233,28 @@ export const saveMyNotificationPreferences = createServerFn({ method: "POST" })
       {
         productUpdatesEnabled: data.productUpdatesEnabled,
         pushEnabled,
+        ...(typeof data.mealReminders === "boolean" ? { mealReminders: data.mealReminders } : {}),
+        ...(typeof data.recipeAlerts === "boolean" ? { recipeAlerts: data.recipeAlerts } : {}),
+        ...(typeof data.planningReminders === "boolean"
+          ? { planningReminders: data.planningReminders }
+          : {}),
+        ...(typeof data.promoAlerts === "boolean" ? { promoAlerts: data.promoAlerts } : {}),
+        ...(typeof data.pantryExpiryReminders === "boolean"
+          ? { pantryExpiryReminders: data.pantryExpiryReminders }
+          : {}),
+        ...(typeof data.weeklyInspiration === "boolean"
+          ? { weeklyInspiration: data.weeklyInspiration }
+          : {}),
+        ...(typeof data.mealPlanSummaries === "boolean"
+          ? { mealPlanSummaries: data.mealPlanSummaries }
+          : {}),
+        ...(typeof data.challengeReminders === "boolean"
+          ? { challengeReminders: data.challengeReminders }
+          : {}),
+        ...(data.frequency ? { frequency: data.frequency } : {}),
+        ...(typeof data.analyticsConsent === "boolean"
+          ? { analyticsConsent: data.analyticsConsent }
+          : {}),
         updatedAt: new Date().toISOString(),
         ...consentChange,
       },
@@ -205,7 +272,20 @@ export const saveMyNotificationPreferences = createServerFn({ method: "POST" })
         await batch.commit();
       }
     }
-    return { productUpdatesEnabled: data.productUpdatesEnabled, pushEnabled };
+    return {
+      productUpdatesEnabled: data.productUpdatesEnabled,
+      pushEnabled,
+      mealReminders: data.mealReminders ?? true,
+      recipeAlerts: data.recipeAlerts ?? true,
+      planningReminders: data.planningReminders ?? true,
+      promoAlerts: data.promoAlerts ?? false,
+      pantryExpiryReminders: data.pantryExpiryReminders ?? true,
+      weeklyInspiration: data.weeklyInspiration ?? true,
+      mealPlanSummaries: data.mealPlanSummaries ?? true,
+      challengeReminders: data.challengeReminders ?? false,
+      frequency: data.frequency ?? "weekly",
+      analyticsConsent: data.analyticsConsent ?? true,
+    };
   });
 
 export const getTrialReminderPreference = createServerFn({ method: "GET" })

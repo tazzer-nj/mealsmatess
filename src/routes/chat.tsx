@@ -158,14 +158,14 @@ function ChatPage() {
 
       {turns.length === 0 ? (
         <div className="flex flex-col items-center py-4 text-center">
-          <ChefMascot animate className="h-44 w-44" />
+          <ChefMascot mood={mia.mood} interactive className="h-44 w-44" />
           <h1 className="mt-5 font-display text-3xl">Your little kitchen companion.</h1>
           <p className="mt-2 text-sm text-muted-foreground">What&apos;s cooking, Chef?</p>
         </div>
       ) : (
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <ChefMascot className="h-9 w-9" />
+            <ChefMascot mood={mia.mood} className="h-9 w-9" />
             <h1 className="font-display text-2xl">MealMate Chef</h1>
           </div>
           <Button
@@ -454,7 +454,12 @@ function ChatPage() {
                 }`}
               />
               <div className="relative flex h-28 w-28 items-center justify-center rounded-full border border-border bg-card">
-                <ChefMascot animate={voiceActive} className="h-20 w-20" />
+                <ChefMascot
+                  mood={mia.mood}
+                  animate={voiceActive}
+                  showMoodRing
+                  className="h-20 w-20"
+                />
               </div>
             </div>
 

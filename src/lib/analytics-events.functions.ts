@@ -203,6 +203,8 @@ export const saveStructuredOnboardingState = createServerFn({ method: "POST" })
           cooking_time: p.cooking_time ?? null,
           cooking_level: p.cooking_level ?? null,
           budget_range_zar: p.budget_range_zar ?? null,
+          identity_habit: p.identity_habit ?? null,
+          weekly_cooking_goal: p.weekly_cooking_goal ?? 4,
           onboarding_completed: data.status === "completed",
           onboarding_completed_at: data.completedAt ?? null,
           personalisation_profile: personalisationProfile,
