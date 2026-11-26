@@ -99,8 +99,8 @@ describe("ThemeGallery UI & live preview", () => {
       const logoImg = screen.getByRole("img", { name: `${theme.name} logo` });
       expect(logoImg).toHaveAttribute("src", theme.mascotImage);
     }
-    expect(screen.getByText("Default (Black & White)")).toBeInTheDocument();
-    expect(screen.getByText("Logo Themes")).toBeInTheDocument();
+    expect(screen.getByText("Default Kitchen Themes")).toBeInTheDocument();
+    expect(screen.getByText("Premium Themes")).toBeInTheDocument();
   });
 
   it("shows live preview immediately and commits when Apply Theme is clicked", async () => {
@@ -112,10 +112,10 @@ describe("ThemeGallery UI & live preview", () => {
 
     await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalled());
 
-    const blackCard = screen.getByRole("radio", { name: /Default Black theme/i });
-    fireEvent.click(blackCard);
+    const midnightKitchenCard = screen.getByRole("radio", { name: /Midnight Kitchen theme/i });
+    fireEvent.click(midnightKitchenCard);
 
-    expect(screen.getByText("Previewing Default Black")).toBeInTheDocument();
+    expect(screen.getByText("Previewing Midnight Kitchen")).toBeInTheDocument();
     expect(document.documentElement.dataset["appTheme"]).toBe("midnight-black");
     expect(mockSaveMyTheme).not.toHaveBeenCalled();
 
@@ -125,9 +125,9 @@ describe("ThemeGallery UI & live preview", () => {
 
     expect(mockSaveMyTheme).toHaveBeenCalledWith({ data: { themeId: "midnight-black" } });
     await waitFor(() =>
-      expect(screen.getByText("Active theme: Default Black")).toBeInTheDocument(),
+      expect(screen.getByText("Active theme: Midnight Kitchen")).toBeInTheDocument(),
     );
-    expect(screen.queryByText("Previewing Default Black")).not.toBeInTheDocument();
+    expect(screen.queryByText("Previewing Midnight Kitchen")).not.toBeInTheDocument();
   });
 
   it("distinguishes locked logo themes and allows unlocking when unsubscribed", async () => {
@@ -164,7 +164,7 @@ describe("ThemeGallery UI & live preview", () => {
     });
     mockSaveMyTheme.mockResolvedValue({
       ok: true,
-      themeId: "aurora",
+      themeId: "matcha",
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
 
@@ -183,7 +183,35 @@ describe("ThemeGallery UI & live preview", () => {
       fireEvent.click(screen.getByRole("button", { name: /Apply Theme/i }));
     });
 
-    expect(mockSaveMyTheme).toHaveBeenCalledWith({ data: { themeId: "aurora" } });
+    expect(mockSaveMyTheme).toHaveBeenCalledWith({ data: { themeId: "matcha" } });
     await waitFor(() => expect(screen.getByText("Active theme: Matcha")).toBeInTheDocument());
+  });
+
+  it("hides account-synced confirmation, restores previous theme, and exposes Retry save on failure", async () => {
+    mockSaveMyTheme.mockRejectedValueOnce(new Error("5 NOT_FOUND"));
+
+    render(
+      <ThemeProvider>
+        <ThemeGallery />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalled());
+
+    const midnightKitchenCard = screen.getByRole("radio", { name: /Midnight Kitchen theme/i });
+    fireEvent.click(midnightKitchenCard);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Apply Theme/i }));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText("Account sync failed · Restored previous theme")).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText("Synced to your MealMate account across devices"),
+    ).not.toBeInTheDocument();
+    expect(document.documentElement.dataset["appTheme"]).toBe("classic-light");
+    expect(screen.getByRole("button", { name: /Retry save/i })).toBeInTheDocument();
   });
 });

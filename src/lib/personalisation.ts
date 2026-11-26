@@ -306,11 +306,13 @@ export function buildPersonalisationProfile(prefs: FoodPreferences): Personalisa
   }
 
   const suggestedDifficulty: PersonalisationProfile["suggested_difficulty"] =
-    prefs.cooking_level === "Beginner" ||
-    prefs.cooking_level === "Intermediate" ||
-    prefs.cooking_level === "Experienced"
-      ? prefs.cooking_level
-      : null;
+    prefs.cooking_level === "Beginner"
+      ? "Easy"
+      : prefs.cooking_level === "Intermediate"
+        ? "Medium"
+        : prefs.cooking_level === "Experienced"
+          ? "Hard"
+          : null;
 
   const strictExclusions = Array.from(new Set(avoidTerms(prefs)));
   const miaContext = buildMiaPersonalisationContext(prefs, []);

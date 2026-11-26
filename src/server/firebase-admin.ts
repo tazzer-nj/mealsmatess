@@ -9,7 +9,7 @@ import {
 } from "firebase-admin/firestore";
 import { getDownloadURL, getStorage } from "firebase-admin/storage";
 import { getMessaging } from "firebase-admin/messaging";
-import { randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import firebaseAppletConfig from "../../firebase-applet-config.json";
 
 type Filter = { field: string; operator: string; value: unknown };
@@ -24,109 +24,6 @@ let initialized:
       bucket: ReturnType<ReturnType<typeof getStorage>["bucket"]>;
     }
   | undefined;
-
-let tokenVerifierAuth: ReturnType<typeof getAuth> | undefined;
-
-function isVercelProduction() {
-  return (
-    process.env["VERCEL_ENV"] === "production" ||
-    (process.env["VERCEL"] === "1" &&
-      process.env["NODE_ENV"] === "production" &&
-      !["preview", "development"].includes(process.env["VERCEL_ENV"] ?? ""))
-  );
-}
-
-function isVercelRuntime() {
-  return process.env["VERCEL"] === "1" || Boolean(process.env["VERCEL_ENV"]?.trim());
-}
-
-function resolvedProjectId(fallback?: string) {
-  const fromEnv =
-    process.env["FIREBASE_PROJECT_ID"]?.trim() ||
-    process.env["VITE_FIREBASE_PROJECT_ID"]?.trim() ||
-    fallback?.trim();
-  if (fromEnv) return fromEnv;
-  if (isVercelProduction()) {
-    throw new Error(
-      "Missing Firebase project configuration in production: set FIREBASE_PROJECT_ID and VITE_FIREBASE_PROJECT_ID. Refusing to fall back to the AI Studio preview project.",
-    );
-  }
-  return firebaseAppletConfig.projectId?.trim() || "";
-}
-
-function resolvedDatabaseId(projectId?: string) {
-  const envDb =
-    process.env["FIREBASE_FIRESTORE_DATABASE_ID"]?.trim() ||
-    process.env["VITE_FIREBASE_FIRESTORE_DATABASE_ID"]?.trim();
-  const previewDb = firebaseAppletConfig.firestoreDatabaseId?.trim() || "";
-  const previewProject = firebaseAppletConfig.projectId?.trim() || "";
-
-  if (envDb) {
-    if (isVercelProduction() && previewDb && envDb === previewDb) {
-      throw new Error(
-        'Production Firestore cannot use the AI Studio preview database. Update FIREBASE_FIRESTORE_DATABASE_ID and VITE_FIREBASE_FIRESTORE_DATABASE_ID to your production database ID (for example "(default)").',
-      );
-    }
-    return envDb;
-  }
-
-  const targetingDifferentProject = Boolean(
-    projectId && previewProject && projectId !== previewProject,
-  );
-  if (isVercelRuntime() || targetingDifferentProject) {
-    throw new Error(
-      'Missing Firestore database configuration: set FIREBASE_FIRESTORE_DATABASE_ID and VITE_FIREBASE_FIRESTORE_DATABASE_ID (for example "(default)"). Refusing to fall back to the AI Studio preview database.',
-    );
-  }
-  return previewDb || "(default)";
-}
-
-export function getFirebaseAdminConfigStatus() {
-  const hasServiceAccount = Boolean(process.env["FIREBASE_SERVICE_ACCOUNT_JSON"]?.trim());
-  const envDb =
-    process.env["FIREBASE_FIRESTORE_DATABASE_ID"]?.trim() ||
-    process.env["VITE_FIREBASE_FIRESTORE_DATABASE_ID"]?.trim() ||
-    "";
-  try {
-    const projectId = resolvedProjectId();
-    const databaseId = resolvedDatabaseId(projectId);
-    return {
-      configured: hasServiceAccount && Boolean(projectId && databaseId),
-      hasServiceAccount,
-      projectIdConfigured: Boolean(projectId),
-      databaseIdConfigured: Boolean(databaseId),
-      databaseIdSource: envDb ? "env" : "ai-studio-preview-config",
-      usesPreviewDatabaseFallback:
-        !envDb && databaseId === (firebaseAppletConfig.firestoreDatabaseId?.trim() || ""),
-      error: null as string | null,
-    };
-  } catch (error) {
-    return {
-      configured: false,
-      hasServiceAccount,
-      projectIdConfigured: Boolean(
-        process.env["FIREBASE_PROJECT_ID"]?.trim() ||
-        process.env["VITE_FIREBASE_PROJECT_ID"]?.trim(),
-      ),
-      databaseIdConfigured: false,
-      databaseIdSource: envDb ? "env" : "missing",
-      usesPreviewDatabaseFallback: false,
-      error: error instanceof Error ? error.message : "Firebase configuration error.",
-    };
-  }
-}
-
-function getTokenVerifierAuth() {
-  if (tokenVerifierAuth) return tokenVerifierAuth;
-  const projectId = resolvedProjectId();
-  if (!projectId || projectId === "remixed-project-id") {
-    throw new Error("Firebase projectId is not configured.");
-  }
-  const existingApp = getApps().find((app) => app.name === "mealmate-token-verifier");
-  const app = existingApp ?? initializeApp({ projectId }, "mealmate-token-verifier");
-  tokenVerifierAuth = getAuth(app);
-  return tokenVerifierAuth;
-}
 
 function getServices() {
   if (initialized) return initialized;
@@ -149,20 +46,25 @@ function getServices() {
     );
   }
 
-  const projectId = resolvedProjectId(serviceAccount.project_id);
-  if (!projectId || serviceAccount.project_id !== projectId) {
+  const allowedProjects = new Set(
+    ["mealmate-d2e53", firebaseAppletConfig.projectId].filter(
+      (id): id is string => typeof id === "string" && id.trim().length > 0,
+    ),
+  );
+  const projectId =
+    process.env["FIREBASE_PROJECT_ID"] ||
+    process.env["VITE_FIREBASE_PROJECT_ID"] ||
+    serviceAccount.project_id;
+  if (!allowedProjects.has(projectId) || serviceAccount.project_id !== projectId) {
     throw new Error(
-      `Firebase Admin project mismatch: expected ${projectId}, received ${serviceAccount.project_id}.`,
+      `Firebase Admin project must be one of [${Array.from(allowedProjects).join(", ")}] and match the service account.`,
     );
   }
 
-  const databaseId = resolvedDatabaseId(projectId);
-  const allowPreviewStorage =
-    !isVercelRuntime() && projectId === (firebaseAppletConfig.projectId?.trim() || "");
   const bucketName = (
     process.env["FIREBASE_STORAGE_BUCKET"] ||
     process.env["VITE_FIREBASE_STORAGE_BUCKET"] ||
-    (allowPreviewStorage ? firebaseAppletConfig.storageBucket : "") ||
+    firebaseAppletConfig.storageBucket ||
     `${projectId}.appspot.com`
   ).trim();
 
@@ -181,10 +83,20 @@ function getServices() {
       },
       "mealmate-admin",
     );
+  const rawDatabaseId = (
+    process.env["FIREBASE_FIRESTORE_DATABASE_ID"] ||
+    process.env["VITE_FIREBASE_FIRESTORE_DATABASE_ID"] ||
+    firebaseAppletConfig.firestoreDatabaseId ||
+    ""
+  ).trim();
+  const db =
+    rawDatabaseId && rawDatabaseId !== "default" && rawDatabaseId !== "(default)"
+      ? getFirestore(app, rawDatabaseId)
+      : getFirestore(app);
+
   initialized = {
     app,
-    db:
-      databaseId && databaseId !== "(default)" ? getFirestore(app, databaseId) : getFirestore(app),
+    db,
     auth: getAuth(app),
     bucket: getStorage(app).bucket(bucketName),
   };
@@ -290,6 +202,12 @@ function matches(row: Row, filter: Filter): boolean {
 
 const USER_OWNED_FIELDS: Record<string, string> = {
   profiles: "id",
+  user_onboarding_profiles: "user_id",
+  onboarding_answers: "user_id",
+  onboarding_progress: "user_id",
+  user_acquisition_sources: "user_id",
+  analytics_events: "user_id",
+  user_activity: "user_id",
   favorites: "user_id",
   grocery_items: "user_id",
   pantry_items: "user_id",
@@ -303,6 +221,7 @@ const USER_OWNED_FIELDS: Record<string, string> = {
   post_likes: "user_id",
   post_saves: "user_id",
   restaurant_orders: "customer_id",
+  feedback_reports: "user_id",
 };
 const PUBLIC_READ_TABLES = new Set([
   "recipes",
@@ -682,41 +601,17 @@ class FirestoreTableQuery implements PromiseLike<DbResult<any>> {
     this.assertUserAccess(inputRows);
     const results: Row[] = [];
     for (const input of inputRows) {
-      const conflictField = this.conflictFields[0] ?? "id";
-      const conflictVal = String(input[conflictField] ?? "");
-      let existing: { id: string; ref: any; data: () => any } | undefined = undefined;
-
-      if (conflictVal && (this.table === "profiles" || conflictField === "id")) {
-        const directRef = documentForRow(db, this.table, input, conflictVal, this.userId);
-        const directSnap = await directRef.get();
-        if (directSnap.exists) {
-          existing = {
-            id: directSnap.id,
-            ref: directSnap.ref,
-            data: () => directSnap.data(),
-          };
-        }
-      } else if (conflictVal) {
-        try {
-          const query = collectionRef.where(conflictField, "==", input[conflictField]);
-          const snapshot = await query.get();
-          const found = snapshot.docs.find((item) =>
-            this.conflictFields.every((field) => item.get(field) === input[field]),
-          );
-          if (found) {
-            existing = {
-              id: found.id,
-              ref: found.ref,
-              data: () => found.data(),
-            };
-          }
-        } catch {
-          /* fallback if collection query index is missing */
-        }
-      }
-
-      const id = existing?.id || conflictVal || documentKey(this.table, input);
-      const ref = existing?.ref || documentForRow(db, this.table, input, id, this.userId);
+      const query = collectionRef.where(
+        this.conflictFields[0] ?? "id",
+        "==",
+        input[this.conflictFields[0] ?? "id"],
+      );
+      const snapshot = await query.get();
+      const existing = snapshot.docs.find((item) =>
+        this.conflictFields.every((field) => item.get(field) === input[field]),
+      );
+      const id = existing?.id ?? documentKey(this.table, input);
+      const ref = existing?.ref ?? documentForRow(db, this.table, input, id, this.userId);
       await db.runTransaction(async (transaction) => {
         const current = await transaction.get(ref);
         transaction.set(ref, { ...(current.data() ?? {}), ...input, id }, { merge: true });
@@ -732,6 +627,50 @@ function startOfUtcDay(date = new Date()) {
 }
 function startOfUtcMonth(date = new Date()) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+const FREE_MIA_LIFETIME_LIMIT = 2;
+const TRIAL_DAILY_FAIR_USE_LIMIT = 25;
+const PAID_DAILY_FAIR_USE_LIMIT = 150;
+
+function sha256Hex(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function normalizeEmailForQuota(email: unknown): string | null {
+  if (typeof email !== "string") return null;
+  const trimmed = email.trim().toLowerCase();
+  return trimmed.includes("@") ? trimmed : null;
+}
+
+function normalizeDeviceFp(fp: unknown): string | null {
+  if (typeof fp !== "string") return null;
+  const trimmed = fp.trim();
+  return trimmed.length >= 12 ? trimmed.slice(0, 256) : null;
+}
+
+async function resolveQuotaEmail(
+  db: Firestore,
+  userId: string,
+  providedEmail?: unknown,
+): Promise<string | null> {
+  const direct = normalizeEmailForQuota(providedEmail);
+  if (direct) return direct;
+  try {
+    const userSnap = await db.collection("users").doc(userId).get();
+    const docEmail = normalizeEmailForQuota(userSnap.data()?.["email"]);
+    if (docEmail) return docEmail;
+  } catch {
+    // Ignore profile lookup errors
+  }
+  try {
+    const authUser = await getServices().auth.getUser(userId);
+    const authEmail = normalizeEmailForQuota(authUser.email);
+    if (authEmail) return authEmail;
+  } catch {
+    // User may not exist in Firebase Auth during isolated tests
+  }
+  return null;
 }
 
 async function premiumActive(userId: string) {
@@ -772,14 +711,203 @@ async function runRpc(name: string, args: Record<string, unknown>): Promise<DbRe
       case "consume_ai_credit":
       case "consume_image_credit": {
         const userId = String(args["_user_id"] ?? "");
-        if (!userId)
+        const dayStart = startOfUtcDay();
+        const nextDayIso = new Date(dayStart.getTime() + 86_400_000).toISOString();
+        if (!userId) {
           return {
-            data: { allowed: false, reason: "daily", resets_at: startOfUtcDay().toISOString() },
+            data: { allowed: false, reason: "daily", resets_at: nextDayIso },
             error: null,
           };
-        const { requireActivePremium } = await import("@/server/revenuecat");
-        await requireActivePremium(userId);
-        return { data: { allowed: true, premium: true }, error: null };
+        }
+        const { verifyAccountAccess, requireActivePremium } = await import("@/server/revenuecat");
+        const access = await verifyAccountAccess(userId);
+        const dayKey = dayStart.toISOString().slice(0, 10);
+
+        if (access.isPremium) {
+          if (access.tier === "admin") {
+            return { data: { allowed: true, premium: true, tier: "admin" }, error: null };
+          }
+          const isTrial = Boolean(access.trialActive);
+          const dailyLimit = isTrial ? TRIAL_DAILY_FAIR_USE_LIMIT : PAID_DAILY_FAIR_USE_LIMIT;
+          const featureKey = isTrial ? "ai_trial" : "ai_paid";
+          const limitRef = db.collection("usage_limits").doc(`${userId}_${featureKey}_${dayKey}`);
+          const outcome = await db.runTransaction(async (tx) => {
+            const snap = await tx.get(limitRef);
+            const used = Number(snap.data()?.["count"] ?? 0);
+            if (used >= dailyLimit) {
+              return {
+                allowed: false as const,
+                reason: "daily" as const,
+                resets_at: nextDayIso,
+                used,
+                limit: dailyLimit,
+                remaining: 0,
+              };
+            }
+            const next = used + 1;
+            tx.set(
+              limitRef,
+              {
+                user_id: userId,
+                feature_key: featureKey,
+                period_key: dayKey,
+                count: next,
+                updated_at: new Date().toISOString(),
+              },
+              { merge: true },
+            );
+            return {
+              allowed: true as const,
+              premium: true as const,
+              trial: isTrial,
+              tier: isTrial ? "trial" : "paid",
+              used: next,
+              limit: dailyLimit,
+              remaining: Math.max(0, dailyLimit - next),
+            };
+          });
+          return { data: outcome, error: null };
+        }
+
+        // Non-premium path: image credits or callers not opted into Free Mode strictly require Premium.
+        if (name !== "consume_ai_credit" || args["_allow_free_tier"] !== true) {
+          await requireActivePremium(userId);
+          return { data: { allowed: true, premium: true }, error: null };
+        }
+
+        const email = await resolveQuotaEmail(db, userId, args["_email"]);
+        const deviceFp = normalizeDeviceFp(args["_device_fingerprint"]);
+        const uidRef = db.collection("mia_free_quotas").doc(userId);
+        const emailRef = email ? db.collection("mia_email_quotas").doc(sha256Hex(email)) : null;
+        const deviceRef = deviceFp
+          ? db.collection("mia_device_quotas").doc(sha256Hex(deviceFp))
+          : null;
+
+        const freeOutcome = await db.runTransaction(async (tx) => {
+          const [uidSnap, emailSnap, deviceSnap] = await Promise.all([
+            tx.get(uidRef),
+            emailRef ? tx.get(emailRef) : Promise.resolve(null),
+            deviceRef ? tx.get(deviceRef) : Promise.resolve(null),
+          ]);
+          const used = Math.max(
+            Number(uidSnap.data()?.["used"] ?? 0),
+            Number(emailSnap?.data()?.["used"] ?? 0),
+            Number(deviceSnap?.data()?.["used"] ?? 0),
+          );
+          if (used >= FREE_MIA_LIFETIME_LIMIT) {
+            return {
+              allowed: false as const,
+              reason: "free_limit" as const,
+              used,
+              limit: FREE_MIA_LIFETIME_LIMIT,
+              remaining: 0,
+            };
+          }
+          const next = used + 1;
+          const nowIso = new Date().toISOString();
+          tx.set(
+            uidRef,
+            {
+              user_id: userId,
+              used: next,
+              limit: FREE_MIA_LIFETIME_LIMIT,
+              updated_at: nowIso,
+            },
+            { merge: true },
+          );
+          if (emailRef) {
+            tx.set(
+              emailRef,
+              {
+                used: next,
+                limit: FREE_MIA_LIFETIME_LIMIT,
+                last_user_id: userId,
+                updated_at: nowIso,
+              },
+              { merge: true },
+            );
+          }
+          if (deviceRef) {
+            tx.set(
+              deviceRef,
+              {
+                used: next,
+                limit: FREE_MIA_LIFETIME_LIMIT,
+                last_user_id: userId,
+                updated_at: nowIso,
+              },
+              { merge: true },
+            );
+          }
+          return {
+            allowed: true as const,
+            premium: false as const,
+            trial: false as const,
+            tier: "free",
+            used: next,
+            limit: FREE_MIA_LIFETIME_LIMIT,
+            remaining: Math.max(0, FREE_MIA_LIFETIME_LIMIT - next),
+          };
+        });
+        return { data: freeOutcome, error: null };
+      }
+      case "get_mia_quota": {
+        const userId = String(args["_user_id"] ?? "");
+        if (!userId) {
+          return {
+            data: {
+              isPremium: false,
+              trialActive: false,
+              freeUsed: 0,
+              freeLimit: FREE_MIA_LIFETIME_LIMIT,
+              freeRemaining: FREE_MIA_LIFETIME_LIMIT,
+            },
+            error: null,
+          };
+        }
+        const { verifyAccountAccess } = await import("@/server/revenuecat");
+        const access = await verifyAccountAccess(userId);
+        if (access.isPremium) {
+          return {
+            data: {
+              isPremium: true,
+              trialActive: Boolean(access.trialActive),
+              freeUsed: 0,
+              freeLimit: FREE_MIA_LIFETIME_LIMIT,
+              freeRemaining: FREE_MIA_LIFETIME_LIMIT,
+            },
+            error: null,
+          };
+        }
+        const email = await resolveQuotaEmail(db, userId, args["_email"]);
+        const deviceFp = normalizeDeviceFp(args["_device_fingerprint"]);
+        const [uidSnap, emailSnap, deviceSnap] = await Promise.all([
+          db.collection("mia_free_quotas").doc(userId).get(),
+          email
+            ? db.collection("mia_email_quotas").doc(sha256Hex(email)).get()
+            : Promise.resolve(null),
+          deviceFp
+            ? db.collection("mia_device_quotas").doc(sha256Hex(deviceFp)).get()
+            : Promise.resolve(null),
+        ]);
+        const used = Math.min(
+          FREE_MIA_LIFETIME_LIMIT,
+          Math.max(
+            Number(uidSnap.data()?.["used"] ?? 0),
+            Number(emailSnap?.data()?.["used"] ?? 0),
+            Number(deviceSnap?.data()?.["used"] ?? 0),
+          ),
+        );
+        return {
+          data: {
+            isPremium: false,
+            trialActive: false,
+            freeUsed: used,
+            freeLimit: FREE_MIA_LIFETIME_LIMIT,
+            freeRemaining: Math.max(0, FREE_MIA_LIFETIME_LIMIT - used),
+          },
+          error: null,
+        };
       }
       case "increment_dish_search": {
         const dish = String(args["_name"] ?? "")
@@ -897,13 +1025,6 @@ export function firebaseUserDb(userId: string, options?: { verifiedPremium?: boo
       return new FirestoreTableQuery(table, userId, verifiedPremium);
     },
     async rpc(name: string, args: Record<string, unknown> = {}) {
-      if (
-        verifiedPremium &&
-        (name === "consume_ai_credit" || name === "consume_image_credit") &&
-        String(args["_user_id"] ?? userId) === userId
-      ) {
-        return { data: { allowed: true, premium: true }, error: null };
-      }
       return runRpc(name, { ...args, _user_id: args["_user_id"] ?? userId });
     },
   };
@@ -997,7 +1118,20 @@ export async function verifyFirebaseIdToken(token: string) {
   if (process.env["FIREBASE_SERVICE_ACCOUNT_JSON"]?.trim()) {
     return getServices().auth.verifyIdToken(token, true);
   }
-  return getTokenVerifierAuth().verifyIdToken(token);
+  const projectId = (
+    process.env["FIREBASE_PROJECT_ID"] ||
+    process.env["VITE_FIREBASE_PROJECT_ID"] ||
+    firebaseAppletConfig.projectId ||
+    ""
+  ).trim();
+  if (!projectId) {
+    throw new Error(
+      "Firebase Admin is not configured. Add FIREBASE_SERVICE_ACCOUNT_JSON or configure projectId.",
+    );
+  }
+  const existingVerifier = getApps().find((app) => app.name === "mealmate-token-verifier");
+  const verifierApp = existingVerifier ?? initializeApp({ projectId }, "mealmate-token-verifier");
+  return getAuth(verifierApp).verifyIdToken(token);
 }
 
 export async function firebaseAuthUserExists(uid: string) {

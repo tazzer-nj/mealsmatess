@@ -23,6 +23,7 @@ import {
   Scale,
   Shield,
   Sliders,
+  Tag,
   Trash2,
   Type,
   User,
@@ -37,14 +38,20 @@ import { useTheme } from "@/components/theme-provider";
 import { ThemeGallery } from "@/components/theme-gallery";
 import { APP_FONTS, type AppFontId } from "@/lib/app-fonts";
 import { createPurchaseSession, verifyMyPremium } from "@/lib/billing.functions";
+import { redeemPromoCode } from "@/lib/premium.functions";
 import { loadBillingStore } from "@/lib/billing-client";
 import { useCurrency } from "@/lib/currency";
-import i18n, { APP_LANGUAGES, normalizeAppLanguage } from "@/lib/i18n";
 import { deleteUser } from "firebase/auth";
-import { auth, sendPasswordReset as sendFirebasePasswordReset } from "@/lib/firebase";
+import { collection, deleteDoc, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { auth, db, sendPasswordReset as sendFirebasePasswordReset } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
+import {
+  deleteMyAccount,
+  getMyAppSettings,
+  saveMyAppSettings,
+  type AppSettingsPayload,
+} from "@/lib/preferences.functions";
 import { saveUserProfile } from "@/lib/profile-avatar";
-import { getMyAccountSettings, saveMyAccountSettings } from "@/lib/account.functions";
 import { ProfileAvatarUploader } from "@/components/profile-avatar-uploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +73,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { FoodPreferences } from "@/lib/preferences";
+import { FEEDBACK_CATEGORIES, type FeedbackCategory } from "@/lib/feedback";
+import { submitFeedbackReport } from "@/lib/feedback.functions";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -129,6 +138,18 @@ const PREF_GOALS = [
 ];
 
 const PREF_SKILLS = ["Beginner", "Intermediate", "Experienced"];
+const PREF_INTOLERANCES = ["Lactose", "Gluten", "Fructose", "Histamine", "Sulfites"];
+const PREF_LIFESTYLES = [
+  "Home cook",
+  "Busy weeknights",
+  "Meal prepper",
+  "Family cooking",
+  "Fitness focused",
+];
+const PREF_MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks", "Dessert"];
+const PREF_BUDGETS = ["Budget friendly", "Moderate", "Flexible"];
+const PREF_COOK_TIMES = ["Under 20 mins", "20 to 35 mins", "35 to 50 mins", "No rush"];
+const PREF_HOUSEHOLD = ["1 person", "2 people", "3 to 4 people (family)", "5+ people"];
 
 function formatInitials(name?: string | null, email?: string | null): string {
   const source = (name || email || "Chef").trim();
@@ -183,12 +204,17 @@ function SettingsPage() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
 
-  // Billing state
+  // Billing & promo state
   const [restoring, setRestoring] = useState(false);
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [redeemingPromo, setRedeemingPromo] = useState(false);
 
   // Report state
+  const [reportCategory, setReportCategory] = useState<FeedbackCategory>("Bug");
   const [reportText, setReportText] = useState("");
   const [reporting, setReporting] = useState(false);
+  const [dislikedDraft, setDislikedDraft] = useState("");
 
   // Mia speech & mic permission state
   const [voiceResponses, setVoiceResponses] = useState(true);
@@ -213,33 +239,38 @@ function SettingsPage() {
   const [draftPrefs, setDraftPrefs] = useState<FoodPreferences>(preferences);
   const [savingPrefs, setSavingPrefs] = useState(false);
 
-  const isWhopUser = user?.provider === "whop";
-  const isGoogleUser =
-    !isWhopUser && Boolean(firebaseUser?.providerData?.some((p) => p.providerId === "google.com"));
+  const isGoogleUser = Boolean(
+    firebaseUser?.providerData?.some((p) => p.providerId === "google.com"),
+  );
+
+  const readSettingStorage = (key: string): string | null => {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  };
+
+  const writeSettingStorage = (key: string, value: string): void => {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      // Storage may be restricted in in-app WebViews
+    }
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setVoiceResponses(localStorage.getItem("mealmate_voice_responses") !== "false");
-    setIsMuted(localStorage.getItem("mealmate_voice_muted") === "true");
-    setSpeechSpeed(localStorage.getItem("mealmate_speech_speed") ?? "1.0");
-    setUnits((localStorage.getItem("mealmate_units") as "metric" | "imperial") ?? "metric");
-    setLanguage(
-      normalizeAppLanguage(
-        localStorage.getItem("mealmate-lang") ?? localStorage.getItem("mealmate_lang") ?? "en",
-      ),
-    );
+    setVoiceResponses(readSettingStorage("mealmate_voice_responses") !== "false");
+    setIsMuted(readSettingStorage("mealmate_voice_muted") === "true");
+    setSpeechSpeed(readSettingStorage("mealmate_speech_speed") ?? "1.0");
+    setUnits((readSettingStorage("mealmate_units") as "metric" | "imperial") ?? "metric");
+    setLanguage(readSettingStorage("mealmate-lang") ?? readSettingStorage("mealmate_lang") ?? "en");
 
-    setMealReminders(localStorage.getItem("mealmate_notif_meal_reminders") !== "false");
-    setRecipeAlerts(localStorage.getItem("mealmate_notif_recipe_alerts") !== "false");
-    setPlanningReminders(localStorage.getItem("mealmate_notif_planning") !== "false");
-    setPromoAlerts(localStorage.getItem("mealmate_notif_promo") === "true");
-
-    if (
-      typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).get("section") === "preferences"
-    ) {
-      setEditPreferencesOpen(true);
-    }
+    setMealReminders(readSettingStorage("mealmate_notif_meal_reminders") !== "false");
+    setRecipeAlerts(readSettingStorage("mealmate_notif_recipe_alerts") !== "false");
+    setPlanningReminders(readSettingStorage("mealmate_notif_planning") !== "false");
+    setPromoAlerts(readSettingStorage("mealmate_notif_promo") === "true");
 
     if (navigator.permissions?.query) {
       void navigator.permissions
@@ -253,58 +284,203 @@ function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (!user?.id) return;
+    const uid = user?.id;
+    if (!uid) return;
     let cancelled = false;
-    void getMyAccountSettings()
-      .then((acct) => {
-        if (cancelled || !acct) return;
-        if (acct.units) {
-          setUnits(acct.units);
-          localStorage.setItem("mealmate_units", acct.units);
+
+    async function loadRemoteSettings(targetUid: string) {
+      try {
+        const remote = await getMyAppSettings();
+        if (cancelled || !remote) return;
+        applyHydratedSettings(remote);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err ?? "");
+        if (/Firebase Admin is not configured/i.test(msg) && auth.currentUser?.uid === targetUid) {
+          try {
+            const [userSnap, notifSnap] = await Promise.all([
+              getDoc(doc(db, "users", targetUid)),
+              getDoc(doc(db, "users", targetUid, "notification_settings", "preferences")),
+            ]);
+            if (cancelled) return;
+            const userData = userSnap.exists() ? (userSnap.data() as Record<string, unknown>) : {};
+            const notifData = notifSnap.exists()
+              ? (notifSnap.data() as Record<string, unknown>)
+              : {};
+            const storedVoice = (userData["voice_preferences"] as Record<string, unknown>) ?? {};
+            const storedNotif =
+              (userData["notification_preferences"] as Record<string, unknown>) ?? {};
+            applyHydratedSettings({
+              units: userData["units"] === "imperial" ? "imperial" : "metric",
+              locale: typeof userData["locale"] === "string" ? userData["locale"] : null,
+              font: typeof userData["font"] === "string" ? userData["font"] : null,
+              voice_preferences: {
+                voiceResponses:
+                  typeof storedVoice["voiceResponses"] === "boolean"
+                    ? storedVoice["voiceResponses"]
+                    : true,
+                isMuted:
+                  typeof storedVoice["isMuted"] === "boolean" ? storedVoice["isMuted"] : false,
+                speechSpeed:
+                  typeof storedVoice["speechSpeed"] === "string"
+                    ? storedVoice["speechSpeed"]
+                    : "1.0",
+              },
+              notification_preferences: {
+                mealReminders:
+                  typeof notifData["mealReminders"] === "boolean"
+                    ? notifData["mealReminders"]
+                    : typeof storedNotif["mealReminders"] === "boolean"
+                      ? storedNotif["mealReminders"]
+                      : true,
+                recipeAlerts:
+                  typeof notifData["recipeAlerts"] === "boolean"
+                    ? notifData["recipeAlerts"]
+                    : typeof storedNotif["recipeAlerts"] === "boolean"
+                      ? storedNotif["recipeAlerts"]
+                      : true,
+                planningReminders:
+                  typeof notifData["planningReminders"] === "boolean"
+                    ? notifData["planningReminders"]
+                    : typeof storedNotif["planningReminders"] === "boolean"
+                      ? storedNotif["planningReminders"]
+                      : true,
+                promoAlerts:
+                  typeof notifData["promoAlerts"] === "boolean"
+                    ? notifData["promoAlerts"]
+                    : typeof notifData["productUpdatesEnabled"] === "boolean"
+                      ? notifData["productUpdatesEnabled"]
+                      : typeof storedNotif["promoAlerts"] === "boolean"
+                        ? storedNotif["promoAlerts"]
+                        : false,
+              },
+            });
+          } catch {
+            // Keep local settings if Firestore read fails.
+          }
         }
-        if (acct.locale) {
-          const normalized = normalizeAppLanguage(acct.locale);
-          setLanguage(normalized);
-          localStorage.setItem("mealmate-lang", normalized);
-          localStorage.setItem("mealmate_lang", normalized);
-        }
-        if (typeof acct.voiceResponses === "boolean") {
-          setVoiceResponses(acct.voiceResponses);
-          localStorage.setItem("mealmate_voice_responses", String(acct.voiceResponses));
-        }
-        if (typeof acct.isMuted === "boolean") {
-          setIsMuted(acct.isMuted);
-          localStorage.setItem("mealmate_voice_muted", String(acct.isMuted));
-        }
-        if (acct.speechSpeed) {
-          setSpeechSpeed(acct.speechSpeed);
-          localStorage.setItem("mealmate_speech_speed", acct.speechSpeed);
-        }
-        if (acct.notifications) {
-          setMealReminders(acct.notifications.mealReminders);
-          setRecipeAlerts(acct.notifications.recipeAlerts);
-          setPlanningReminders(acct.notifications.planningReminders);
-          setPromoAlerts(acct.notifications.promoAlerts);
-          localStorage.setItem(
-            "mealmate_notif_meal_reminders",
-            String(acct.notifications.mealReminders),
-          );
-          localStorage.setItem(
-            "mealmate_notif_recipe_alerts",
-            String(acct.notifications.recipeAlerts),
-          );
-          localStorage.setItem(
-            "mealmate_notif_planning",
-            String(acct.notifications.planningReminders),
-          );
-          localStorage.setItem("mealmate_notif_promo", String(acct.notifications.promoAlerts));
-        }
-      })
-      .catch(() => undefined);
+      }
+    }
+
+    function applyHydratedSettings(remote: {
+      units?: "metric" | "imperial";
+      locale?: string | null;
+      font?: string | null;
+      voice_preferences?: { voiceResponses: boolean; isMuted: boolean; speechSpeed: string };
+      notification_preferences?: {
+        mealReminders: boolean;
+        recipeAlerts: boolean;
+        planningReminders: boolean;
+        promoAlerts: boolean;
+      };
+    }) {
+      if (remote.units) {
+        setUnits(remote.units);
+        writeSettingStorage("mealmate_units", remote.units);
+      }
+      if (remote.locale) {
+        setLanguage(remote.locale);
+        writeSettingStorage("mealmate-lang", remote.locale);
+        writeSettingStorage("mealmate_lang", remote.locale);
+        window.dispatchEvent(new CustomEvent("mealmate-lang-changed", { detail: remote.locale }));
+      }
+      if (remote.voice_preferences) {
+        setVoiceResponses(remote.voice_preferences.voiceResponses);
+        setIsMuted(remote.voice_preferences.isMuted);
+        setSpeechSpeed(remote.voice_preferences.speechSpeed);
+        writeSettingStorage(
+          "mealmate_voice_responses",
+          String(remote.voice_preferences.voiceResponses),
+        );
+        writeSettingStorage("mealmate_voice_muted", String(remote.voice_preferences.isMuted));
+        writeSettingStorage("mealmate_speech_speed", remote.voice_preferences.speechSpeed);
+      }
+      if (remote.notification_preferences) {
+        setMealReminders(remote.notification_preferences.mealReminders);
+        setRecipeAlerts(remote.notification_preferences.recipeAlerts);
+        setPlanningReminders(remote.notification_preferences.planningReminders);
+        setPromoAlerts(remote.notification_preferences.promoAlerts);
+        writeSettingStorage(
+          "mealmate_notif_meal_reminders",
+          String(remote.notification_preferences.mealReminders),
+        );
+        writeSettingStorage(
+          "mealmate_notif_recipe_alerts",
+          String(remote.notification_preferences.recipeAlerts),
+        );
+        writeSettingStorage(
+          "mealmate_notif_planning",
+          String(remote.notification_preferences.planningReminders),
+        );
+        writeSettingStorage(
+          "mealmate_notif_promo",
+          String(remote.notification_preferences.promoAlerts),
+        );
+      }
+    }
+
+    void loadRemoteSettings(uid);
     return () => {
       cancelled = true;
     };
   }, [user?.id]);
+
+  async function persistAppSettings(patch: AppSettingsPayload): Promise<boolean> {
+    if (!user?.id) return true;
+    try {
+      await saveMyAppSettings({ data: patch });
+      await queryClient.invalidateQueries({ queryKey: ["notification-preferences", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["profile-prefs", user.id] });
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err ?? "");
+      if (/Firebase Admin is not configured/i.test(msg) && auth.currentUser?.uid === user.id) {
+        try {
+          const nowIso = new Date().toISOString();
+          const userPatch: Record<string, unknown> = {
+            id: user.id,
+            updatedAt: nowIso,
+            updated_at: nowIso,
+          };
+          if (patch.units !== undefined) userPatch["units"] = patch.units;
+          if (patch.locale !== undefined) userPatch["locale"] = patch.locale;
+          if (patch.font !== undefined) userPatch["font"] = patch.font;
+          if (patch.voice_preferences !== undefined) {
+            userPatch["voice_preferences"] = patch.voice_preferences;
+          }
+          if (patch.notification_preferences !== undefined) {
+            userPatch["notification_preferences"] = patch.notification_preferences;
+          }
+          const writes: Promise<unknown>[] = [
+            setDoc(doc(db, "users", user.id), userPatch, { merge: true }),
+          ];
+          if (patch.notification_preferences) {
+            const np = patch.notification_preferences;
+            writes.push(
+              setDoc(
+                doc(db, "users", user.id, "notification_settings", "preferences"),
+                {
+                  mealReminders: np.mealReminders,
+                  recipeAlerts: np.recipeAlerts,
+                  planningReminders: np.planningReminders,
+                  promoAlerts: np.promoAlerts,
+                  productUpdatesEnabled: np.promoAlerts,
+                  updatedAt: nowIso,
+                },
+                { merge: true },
+              ),
+            );
+          }
+          await Promise.all(writes);
+          await queryClient.invalidateQueries({ queryKey: ["notification-preferences", user.id] });
+          await queryClient.invalidateQueries({ queryKey: ["profile-prefs", user.id] });
+          return true;
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    }
+  }
 
   useEffect(() => {
     if (user?.displayName) setDisplayName(user.displayName);
@@ -323,28 +499,11 @@ function SettingsPage() {
     setSavingProfile(true);
     try {
       await saveUserProfile({
+        userId: user.id,
         displayName: trimmed,
         photoURL: photoURL.trim() || null,
-        userId: user.id,
-      });
-      await saveMyAccountSettings({
-        data: {
-          displayName: trimmed,
-          photoURL: photoURL.trim() || null,
-        },
-      }).catch(async (err) => {
-        if (auth.currentUser) {
-          await firebaseData
-            .from("profiles")
-            .upsert({ id: user.id, displayName: trimmed, name: trimmed } as never, {
-              onConflict: "id",
-            });
-          return;
-        }
-        throw err;
       });
       await queryClient.invalidateQueries({ queryKey: ["user", user.id] });
-      await queryClient.invalidateQueries({ queryKey: ["profile-prefs", user.id] });
       toast.success("Profile updated");
       setEditProfileOpen(false);
     } catch (error) {
@@ -377,15 +536,35 @@ function SettingsPage() {
   }
 
   function toggleDraftList(
-    field: "dietary_restrictions" | "allergies" | "favorite_foods",
+    field:
+      | "dietary_restrictions"
+      | "allergies"
+      | "intolerances"
+      | "favorite_foods"
+      | "preferred_cuisines"
+      | "lifestyles"
+      | "preferred_meal_types",
     value: string,
   ) {
+    setDraftPrefs((prev) => {
+      const current = prev[field] ?? [];
+      return {
+        ...prev,
+        [field]: current.includes(value) ? current.filter((v) => v !== value) : [...current, value],
+      };
+    });
+  }
+
+  function addDislikedIngredient() {
+    const clean = dislikedDraft.trim();
+    if (!clean) return;
     setDraftPrefs((prev) => ({
       ...prev,
-      [field]: prev[field].includes(value)
-        ? prev[field].filter((v) => v !== value)
-        : [...prev[field], value],
+      disliked_foods: prev.disliked_foods.includes(clean)
+        ? prev.disliked_foods
+        : [...prev.disliked_foods, clean],
     }));
+    setDislikedDraft("");
   }
 
   async function handlePasswordReset() {
@@ -440,23 +619,68 @@ function SettingsPage() {
     if (!user || deleteConfirmText.trim().toUpperCase() !== "DELETE" || deletingAccount) return;
     setDeletingAccount(true);
     try {
-      const collections = [
-        "favorites",
-        "grocery_items",
-        "pantry_items",
-        "meal_plans",
-        "nutrition_logs",
-      ] as const;
-      await Promise.allSettled(
-        collections.map((table) => firebaseData.from(table).delete().eq("user_id", user.id)),
-      );
-      if (typeof window !== "undefined") {
-        for (const key of Object.keys(window.localStorage)) {
-          if (key.startsWith("mealmate")) {
-            window.localStorage.removeItem(key);
-          }
+      let deletedOnServer = false;
+      try {
+        await deleteMyAccount();
+        deletedOnServer = true;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err ?? "");
+        if (!/Firebase Admin is not configured/i.test(msg)) {
+          throw err;
         }
       }
+
+      if (!deletedOnServer) {
+        const subcollections = [
+          "favorites",
+          "grocery",
+          "pantry",
+          "mealPlans",
+          "nutritionLogs",
+          "conversations",
+          "plannerTemplates",
+          "notifications",
+          "notification_settings",
+        ];
+        if (auth.currentUser?.uid === user.id) {
+          await Promise.all(
+            subcollections.map(async (sub) => {
+              const snap = await getDocs(collection(db, "users", user.id, sub));
+              await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+            }),
+          );
+          await Promise.all([
+            deleteDoc(doc(db, "user_onboarding_profiles", user.id)).catch(() => undefined),
+            deleteDoc(doc(db, "onboarding_answers", user.id)).catch(() => undefined),
+            deleteDoc(doc(db, "onboarding_progress", user.id)).catch(() => undefined),
+            deleteDoc(doc(db, "users", user.id)),
+          ]);
+        } else {
+          const tables = [
+            "favorites",
+            "grocery_items",
+            "pantry_items",
+            "meal_plans",
+            "nutrition_logs",
+          ] as const;
+          await Promise.all(
+            tables.map((table) => firebaseData.from(table).delete().eq("user_id", user.id)),
+          );
+        }
+      }
+
+      if (typeof window !== "undefined") {
+        try {
+          for (const key of Object.keys(window.localStorage)) {
+            if (key.startsWith("mealmate")) {
+              window.localStorage.removeItem(key);
+            }
+          }
+        } catch {
+          // Storage may be restricted in in-app WebViews
+        }
+      }
+
       let requiresReauth = false;
       if (auth.currentUser) {
         try {
@@ -470,19 +694,21 @@ function SettingsPage() {
           }
         }
       }
-      if (!auth.currentUser || requiresReauth) {
-        await signOutUnified().catch(() => undefined);
-      }
+      await signOutUnified().catch(() => undefined);
       queryClient.clear();
       toast.success(
         requiresReauth
-          ? "Your MealMate data was cleared. Sign back in once more to delete your login credential."
+          ? "Your MealMate data was deleted. Sign back in once more to remove your login credential."
           : "Your account and personal data have been deleted.",
       );
       setDeleteAccountOpen(false);
       await navigate({ to: "/auth", replace: true });
-    } catch {
-      toast.error("Could not delete account. Please contact support for assistance.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "Could not delete account. Please contact support for assistance.",
+      );
     } finally {
       setDeletingAccount(false);
     }
@@ -518,21 +744,38 @@ function SettingsPage() {
     }
   }
 
-  async function persistAccountPatch(
-    patch: Parameters<typeof saveMyAccountSettings>[0]["data"],
-  ): Promise<{ ok: boolean; reason?: "unauthenticated" | "error"; error?: string }> {
+  async function handleRedeemPromo(e: React.FormEvent) {
+    e.preventDefault();
+    const normalized = promoCode.trim().toUpperCase();
+    if (!normalized || redeemingPromo) return;
     if (!user?.id) {
-      return { ok: false, reason: "unauthenticated" };
+      toast.error("Sign in to redeem a promo code.");
+      return;
     }
+    setRedeemingPromo(true);
     try {
-      await saveMyAccountSettings({ data: patch });
-      return { ok: true };
-    } catch (err) {
-      return {
-        ok: false,
-        reason: "error",
-        error: err instanceof Error ? err.message : "Couldn't sync that setting right now.",
-      };
+      const result = await redeemPromoCode({ data: { code: normalized } });
+      if (result.kind === "percent_discount" && result.percentOff) {
+        toast.success(`${result.percentOff}% discount ready — choose a plan to check out.`);
+        setPromoCode("");
+        setPromoOpen(false);
+        await navigate({ to: "/premium", search: { promo: result.code } });
+        return;
+      }
+      await verifyMyPremium().catch(() => undefined);
+      await queryClient.invalidateQueries({ queryKey: ["entitlement"] });
+      await queryClient.invalidateQueries({ queryKey: ["user-flow-progress", user.id] });
+      toast.success(result.message);
+      setPromoCode("");
+      setPromoOpen(false);
+    } catch (error) {
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "Could not apply that promo code.",
+      );
+    } finally {
+      setRedeemingPromo(false);
     }
   }
 
@@ -540,179 +783,135 @@ function SettingsPage() {
     const prev = isMuted;
     setIsMuted(muted);
     if (typeof window !== "undefined") {
-      localStorage.setItem("mealmate_voice_muted", String(muted));
+      writeSettingStorage("mealmate_voice_muted", String(muted));
       if (muted && window.speechSynthesis) window.speechSynthesis.cancel();
     }
-    const res = await persistAccountPatch({ isMuted: muted });
-    if (res.ok) {
-      toast.info(muted ? "Mia audio muted" : "Mia audio unmuted");
+    const ok = await persistAppSettings({
+      voice_preferences: { voiceResponses, isMuted: muted, speechSpeed },
+    });
+    if (!ok) {
+      setIsMuted(prev);
+      writeSettingStorage("mealmate_voice_muted", String(prev));
+      toast.error("Couldn't save Mia audio setting to your account.");
       return;
     }
-    if (res.reason === "unauthenticated") {
-      toast.info(
-        muted
-          ? "Muted on this device (sign in to sync across devices)"
-          : "Unmuted on this device (sign in to sync across devices)",
-      );
-      return;
-    }
-    setIsMuted(prev);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("mealmate_voice_muted", String(prev));
-    }
-    toast.error("Couldn't sync mute setting to your account right now.");
+    toast.info(muted ? "Mia audio muted" : "Mia audio unmuted");
   }
 
   async function toggleVoiceResponses(val: boolean) {
     const prev = voiceResponses;
     setVoiceResponses(val);
     if (typeof window !== "undefined") {
-      localStorage.setItem("mealmate_voice_responses", String(val));
+      writeSettingStorage("mealmate_voice_responses", String(val));
       if (!val && window.speechSynthesis) window.speechSynthesis.cancel();
     }
-    const res = await persistAccountPatch({ voiceResponses: val });
-    if (res.ok) {
-      toast.success(val ? "Voice responses enabled" : "Voice responses disabled");
+    const ok = await persistAppSettings({
+      voice_preferences: { voiceResponses: val, isMuted, speechSpeed },
+    });
+    if (!ok) {
+      setVoiceResponses(prev);
+      writeSettingStorage("mealmate_voice_responses", String(prev));
+      toast.error("Couldn't save voice response setting to your account.");
       return;
     }
-    if (res.reason === "unauthenticated") {
-      toast.info("Applied on this device — sign in to save across devices.");
-      return;
-    }
-    setVoiceResponses(prev);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("mealmate_voice_responses", String(prev));
-    }
-    toast.error("Couldn't sync voice responses to your account right now.");
-  }
-
-  async function handleUnitsChange(nextUnits: "metric" | "imperial") {
-    const prev = units;
-    setUnits(nextUnits);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("mealmate_units", nextUnits);
-    }
-    const label = nextUnits === "metric" ? "Metric (g, ml)" : "Imperial (oz, lb)";
-    const res = await persistAccountPatch({ units: nextUnits });
-    if (res.ok) {
-      toast.success(`Units updated to ${label}`);
-      return;
-    }
-    if (res.reason === "unauthenticated") {
-      toast.info(`Units set to ${label} on this device — sign in to sync across devices.`);
-      return;
-    }
-    setUnits(prev);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("mealmate_units", prev);
-    }
-    toast.error("Couldn't sync measurement units to your account right now.");
-  }
-
-  async function handleLanguageChange(nextLang: string) {
-    const prevLang = language;
-    const normalized = normalizeAppLanguage(nextLang);
-    setLanguage(normalized);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("mealmate-lang", normalized);
-      localStorage.setItem("mealmate_lang", normalized);
-      window.dispatchEvent(new CustomEvent("mealmate-lang-changed", { detail: normalized }));
-    }
-    void i18n.changeLanguage(normalized).catch(() => undefined);
-    const label = APP_LANGUAGES.find((item) => item.code === normalized)?.name ?? normalized;
-    if (!user?.id) {
-      toast.info(`Language set to ${label} on this device — sign in to sync across devices.`);
-      return;
-    }
-    try {
-      await saveMyAccountSettings({ data: { locale: normalized } });
-      void queryClient.invalidateQueries({ queryKey: ["profile-prefs", user.id] });
-      toast.success(`Language set to ${label}`);
-    } catch {
-      setLanguage(prevLang);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("mealmate-lang", prevLang);
-        localStorage.setItem("mealmate_lang", prevLang);
-        window.dispatchEvent(new CustomEvent("mealmate-lang-changed", { detail: prevLang }));
-      }
-      void i18n.changeLanguage(prevLang).catch(() => undefined);
-      toast.error("Couldn't sync language setting to your account right now.");
-    }
-  }
-
-  async function handleFontChange(nextFont: AppFontId) {
-    const match = APP_FONTS.find((item) => item.id === nextFont);
-    const label = match?.label ?? nextFont;
-    const res = await setFont(nextFont);
-    if (res.ok) {
-      toast.success(`Font set to ${label}`);
-      return;
-    }
-    if (!user?.id) {
-      toast.info(`Font set to ${label} on this device — sign in to sync across devices.`);
-      return;
-    }
-    toast.error(res.error || "Applied on this device, but couldn't sync font to your account.");
-  }
-
-  async function handleNotificationToggle(
-    key: string,
-    setter: (v: boolean) => void,
-    val: boolean,
-    label: string,
-  ) {
-    const prev = !val;
-    setter(val);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(key, String(val));
-    }
-    const fieldMap: Record<
-      string,
-      "mealReminders" | "recipeAlerts" | "planningReminders" | "promoAlerts"
-    > = {
-      mealmate_notif_meal_reminders: "mealReminders",
-      mealmate_notif_recipe_alerts: "recipeAlerts",
-      mealmate_notif_planning: "planningReminders",
-      mealmate_notif_promo: "promoAlerts",
-    };
-    const field = fieldMap[key];
-    if (!field) return;
-    const res = await persistAccountPatch({ notifications: { [field]: val } });
-    if (res.ok) {
-      toast.success(`${label} ${val ? "enabled" : "turned off"}`);
-      return;
-    }
-    if (res.reason === "unauthenticated") {
-      toast.info(`${label} updated on this device — sign in to sync across devices.`);
-      return;
-    }
-    setter(prev);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(key, String(prev));
-    }
-    toast.error(`Couldn't sync ${label.toLowerCase()} to your account right now.`);
+    toast.success(val ? "Voice responses enabled" : "Voice responses disabled");
   }
 
   async function handleSpeechSpeedChange(rate: string) {
     const prev = speechSpeed;
     setSpeechSpeed(rate);
     if (typeof window !== "undefined") {
-      localStorage.setItem("mealmate_speech_speed", rate);
+      writeSettingStorage("mealmate_speech_speed", rate);
     }
-    const res = await persistAccountPatch({ speechSpeed: rate });
-    if (res.ok) {
-      toast.success(`Mia speech rate set to ${rate}x`);
-      return;
+    const ok = await persistAppSettings({
+      voice_preferences: { voiceResponses, isMuted, speechSpeed: rate },
+    });
+    if (!ok) {
+      setSpeechSpeed(prev);
+      writeSettingStorage("mealmate_speech_speed", prev);
+      toast.error("Couldn't save speech speed to your account.");
     }
-    if (res.reason === "unauthenticated") {
-      toast.info(`Speech rate set to ${rate}x on this device.`);
-      return;
-    }
-    setSpeechSpeed(prev);
+  }
+
+  async function handleUnitsChange(nextUnits: "metric" | "imperial") {
+    const prev = units;
+    setUnits(nextUnits);
     if (typeof window !== "undefined") {
-      localStorage.setItem("mealmate_speech_speed", prev);
+      writeSettingStorage("mealmate_units", nextUnits);
     }
-    toast.error("Couldn't sync speech speed to your account right now.");
+    const ok = await persistAppSettings({ units: nextUnits });
+    if (!ok) {
+      setUnits(prev);
+      writeSettingStorage("mealmate_units", prev);
+      toast.error("Couldn't save unit preference to your account.");
+      return;
+    }
+    toast.success(
+      `Units updated to ${nextUnits === "metric" ? "Metric (g, ml)" : "Imperial (oz, lb)"}`,
+    );
+  }
+
+  async function handleLanguageChange(nextLang: string) {
+    const prev = language;
+    setLanguage(nextLang);
+    if (typeof window !== "undefined") {
+      writeSettingStorage("mealmate-lang", nextLang);
+      writeSettingStorage("mealmate_lang", nextLang);
+      window.dispatchEvent(new CustomEvent("mealmate-lang-changed", { detail: nextLang }));
+    }
+    const ok = await persistAppSettings({ locale: nextLang });
+    if (!ok) {
+      setLanguage(prev);
+      writeSettingStorage("mealmate-lang", prev);
+      writeSettingStorage("mealmate_lang", prev);
+      window.dispatchEvent(new CustomEvent("mealmate-lang-changed", { detail: prev }));
+      toast.error("Couldn't save language preference to your account.");
+      return;
+    }
+    const names: Record<string, string> = {
+      en: "English",
+      zu: "isiZulu",
+      af: "Afrikaans",
+      xh: "isiXhosa",
+    };
+    toast.success(`Language set to ${names[nextLang] ?? nextLang}`);
+  }
+
+  function handleFontChange(nextFont: AppFontId) {
+    setFont(nextFont);
+    const match = APP_FONTS.find((item) => item.id === nextFont);
+    toast.success(`Font set to ${match?.label ?? nextFont}`);
+  }
+
+  async function handleNotificationToggle(
+    field: "mealReminders" | "recipeAlerts" | "planningReminders" | "promoAlerts",
+    storageKey: string,
+    setter: (v: boolean) => void,
+    currentVal: boolean,
+    val: boolean,
+    label: string,
+  ) {
+    setter(val);
+    if (typeof window !== "undefined") {
+      writeSettingStorage(storageKey, String(val));
+    }
+    const nextPrefs = {
+      mealReminders,
+      recipeAlerts,
+      planningReminders,
+      promoAlerts,
+      [field]: val,
+    };
+    const ok = await persistAppSettings({ notification_preferences: nextPrefs });
+    if (!ok) {
+      setter(currentVal);
+      if (typeof window !== "undefined") {
+        writeSettingStorage(storageKey, String(currentVal));
+      }
+      toast.error(`Couldn't save ${label.toLowerCase()} to your account.`);
+      return;
+    }
+    toast.success(`${label} ${val ? "enabled" : "turned off"}`);
   }
 
   function handleExportData() {
@@ -737,23 +936,30 @@ function SettingsPage() {
   }
 
   async function handleReportProblem() {
-    const details = reportText.trim();
-    if (!details || reporting) return;
+    const clean = reportText.trim();
+    if (clean.length < 5) {
+      toast.error("Please include a short description (at least 5 characters).");
+      return;
+    }
     setReporting(true);
     try {
-      const subject = encodeURIComponent("MealMate Consumer Problem Report");
-      const body = encodeURIComponent(
-        `${details}\n\n---\nAccount: ${user?.email ?? "Signed in user"}\nPlatform: ${navigator.userAgent}`,
-      );
-      try {
-        await navigator.clipboard?.writeText(details);
-      } catch {
-        /* clipboard optional */
-      }
-      window.location.href = `mailto:support@mealsmates.site?subject=${subject}&body=${body}`;
+      const report = await submitFeedbackReport({
+        data: {
+          category: reportCategory,
+          title: `${reportCategory}: ${clean.slice(0, 80)}`,
+          description: clean,
+          routeContext: "/settings",
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["feedback-reports"] });
       setReportProblemOpen(false);
       setReportText("");
-      toast.success("Drafted your support email (details copied to clipboard).");
+      toast.success(`Report logged (${report.reference_id})`, {
+        description: "Track status anytime in Help Centre.",
+        action: { label: "View", onClick: () => navigate({ to: "/support" }) },
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not submit your report right now.");
     } finally {
       setReporting(false);
     }
@@ -835,7 +1041,11 @@ function SettingsPage() {
                 <span>Account sign-in</span>
               </div>
               <span className="font-medium text-foreground">
-                {isWhopUser ? "Whop" : isGoogleUser ? "Google" : "Email & Password"}
+                {user?.provider === "whop"
+                  ? "Whop Account"
+                  : isGoogleUser
+                    ? "Google"
+                    : "Email & Password"}
               </span>
             </div>
 
@@ -901,6 +1111,7 @@ function SettingsPage() {
 
             <Link
               to="/premium"
+              search={{ manage: "1" }}
               className="flex items-center justify-between p-4 text-sm text-foreground transition-colors hover:bg-secondary sm:px-5"
             >
               <div className="flex items-center gap-3">
@@ -926,6 +1137,48 @@ function SettingsPage() {
                 <ChevronRight size={16} className="text-muted-foreground" />
               )}
             </button>
+
+            <div className="p-4 sm:px-5">
+              <button
+                type="button"
+                onClick={() => setPromoOpen((prev) => !prev)}
+                className="flex w-full items-center justify-between text-left text-sm text-foreground"
+              >
+                <div className="flex items-center gap-3">
+                  <Tag size={16} className="text-[var(--periwinkle)]" />
+                  <span>Redeem promo code</span>
+                </div>
+                <ChevronRight
+                  size={16}
+                  className={`text-muted-foreground transition-transform ${
+                    promoOpen ? "rotate-90" : ""
+                  }`}
+                />
+              </button>
+              {promoOpen && (
+                <form
+                  onSubmit={(e) => void handleRedeemPromo(e)}
+                  className="mt-3 flex flex-col gap-2 sm:flex-row"
+                >
+                  <Input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    placeholder="Enter promo code"
+                    aria-label="Promo code"
+                    maxLength={40}
+                    disabled={redeemingPromo}
+                    className="h-10 rounded-xl border-border bg-secondary uppercase tracking-wide"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={redeemingPromo || promoCode.trim().length < 2}
+                    className="h-10 shrink-0 rounded-xl px-4 text-xs font-medium"
+                  >
+                    {redeemingPromo ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                  </Button>
+                </form>
+              )}
+            </div>
           </div>
         </section>
 
@@ -949,7 +1202,7 @@ function SettingsPage() {
                   <div className="text-sm font-medium text-foreground">
                     Edit culinary &amp; onboarding preferences
                   </div>
-                  <div className="mt-0.5 text-xs tabular-nums text-muted-foreground">
+                  <div className="mt-0.5 text-xs text-muted-foreground">
                     {dietaryCount || allergyCount || cuisineCount
                       ? `${dietaryCount} diets · ${allergyCount} allergies · ${cuisineCount} flavours`
                       : "Set your dietary preferences, allergies, cuisines, and skill level"}
@@ -973,7 +1226,7 @@ function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleUnitsChange("metric")}
-                  className={`min-h-9 rounded-lg px-3 py-1.5 font-medium transition-colors ${
+                  className={`min-h-8 rounded-lg px-2.5 py-1.5 font-medium transition-colors sm:px-3 ${
                     units === "metric"
                       ? "bg-card text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -984,7 +1237,7 @@ function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => handleUnitsChange("imperial")}
-                  className={`min-h-9 rounded-lg px-3 py-1.5 font-medium transition-colors ${
+                  className={`min-h-8 rounded-lg px-2.5 py-1.5 font-medium transition-colors sm:px-3 ${
                     units === "imperial"
                       ? "bg-card text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
@@ -1006,15 +1259,14 @@ function SettingsPage() {
                 </div>
               </div>
               <Select value={language} onValueChange={handleLanguageChange}>
-                <SelectTrigger className="h-10 w-32 shrink-0 rounded-xl border-border bg-secondary text-xs text-foreground sm:w-40">
+                <SelectTrigger className="h-9 w-28 shrink-0 rounded-xl border-border bg-secondary text-xs text-foreground sm:w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-border bg-popover text-popover-foreground">
-                  {APP_LANGUAGES.map((langOption) => (
-                    <SelectItem key={langOption.code} value={langOption.code}>
-                      {langOption.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="zu">isiZulu</SelectItem>
+                  <SelectItem value="af">Afrikaans</SelectItem>
+                  <SelectItem value="xh">isiXhosa</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1146,9 +1398,11 @@ function SettingsPage() {
               <Switch
                 checked={mealReminders}
                 onCheckedChange={(v) =>
-                  handleNotificationToggle(
+                  void handleNotificationToggle(
+                    "mealReminders",
                     "mealmate_notif_meal_reminders",
                     setMealReminders,
+                    mealReminders,
                     v,
                     "Meal reminders",
                   )
@@ -1167,9 +1421,11 @@ function SettingsPage() {
               <Switch
                 checked={recipeAlerts}
                 onCheckedChange={(v) =>
-                  handleNotificationToggle(
+                  void handleNotificationToggle(
+                    "recipeAlerts",
                     "mealmate_notif_recipe_alerts",
                     setRecipeAlerts,
+                    recipeAlerts,
                     v,
                     "Recipe notifications",
                   )
@@ -1188,9 +1444,11 @@ function SettingsPage() {
               <Switch
                 checked={planningReminders}
                 onCheckedChange={(v) =>
-                  handleNotificationToggle(
+                  void handleNotificationToggle(
+                    "planningReminders",
                     "mealmate_notif_planning",
                     setPlanningReminders,
+                    planningReminders,
                     v,
                     "Meal-planning reminders",
                   )
@@ -1209,9 +1467,11 @@ function SettingsPage() {
               <Switch
                 checked={promoAlerts}
                 onCheckedChange={(v) =>
-                  handleNotificationToggle(
+                  void handleNotificationToggle(
+                    "promoAlerts",
                     "mealmate_notif_promo",
                     setPromoAlerts,
+                    promoAlerts,
                     v,
                     "Promotional notifications",
                   )
@@ -1301,7 +1561,7 @@ function SettingsPage() {
             Privacy &amp; Security
           </h2>
           <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-            {!isWhopUser && !isGoogleUser && user?.email && (
+            {!isGoogleUser && user?.email && (
               <button
                 type="button"
                 disabled={sendingReset}
@@ -1623,17 +1883,45 @@ function SettingsPage() {
             </div>
 
             <div>
+              <Label className="text-xs font-medium text-muted-foreground">Intolerances</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PREF_INTOLERANCES.map((item) => {
+                  const active = (draftPrefs.intolerances ?? []).includes(item);
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => toggleDraftList("intolerances", item)}
+                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                        active
+                          ? "border-amber-600 bg-amber-600 text-white"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
               <Label className="text-xs font-medium text-muted-foreground">
-                Favourite flavours
+                Favourite cuisines &amp; flavours
               </Label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {PREF_CUISINES.map((cuisine) => {
-                  const active = draftPrefs.favorite_foods.includes(cuisine);
+                  const active =
+                    draftPrefs.favorite_foods.includes(cuisine) ||
+                    (draftPrefs.preferred_cuisines ?? []).includes(cuisine);
                   return (
                     <button
                       key={cuisine}
                       type="button"
-                      onClick={() => toggleDraftList("favorite_foods", cuisine)}
+                      onClick={() => {
+                        toggleDraftList("favorite_foods", cuisine);
+                        toggleDraftList("preferred_cuisines", cuisine);
+                      }}
                       className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
                         active
                           ? "border-foreground bg-foreground text-background"
@@ -1641,6 +1929,104 @@ function SettingsPage() {
                       }`}
                     >
                       {cuisine}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Disliked ingredients
+              </Label>
+              <div className="mt-2 flex gap-2">
+                <Input
+                  value={dislikedDraft}
+                  onChange={(e) => setDislikedDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addDislikedIngredient();
+                    }
+                  }}
+                  placeholder="e.g. cilantro, olives, liver"
+                  className="h-10 flex-1 rounded-xl border-border bg-secondary text-xs text-foreground"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addDislikedIngredient}
+                  className="h-10 rounded-xl border-border text-xs"
+                >
+                  Add
+                </Button>
+              </div>
+              {draftPrefs.disliked_foods.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {draftPrefs.disliked_foods.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() =>
+                        setDraftPrefs((p) => ({
+                          ...p,
+                          disliked_foods: p.disliked_foods.filter((x) => x !== item),
+                        }))
+                      }
+                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-secondary px-2.5 py-1 text-xs text-foreground hover:border-destructive/40"
+                    >
+                      {item} ×
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Dietary lifestyle &amp; routine
+              </Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PREF_LIFESTYLES.map((style) => {
+                  const active = (draftPrefs.lifestyles ?? []).includes(style);
+                  return (
+                    <button
+                      key={style}
+                      type="button"
+                      onClick={() => toggleDraftList("lifestyles", style)}
+                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                        active
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {style}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Preferred meal types
+              </Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PREF_MEAL_TYPES.map((meal) => {
+                  const active = (draftPrefs.preferred_meal_types ?? []).includes(meal);
+                  return (
+                    <button
+                      key={meal}
+                      type="button"
+                      onClick={() => toggleDraftList("preferred_meal_types", meal)}
+                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                        active
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {meal}
                     </button>
                   );
                 })}
@@ -1666,6 +2052,87 @@ function SettingsPage() {
                       }`}
                     >
                       {level}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">Household size</Label>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {PREF_HOUSEHOLD.map((size) => {
+                    const active = draftPrefs.household_size === size;
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() =>
+                          setDraftPrefs((p) => ({
+                            ...p,
+                            household_size: size,
+                            meals_per_day: size,
+                          }))
+                        }
+                        className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                          active
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Budget preference
+                </Label>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {PREF_BUDGETS.map((budget) => {
+                    const active = draftPrefs.food_budget === budget;
+                    return (
+                      <button
+                        key={budget}
+                        type="button"
+                        onClick={() => setDraftPrefs((p) => ({ ...p, food_budget: budget }))}
+                        className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                          active
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {budget}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">
+                Typical cooking time
+              </Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PREF_COOK_TIMES.map((time) => {
+                  const active = draftPrefs.cooking_time === time;
+                  return (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => setDraftPrefs((p) => ({ ...p, cooking_time: time }))}
+                      className={`rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                        active
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {time}
                     </button>
                   );
                 })}
@@ -1784,12 +2251,30 @@ function SettingsPage() {
               Describe what went wrong and our team will look into it.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-2">
+          <div className="space-y-3 py-2">
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Category</Label>
+              <Select
+                value={reportCategory}
+                onValueChange={(v) => setReportCategory(v as FeedbackCategory)}
+              >
+                <SelectTrigger className="mt-1.5 h-10 rounded-xl border-border bg-secondary text-xs text-foreground">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FEEDBACK_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <textarea
               rows={4}
               value={reportText}
               onChange={(e) => setReportText(e.target.value)}
-              placeholder="What happened? Which screen were you using?"
+              placeholder="What happened? Which screen or recipe were you using?"
               className="w-full rounded-xl border border-border bg-secondary p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-[var(--periwinkle)] focus:outline-none"
             />
           </div>
@@ -1803,7 +2288,7 @@ function SettingsPage() {
             </Button>
             <Button
               onClick={handleReportProblem}
-              disabled={reporting || !reportText.trim()}
+              disabled={reporting || reportText.trim().length < 5}
               className="rounded-xl bg-foreground text-background hover:opacity-90"
             >
               {reporting ? <Loader2 className="animate-spin" size={16} /> : "Submit report"}

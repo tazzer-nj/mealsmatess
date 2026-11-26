@@ -141,7 +141,12 @@ export function useCurrency(): {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("mealmate-currency") as CurrencyCode | null;
+    let stored: CurrencyCode | null = null;
+    try {
+      stored = window.localStorage.getItem("mealmate-currency") as CurrencyCode | null;
+    } catch {
+      stored = null;
+    }
     const next = (data as CurrencyCode | null) ?? stored ?? detectCurrency();
     setCurrencyState(next);
   }, [data]);
@@ -149,7 +154,11 @@ export function useCurrency(): {
   async function setCurrency(next: CurrencyCode) {
     setCurrencyState(next);
     if (typeof window !== "undefined") {
-      window.localStorage.setItem("mealmate-currency", next);
+      try {
+        window.localStorage.setItem("mealmate-currency", next);
+      } catch {
+        // Ignore storage errors in restricted WebViews
+      }
       window.dispatchEvent(new CustomEvent("mealmate-currency-changed", { detail: next }));
     }
     if (user) {

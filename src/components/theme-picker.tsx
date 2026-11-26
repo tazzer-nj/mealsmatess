@@ -110,19 +110,15 @@ export function ThemePicker() {
         <div
           role="radiogroup"
           aria-label="Mascot theme"
-          className="grid grid-cols-3 gap-3 sm:grid-cols-4"
+          className="grid grid-cols-3 gap-3 sm:grid-cols-6"
         >
           {MASCOT_THEMES.map((t) => {
             const selected =
               t.id === theme.id ||
-              (t.id === "classic" && theme.id === "classic-light") ||
-              (t.id === "lavender" && theme.id === "lavender-dream") ||
-              (t.id === "sunset" && theme.id === "sunset") ||
-              (t.id === "midnight" &&
-                (theme.id === "midnight-black" || theme.id === "midnight-pro")) ||
-              (t.id === "ocean" && theme.id === "ocean-blue") ||
-              (t.id === "cherry" && theme.id === "obsidian") ||
-              (t.id === "matcha" && theme.id === "aurora");
+              (t.id === "classic" &&
+                (theme.id === "classic-light" ||
+                  theme.id === "midnight-black" ||
+                  theme.id === "lavender-dream"));
             const locked = t.premium && !isPremium;
             return (
               <button

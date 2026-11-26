@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Crown, Check, Zap } from "lucide-react";
 import { usePremium } from "@/hooks/use-premium";
 import { useSession } from "@/hooks/use-session";
+import { readLocalFreeMode } from "@/lib/freemium";
 
 const PREMIUM_PERKS = [
   "Up to 100 Mia conversations & recipes a day (fair use)",
@@ -17,12 +18,13 @@ const PREMIUM_PERKS = [
 export function PlanStatusCard() {
   const { user } = useSession();
   const { isPremium, tier, trialActive, entitlement } = usePremium();
+  const isFreeMode = Boolean(user && !isPremium && readLocalFreeMode(user.id));
 
   if (!user) {
     return (
       <Link
         to="/auth"
-        className="tap-spring flex min-h-11 items-center justify-between rounded-3xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40"
+        className="flex items-center justify-between rounded-3xl border border-border bg-card p-4 shadow-sm"
       >
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -30,7 +32,7 @@ export function PlanStatusCard() {
           </p>
           <p className="mt-0.5 font-display text-lg">Sign in to track your usage</p>
         </div>
-        <span className="inline-flex min-h-11 items-center rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
+        <span className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
           Sign in
         </span>
       </Link>
@@ -39,38 +41,64 @@ export function PlanStatusCard() {
 
   if (isPremium) {
     return (
-      <div className="relative overflow-hidden rounded-3xl border border-[var(--periwinkle)]/25 bg-ink p-5 text-cream shadow-md">
+      <Link
+        to="/premium"
+        search={{ manage: "1" }}
+        className="relative block overflow-hidden rounded-3xl border border-emerald-400/25 bg-gradient-to-br from-[#0e2618] via-[#173d27] to-[#235739] p-5 text-[#f7fbf8] shadow-lg shadow-emerald-950/30 transition-transform hover:scale-[1.005]"
+      >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-[var(--periwinkle)] backdrop-blur">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest backdrop-blur">
               <Crown className="h-3 w-3" /> Premium {tier} {trialActive ? "· trial" : ""}
             </span>
-            <h3 className="mt-2 font-display text-2xl font-bold leading-tight text-white">
+            <h3 className="mt-2 font-display text-2xl font-bold leading-tight">
               Unlimited everything
             </h3>
-            <p className="mt-1 text-xs text-white/80">
+            <p className="mt-1 text-xs text-white/90">
               {entitlement?.periodEnd
                 ? `Renews ${new Date(entitlement.periodEnd).toLocaleDateString()}`
-                : "Active access"}
+                : "Active access"}{" "}
+              · Tap to manage subscription
             </p>
           </div>
-          <Zap className="h-6 w-6 shrink-0 text-[var(--periwinkle)]" />
+          <Zap className="h-6 w-6 shrink-0 text-white/80" />
         </div>
         <ul className="mt-4 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
           {PREMIUM_PERKS.slice(0, 6).map((p) => (
-            <li key={p} className="flex items-center gap-1.5 text-xs text-white/90">
-              <Check className="h-3 w-3 shrink-0 text-emerald-400" /> {p}
+            <li key={p} className="flex items-center gap-1.5 text-xs text-white/95">
+              <Check className="h-3 w-3 shrink-0" /> {p}
             </li>
           ))}
         </ul>
-      </div>
+      </Link>
+    );
+  }
+
+  if (isFreeMode) {
+    return (
+      <Link
+        to="/premium"
+        className="flex items-center justify-between gap-3 rounded-3xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"
+      >
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            MealMate Free
+          </p>
+          <p className="mt-0.5 font-display text-xl leading-tight text-foreground">
+            Dining unlocked · 2 free Mia chats
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
+          Start 3-day trial
+        </span>
+      </Link>
     );
   }
 
   return (
     <Link
       to="/premium"
-      className="tap-spring flex min-h-11 items-center justify-between rounded-3xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"
+      className="flex items-center justify-between rounded-3xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"
     >
       <div>
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -80,7 +108,7 @@ export function PlanStatusCard() {
           Unlock MealMate Premium
         </p>
       </div>
-      <span className="inline-flex min-h-11 items-center rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
+      <span className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
         View plans
       </span>
     </Link>

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { OnboardingRewardCard } from "@/components/onboarding-reward-card";
 import { computeOnboardingBadges } from "@/lib/onboarding-reward";
-import type { FoodPreferences } from "@/lib/preferences";
+import { EMPTY_PREFERENCES, type FoodPreferences } from "@/lib/preferences";
 
 const mocks = vi.hoisted(() => ({
   user: { id: "user-123", displayName: "Chef Sam" },
@@ -39,6 +39,7 @@ afterEach(cleanup);
 describe("Onboarding Badge System & Reward Card", () => {
   it("computes badges based on customized preferences", () => {
     const customPrefs: FoodPreferences = {
+      ...EMPTY_PREFERENCES,
       preferred_name: "Sam",
       household_size: "3 to 4 people (family)",
       meals_per_day: "3 to 4 people (family)",

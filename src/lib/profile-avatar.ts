@@ -209,13 +209,13 @@ export function normalizeAvatarInput(raw: string | null | undefined): string | n
  * available or persist cleanly in Firestore + local profile cache and update the active session live.
  */
 export async function saveUserProfile(input: {
+  userId?: string;
   displayName?: string | null;
   photoURL?: string | null;
-  userId?: string | null;
 }): Promise<{ displayName: string | null; photoURL: string | null }> {
   const currentUser = auth.currentUser;
-  const resolvedUserId = currentUser?.uid ?? input.userId ?? null;
-  if (!resolvedUserId) {
+  const targetUserId = currentUser?.uid ?? input.userId;
+  if (!targetUserId) {
     throw new Error("You must be signed in to update your profile.");
   }
 
@@ -229,7 +229,7 @@ export async function saveUserProfile(input: {
       : (currentUser?.photoURL ?? null);
 
   if (nextPhotoURL?.startsWith("data:image/")) {
-    const uploadedUrl = await tryUploadAvatarToFirebaseStorage(resolvedUserId, nextPhotoURL);
+    const uploadedUrl = await tryUploadAvatarToFirebaseStorage(targetUserId, nextPhotoURL);
     if (uploadedUrl) {
       nextPhotoURL = uploadedUrl;
     }
@@ -255,31 +255,27 @@ export async function saveUserProfile(input: {
     }
 
     const nowIso = new Date().toISOString();
-    try {
-      await setDoc(
-        doc(db, "users", currentUser.uid),
-        {
-          id: currentUser.uid,
-          displayName: nextDisplayName ?? "",
-          photoURL: nextPhotoURL ?? "",
-          updatedAt: nowIso,
-        },
-        { merge: true },
-      );
-    } catch {
-      // Offline or preview-mode Firestore errors should not block local profile updates.
-    }
-  } else {
-    const { saveMyAccountSettings } = await import("@/lib/account.functions");
-    await saveMyAccountSettings({
-      data: {
+    await setDoc(
+      doc(db, "users", currentUser.uid),
+      {
+        id: currentUser.uid,
         displayName: nextDisplayName ?? "",
         photoURL: nextPhotoURL ?? "",
+        updatedAt: nowIso,
+      },
+      { merge: true },
+    );
+  } else {
+    const { saveMyProfileInfo } = await import("@/lib/preferences.functions");
+    await saveMyProfileInfo({
+      data: {
+        displayName: nextDisplayName,
+        photoURL: nextPhotoURL,
       },
     });
   }
 
-  notifyProfileUpdated(resolvedUserId, {
+  notifyProfileUpdated(targetUserId, {
     displayName: nextDisplayName,
     photoURL: nextPhotoURL,
   });

@@ -97,7 +97,8 @@ export function parseRevenueCatAccess(
     "stripe",
     "rc_billing",
     "paddle",
-    ...(allowSandbox ? ["test_store", "promotional"] : []),
+    "promotional",
+    ...(allowSandbox ? ["test_store"] : []),
   ]);
   if (!subscription && entitlement.expires_date === null) {
     const purchase = subscriber.non_subscriptions?.[product]?.find((transaction) => {
@@ -167,10 +168,8 @@ export function parseRevenueCatAccess(
 
 const inFlightRcLookups = new Map<string, Promise<PremiumAccess>>();
 
-export async function verifyRevenueCatCustomer(customerId: string): Promise<PremiumAccess> {
+function resolveRevenueCatApiConfig() {
   const key = (process.env["REVENUECAT_SECRET_API_KEY"] ?? "").trim();
-  if (!key)
-    throw new Error("Subscription verification is temporarily unavailable. Please try again.");
   const production =
     process.env["VERCEL_ENV"] === "production" ||
     (process.env["NODE_ENV"] === "production" &&
@@ -178,6 +177,13 @@ export async function verifyRevenueCatCustomer(customerId: string): Promise<Prem
   const base =
     (!production && process.env["REVENUECAT_API_BASE_URL"]) || "https://api.revenuecat.com/v1";
   const allowSandbox = !production && process.env["REVENUECAT_ALLOW_SANDBOX"] === "true";
+  return { key, base, allowSandbox };
+}
+
+export async function verifyRevenueCatCustomer(customerId: string): Promise<PremiumAccess> {
+  const { key, base, allowSandbox } = resolveRevenueCatApiConfig();
+  if (!key)
+    throw new Error("Subscription verification is temporarily unavailable. Please try again.");
   const cacheKey = `${base}:${allowSandbox ? "1" : "0"}:${customerId}`;
   const existing = inFlightRcLookups.get(cacheKey);
   if (existing) return existing;
@@ -200,6 +206,98 @@ export async function verifyRevenueCatCustomer(customerId: string): Promise<Prem
 
   inFlightRcLookups.set(cacheKey, task);
   return task;
+}
+
+async function resolveRevenueCatCustomerIdForUser(userId: string): Promise<string> {
+  try {
+    const db = getFirebaseAdminFirestore();
+    const link = await db.collection("billing_links").doc(userId).get();
+    const linked = link.data()?.["customerId"];
+    if (typeof linked === "string" && linked.trim()) return linked.trim();
+  } catch {
+    // Fall back to the MealMate userId when billing_links lookup is unavailable
+  }
+  return userId;
+}
+
+export async function syncPromotionalEntitlementToRevenueCat(params: {
+  userId: string;
+  periodEnd?: string | null;
+  lifetime?: boolean;
+}): Promise<{ synced: boolean }> {
+  const { key, base } = resolveRevenueCatApiConfig();
+  if (!key || !params.userId) return { synced: false };
+
+  const endMs = params.periodEnd ? Date.parse(params.periodEnd) : NaN;
+  if (!params.lifetime && params.periodEnd && (!Number.isFinite(endMs) || endMs <= Date.now())) {
+    await revokePromotionalEntitlementInRevenueCat(params.userId);
+    return { synced: false };
+  }
+
+  try {
+    const customerId = await resolveRevenueCatCustomerIdForUser(params.userId);
+    const body =
+      params.lifetime || !params.periodEnd
+        ? { duration: "lifetime" }
+        : { end_time_ms: Math.round(endMs) };
+    const response = await fetch(
+      `${base}/subscribers/${encodeURIComponent(customerId)}/entitlements/${encodeURIComponent(ENTITLEMENT)}/promotional`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(body),
+        cache: "no-store",
+        signal: AbortSignal.timeout(8_000),
+      },
+    );
+    if (!response.ok) {
+      console.warn(
+        `[RevenueCat Sync] Failed to grant promotional entitlement (${response.status}) for user ${params.userId}`,
+      );
+      return { synced: false };
+    }
+    return { synced: true };
+  } catch (err) {
+    console.warn("[RevenueCat Sync] Error syncing promotional entitlement:", err);
+    return { synced: false };
+  }
+}
+
+export async function revokePromotionalEntitlementInRevenueCat(
+  userId: string,
+): Promise<{ synced: boolean }> {
+  const { key, base } = resolveRevenueCatApiConfig();
+  if (!key || !userId) return { synced: false };
+  try {
+    const customerId = await resolveRevenueCatCustomerIdForUser(userId);
+    const response = await fetch(
+      `${base}/subscribers/${encodeURIComponent(customerId)}/entitlements/${encodeURIComponent(ENTITLEMENT)}/revoke_promotionals`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(8_000),
+      },
+    );
+    if (!response.ok && response.status !== 404) {
+      console.warn(
+        `[RevenueCat Sync] Failed to revoke promotional entitlement (${response.status}) for user ${userId}`,
+      );
+      return { synced: false };
+    }
+    return { synced: true };
+  } catch (err) {
+    console.warn("[RevenueCat Sync] Error revoking promotional entitlement:", err);
+    return { synced: false };
+  }
 }
 
 function resolveAllowedOrigins(request: Request): Set<string> {
@@ -311,8 +409,44 @@ const ACCOUNT_ACCESS_CACHE_MS = 45_000;
 const inFlightAccountAccess = new Map<string, Promise<PremiumAccess>>();
 const verifiedAccessCache = new Map<string, { expiresAt: number; access: PremiumAccess }>();
 
-export function invalidateVerifiedAccessCache(userId: string) {
+export function invalidateAccountAccessCache(userId: string) {
   verifiedAccessCache.delete(userId);
+}
+
+export async function verifyPromoAccountAccess(userId: string): Promise<PremiumAccess | null> {
+  try {
+    const db = getFirebaseAdminFirestore();
+    const snap = await db.collection("promo_access").doc(userId).get();
+    const data = snap.data() as Record<string, unknown> | undefined;
+    if (!data || data["active"] !== true) return null;
+    if (typeof data["code_id"] !== "string" || !data["code_id"].trim()) return null;
+
+    const now = Date.now();
+    const lifetime = data["lifetime"] === true;
+    const periodEndRaw = typeof data["period_end"] === "string" ? data["period_end"] : null;
+    const periodEndMs = periodEndRaw ? Date.parse(periodEndRaw) : NaN;
+
+    if (!lifetime) {
+      if (!periodEndRaw || !Number.isFinite(periodEndMs) || periodEndMs <= now) {
+        return null;
+      }
+    }
+
+    return {
+      isPremium: true,
+      tier: typeof data["tier"] === "string" && data["tier"] ? data["tier"] : "promo",
+      status: "active",
+      trialActive: false,
+      periodEnd: lifetime ? null : new Date(periodEndMs).toISOString(),
+      trialEnd: null,
+      store: "promotional",
+      autoRenew: false,
+      isManual: false,
+      verifiedUntil: lifetime ? now + LEASE_MS : Math.min(now + LEASE_MS, periodEndMs),
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function verifyAccountAccess(
@@ -323,7 +457,7 @@ export async function verifyAccountAccess(
     admin?: unknown;
     isAdmin?: unknown;
     role?: unknown;
-    whopUserId?: unknown;
+    whopUserId?: string | null;
   },
 ): Promise<PremiumAccess> {
   if (await safeIsAdminAccount(userId, claims)) {
@@ -341,78 +475,103 @@ export async function verifyAccountAccess(
 
   const run = (async (): Promise<PremiumAccess> => {
     const db = getFirebaseAdminFirestore();
-    const hasRcKey = Boolean((process.env["REVENUECAT_SECRET_API_KEY"] ?? "").trim());
-    const hasWhopKey = Boolean((process.env["WHOP_API_KEY"] ?? "").trim());
 
-    let access = denied();
-    let source: "revenuecat" | "whop" = hasWhopKey && !hasRcKey ? "whop" : "revenuecat";
-    let rcError: unknown = null;
-
-    if (hasRcKey || (!hasWhopKey && !userId.startsWith("whop_"))) {
-      try {
-        const linkRef = db.collection("billing_links").doc(userId);
-        const link = await linkRef.get();
-        access = await verifyRevenueCatCustomer(String(link.data()?.customerId ?? userId));
-        if (!access.isPremium && !link.exists && token) {
-          const session = await readPurchaseSession(token);
-          if (session && (!session.owner || session.owner === userId)) {
-            const purchased = await verifyRevenueCatCustomer(session.customerId);
-            if (purchased.isPremium) {
-              await db.runTransaction(async (tx) => {
-                const [claim, existing] = await Promise.all([
-                  tx.get(sessionRef(token)),
-                  tx.get(linkRef),
-                ]);
-                const data = claim.data();
-                if (
-                  !data ||
-                  Number(data.expiresAt) <= Date.now() ||
-                  data.customerId !== session.customerId ||
-                  (data.owner && data.owner !== userId) ||
-                  (existing.exists && existing.data()?.customerId !== session.customerId)
-                )
-                  throw new Error(
-                    "This purchase is already linked to an account. Sign in with that account to restore it.",
-                  );
-                tx.set(sessionRef(token), { owner: userId }, { merge: true });
-                tx.set(linkRef, { customerId: session.customerId });
-              });
-              access = purchased;
-            }
-          }
+    // 1. Check server-verified Whop entitlement (Firestore whop_access + live Whop memberships API).
+    let whopConfigured = false;
+    try {
+      const { isWhopBillingConfigured, verifyWhopAccountAccess } = await import("@/server/whop");
+      whopConfigured = isWhopBillingConfigured();
+      const whopAccess = await verifyWhopAccountAccess(userId, {
+        whopUserId: claims?.whopUserId ?? null,
+      });
+      if (whopAccess?.isPremium) {
+        if (!process.env["VITEST"] && whopAccess.verifiedUntil > Date.now()) {
+          verifiedAccessCache.set(userId, {
+            expiresAt: Math.min(Date.now() + ACCOUNT_ACCESS_CACHE_MS, whopAccess.verifiedUntil),
+            access: whopAccess,
+          });
         }
-      } catch (err) {
-        rcError = err;
+        return whopAccess;
+      }
+    } catch {
+      // Fall through to promo and RevenueCat checks if Whop lookup cannot resolve
+    }
+
+    // 2. Check verified promo code ledger (promo_access, separate from spoofable subscriptions docs).
+    const promoAccess = await verifyPromoAccountAccess(userId);
+    if (promoAccess?.isPremium) {
+      await db
+        .collection("premium_access")
+        .doc(userId)
+        .set({
+          valid_until: Timestamp.fromMillis(promoAccess.verifiedUntil),
+          source: "promo",
+          entitlement: ENTITLEMENT,
+        })
+        .catch(() => undefined);
+      if (!process.env["VITEST"] && promoAccess.verifiedUntil > Date.now()) {
+        verifiedAccessCache.set(userId, {
+          expiresAt: Math.min(Date.now() + ACCOUNT_ACCESS_CACHE_MS, promoAccess.verifiedUntil),
+          access: promoAccess,
+        });
+      }
+      return promoAccess;
+    }
+
+    const hasRevenueCatKey = Boolean((process.env["REVENUECAT_SECRET_API_KEY"] ?? "").trim());
+    if (whopConfigured && !hasRevenueCatKey) {
+      const none = denied();
+      await db
+        .collection("premium_access")
+        .doc(userId)
+        .set({
+          valid_until: Timestamp.fromMillis(0),
+          source: "whop",
+          entitlement: ENTITLEMENT,
+        })
+        .catch(() => undefined);
+      verifiedAccessCache.delete(userId);
+      return none;
+    }
+
+    // 2. Fallback to RevenueCat customer verification (native Play/App Store or RC Billing).
+    const linkRef = db.collection("billing_links").doc(userId);
+    const link = await linkRef.get();
+    let access = await verifyRevenueCatCustomer(String(link.data()?.customerId ?? userId));
+    if (!access.isPremium && !link.exists && token) {
+      const session = await readPurchaseSession(token);
+      if (session && (!session.owner || session.owner === userId)) {
+        const purchased = await verifyRevenueCatCustomer(session.customerId);
+        if (purchased.isPremium) {
+          await db.runTransaction(async (tx) => {
+            const [claim, existing] = await Promise.all([
+              tx.get(sessionRef(token)),
+              tx.get(linkRef),
+            ]);
+            const data = claim.data();
+            if (
+              !data ||
+              Number(data.expiresAt) <= Date.now() ||
+              data.customerId !== session.customerId ||
+              (data.owner && data.owner !== userId) ||
+              (existing.exists && existing.data()?.customerId !== session.customerId)
+            )
+              throw new Error(
+                "This purchase is already linked to an account. Sign in with that account to restore it.",
+              );
+            tx.set(sessionRef(token), { owner: userId }, { merge: true });
+            tx.set(linkRef, { customerId: session.customerId });
+          });
+          access = purchased;
+        }
       }
     }
-
-    if (!access.isPremium) {
-      try {
-        const { verifyWhopAccess } = await import("@/server/whop");
-        const whopAccess = await verifyWhopAccess(userId, claims);
-        if (whopAccess.isPremium) {
-          access = whopAccess;
-          source = "whop";
-          rcError = null;
-        }
-      } catch (whopErr) {
-        if (!hasRcKey && !hasWhopKey) throw rcError ?? whopErr;
-      }
-    }
-
-    if (rcError) {
-      throw rcError;
-    }
-    if (!hasRcKey && !hasWhopKey && !access.isPremium) {
-      throw new Error("Subscription verification is temporarily unavailable. Please try again.");
-    }
-
     await db
       .collection("premium_access")
       .doc(userId)
       .set({
         valid_until: Timestamp.fromMillis(access.verifiedUntil),
-        source,
+        source: "revenuecat",
         entitlement: ENTITLEMENT,
       });
     if (!process.env["VITEST"] && access.isPremium && access.verifiedUntil > Date.now()) {
@@ -442,7 +601,7 @@ export async function requireActivePremium(
     admin?: unknown;
     isAdmin?: unknown;
     role?: unknown;
-    whopUserId?: unknown;
+    whopUserId?: string | null;
   },
 ) {
   const access = await verifyAccountAccess(userId, undefined, claims);

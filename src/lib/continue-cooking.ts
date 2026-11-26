@@ -32,10 +32,18 @@ export function setContinueCooking(entry: Omit<ContinueCookingEntry, "progress" 
   // (100% would imply "done" — we don't have a real completion signal yet).
   const progress = existing?.slug === entry.slug ? Math.min(90, existing.progress + 15) : 20;
   const next: ContinueCookingEntry = { ...entry, progress, updatedAt: Date.now() };
-  window.localStorage.setItem(KEY, JSON.stringify(next));
+  try {
+    window.localStorage.setItem(KEY, JSON.stringify(next));
+  } catch {
+    // Storage may be restricted in in-app WebViews
+  }
 }
 
 export function clearContinueCooking() {
   if (typeof window === "undefined") return;
-  window.localStorage.removeItem(KEY);
+  try {
+    window.localStorage.removeItem(KEY);
+  } catch {
+    // Storage may be restricted in in-app WebViews
+  }
 }

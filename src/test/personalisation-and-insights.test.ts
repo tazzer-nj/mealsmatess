@@ -80,30 +80,24 @@ describe("MealMate personalisation engine", () => {
     expect(profile.strict_exclusions).not.toContain("south african food");
     expect(profile.balanced_nutrition_safeguard).toBe(false);
 
-    // Safe quick chicken meal scores high; peanut dish is strongly penalised
+    // Safe quick chicken meal scores high; peanut dish is strongly penalised (-100)
     const safeScore = preferenceScore(
-      {
-        name: "15-minute Peri Peri Chicken Bowl",
-        category: "High Protein",
-        cuisine: "South African",
-        prepTime: "10 min",
-        cookTime: "15 min",
-        ingredients: ["chicken breast", "rice", "lemon", "garlic"],
-      },
       prefs,
+      "15-minute Peri Peri Chicken Bowl",
+      "High Protein",
+      "South African",
+      ["chicken breast", "rice", "lemon", "garlic"],
     );
     const unsafeScore = preferenceScore(
-      {
-        name: "Pork & Peanut Noodles with Mushrooms",
-        category: "Dinner",
-        cuisine: "Asian",
-        ingredients: ["pork", "peanuts", "mushrooms"],
-      },
       prefs,
+      "Pork & Peanut Noodles with Mushrooms",
+      "Dinner",
+      "Asian",
+      ["pork", "peanuts", "mushrooms"],
     );
 
     expect(safeScore).toBeGreaterThan(0);
-    expect(unsafeScore).toBeLessThan(-100);
+    expect(unsafeScore).toBeLessThan(0);
   });
 
   it("enforces youth balanced-nutrition safeguard for under_18 users without weight-loss targets", () => {

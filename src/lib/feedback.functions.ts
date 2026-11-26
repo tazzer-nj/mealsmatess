@@ -37,7 +37,7 @@ export const submitFeedbackReport = createServerFn({ method: "POST" })
       id,
       reference_id,
       user_id: context.userId,
-      user_email: context.email ?? null,
+      user_email: context.claims?.email ?? null,
       category: data.category,
       title: data.title,
       description: data.description,

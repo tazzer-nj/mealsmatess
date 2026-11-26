@@ -1,42 +1,77 @@
 import { createMiddleware, createServerOnlyFn } from "@tanstack/react-start";
-import { getRequest, setResponseHeader } from "@tanstack/react-start/server";
+import { getRequest } from "@tanstack/react-start/server";
 import { loadFirebaseAdmin } from "@/lib/firebase-admin-access";
 
-const loadWhopAuth = createServerOnlyFn(() => import("@/server/whop-auth"));
-const loadBillingOrigin = createServerOnlyFn(() => import("@/server/revenuecat"));
+const loadWhopSession = createServerOnlyFn(() => import("@/server/whop-session"));
+const loadRevenueCat = createServerOnlyFn(() => import("@/server/revenuecat"));
+
+export type AuthClaims = {
+  email?: string | null;
+  admin?: unknown;
+  isAdmin?: unknown;
+  role?: unknown;
+  whopUserId?: string | null;
+};
 
 export const requireFirebaseAuth = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
     const request = getRequest();
-    if (!request) throw new Response("Unauthorized", { status: 401 });
-
-    const { resolveAuthenticatedRequest } = await loadWhopAuth();
-    const resolved = await resolveAuthenticatedRequest(request);
-    if (!resolved) throw new Response("Unauthorized", { status: 401 });
-
-    if (resolved.setCookieHeader) {
-      try {
-        setResponseHeader("Set-Cookie", resolved.setCookieHeader);
-      } catch {
-        // Ignore if response headers are unavailable in unit test harnesses.
-      }
-    }
-
-    if (resolved.provider === "whop" && request.method !== "GET" && request.method !== "HEAD") {
-      const site = (request.headers.get("sec-fetch-site") ?? "").toLowerCase();
-      const origin = request.headers.get("origin");
-      if (site === "cross-site" || origin) {
-        const { assertBillingOrigin } = await loadBillingOrigin();
-        assertBillingOrigin(request);
-      }
-    }
-
+    const authorization = request?.headers.get("authorization") ?? "";
+    const match = /^Bearer\s+(.+)$/i.exec(authorization);
     const backend = await loadFirebaseAdmin();
+
+    if (match?.[1]) {
+      let verified;
+      try {
+        verified = await backend.verifyFirebaseIdToken(match[1]);
+      } catch {
+        throw new Response("Unauthorized", { status: 401 });
+      }
+      if (!verified.uid) throw new Response("Unauthorized", { status: 401 });
+      const claims: AuthClaims = {
+        email: verified.email ?? null,
+        admin: verified.admin,
+        isAdmin: verified.isAdmin,
+        role: verified.role,
+        whopUserId:
+          typeof (verified as Record<string, unknown>)["whopUserId"] === "string"
+            ? ((verified as Record<string, unknown>)["whopUserId"] as string)
+            : null,
+      };
+      return next({
+        context: {
+          firebase: backend.firebaseUserDb(verified.uid),
+          userId: verified.uid,
+          claims,
+        },
+      });
+    }
+
+    // Fall back to sealed httpOnly Whop OAuth session cookie.
+    const { getWhopSessionFromRequest } = await loadWhopSession();
+    const { session } = await getWhopSessionFromRequest(request);
+    if (!session?.userId) {
+      throw new Response("Unauthorized", { status: 401 });
+    }
+
+    if (request && request.method !== "GET" && request.method !== "HEAD") {
+      const { assertBillingOrigin } = await loadRevenueCat();
+      assertBillingOrigin(request);
+    }
+
+    const claims: AuthClaims = {
+      email: session.email ?? null,
+      admin: undefined,
+      isAdmin: undefined,
+      role: undefined,
+      whopUserId: session.whopUserId ?? null,
+    };
+
     return next({
       context: {
-        firebase: backend.firebaseUserDb(resolved.userId),
-        userId: resolved.userId,
-        claims: resolved.claims,
+        firebase: backend.firebaseUserDb(session.userId),
+        userId: session.userId,
+        claims,
       },
     });
   },

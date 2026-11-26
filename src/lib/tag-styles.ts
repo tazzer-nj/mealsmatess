@@ -39,3 +39,51 @@ export function mealTagPillClass(tag: string): string {
   if (key.includes("gluten")) return SKY_PILL;
   return "border-border bg-secondary text-secondary-foreground";
 }
+
+const RECIPE_PALETTES = [
+  {
+    bg: "from-amber-500/10 via-amber-500/5 to-orange-500/10",
+    border: "border-amber-500/30",
+    badge: "bg-amber-500/15 text-amber-800 dark:text-amber-200 border-amber-500/30",
+    accent: "bg-amber-500",
+  },
+  {
+    bg: "from-emerald-500/10 via-emerald-500/5 to-teal-500/10",
+    border: "border-emerald-500/30",
+    badge: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 border-emerald-500/30",
+    accent: "bg-emerald-500",
+  },
+  {
+    bg: "from-rose-500/10 via-rose-500/5 to-pink-500/10",
+    border: "border-rose-500/30",
+    badge: "bg-rose-500/15 text-rose-800 dark:text-rose-200 border-rose-500/30",
+    accent: "bg-rose-500",
+  },
+  {
+    bg: "from-blue-500/10 via-blue-500/5 to-indigo-500/10",
+    border: "border-blue-500/30",
+    badge: "bg-blue-500/15 text-blue-800 dark:text-blue-200 border-blue-500/30",
+    accent: "bg-blue-500",
+  },
+  {
+    bg: "from-purple-500/10 via-purple-500/5 to-violet-500/10",
+    border: "border-purple-500/30",
+    badge: "bg-purple-500/15 text-purple-800 dark:text-purple-200 border-purple-500/30",
+    accent: "bg-purple-500",
+  },
+  {
+    bg: "from-teal-500/10 via-teal-500/5 to-cyan-500/10",
+    border: "border-teal-500/30",
+    badge: "bg-teal-500/15 text-teal-800 dark:text-teal-200 border-teal-500/30",
+    accent: "bg-teal-500",
+  },
+];
+
+export function getRecipeUniqueTheme(seed: string = "") {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % RECIPE_PALETTES.length;
+  return RECIPE_PALETTES[index]!;
+}

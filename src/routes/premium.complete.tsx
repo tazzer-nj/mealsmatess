@@ -1,185 +1,197 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
-import { getIntroCompletion, verifyMyPremium } from "@/lib/billing.functions";
+import { verifyWhopCheckoutCompletion } from "@/lib/whop-client";
+import { getIntroCompletion } from "@/lib/billing.functions";
 import { MealMateLogo } from "@/components/mealmate-logo";
-import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/premium/complete")({
-  head: () => ({ meta: [{ title: "Subscription Confirmation | MealMate" }] }),
+  head: () => ({ meta: [{ title: "Checkout Status | MealMate Premium" }] }),
+  validateSearch: (s: Record<string, unknown>): { status?: string; payment?: string } => ({
+    status: typeof s["status"] === "string" ? s["status"] : undefined,
+    payment: typeof s["payment"] === "string" ? s["payment"] : undefined,
+  }),
   component: PremiumCompletePage,
 });
 
+type ViewState = "verifying" | "succeeded" | "pending" | "failed" | "canceled";
+
 function PremiumCompletePage() {
+  const search = Route.useSearch();
   const { user, loading: sessionLoading } = useSession();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [statusParam, setStatusParam] = useState<"succeeded" | "failed" | "canceled" | "unknown">(
-    "unknown",
-  );
-  const [verifying, setVerifying] = useState(true);
-  const [confirmed, setConfirmed] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const statusParam = (search.status ?? "").toLowerCase();
+  const paymentId = search.payment ?? null;
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const raw = (params.get("status") ?? "").toLowerCase();
-    if (raw === "succeeded" || raw === "failed" || raw === "canceled") {
-      setStatusParam(raw);
-    } else {
-      setStatusParam("unknown");
-    }
-  }, []);
+  const [viewState, setViewState] = useState<ViewState>(() => {
+    if (statusParam === "canceled") return "canceled";
+    if (statusParam === "failed") return "failed";
+    return "verifying";
+  });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
-  useEffect(() => {
-    if (sessionLoading) return;
-    if (!user) {
-      setVerifying(false);
-      return;
-    }
-    if (statusParam === "failed" || statusParam === "canceled") {
-      setVerifying(false);
-      return;
-    }
-
-    let cancelled = false;
-    async function verifyAccess() {
-      setVerifying(true);
-      setErrorMessage("");
-      for (let attempt = 0; attempt < 4; attempt++) {
-        try {
-          const access = await verifyMyPremium();
-          if (cancelled) return;
-          if (access.isPremium) {
-            queryClient.setQueryData(["entitlement", user!.id], access);
+  async function verifyAccess() {
+    setRetrying(true);
+    setErrorMessage(null);
+    setViewState("verifying");
+    try {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const access = await verifyWhopCheckoutCompletion(paymentId);
+        if (access.isPremium) {
+          if (user?.id) {
+            queryClient.setQueryData(["entitlement", user.id], access);
             await queryClient.invalidateQueries({ queryKey: ["entitlement"] });
-            await queryClient.invalidateQueries({ queryKey: ["user-flow-progress", user!.id] });
-            setConfirmed(true);
-            setVerifying(false);
-            return;
+            await queryClient.invalidateQueries({ queryKey: ["user-flow-progress", user.id] });
           }
-        } catch (err) {
-          if (cancelled) return;
-          if (attempt === 3) {
-            setErrorMessage(
-              err instanceof Error ? err.message : "Could not verify subscription access yet.",
-            );
-          }
+          setViewState("succeeded");
+          return;
         }
-        if (attempt < 3) {
-          await new Promise((resolve) => window.setTimeout(resolve, 1500));
+        if (attempt < 2) {
+          await new Promise((r) => window.setTimeout(r, 1200));
         }
       }
-      if (!cancelled) setVerifying(false);
+      setViewState("pending");
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : "Could not verify your subscription right now.",
+      );
+      setViewState("pending");
+    } finally {
+      setRetrying(false);
     }
+  }
 
-    void verifyAccess();
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionLoading, user, statusParam, queryClient]);
+  useEffect(() => {
+    if (statusParam === "canceled") {
+      setViewState("canceled");
+      return;
+    }
+    if (statusParam === "failed") {
+      setViewState("failed");
+      return;
+    }
+    if (sessionLoading) return;
+    if (!user) {
+      void navigate({ to: "/auth", replace: true });
+      return;
+    }
+    if (statusParam === "succeeded" || paymentId) {
+      void verifyAccess();
+    } else {
+      setViewState("pending");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusParam, paymentId, sessionLoading, user?.id]);
 
-  async function continueAfterConfirm() {
+  async function continueToApp() {
     const introDone = await getIntroCompletion().catch(() => false);
     await navigate({ to: introDone ? "/" : "/welcome", replace: true });
   }
 
   return (
-    <main className="flex min-h-[100dvh] items-center justify-center bg-background px-4 py-12 text-foreground">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-sm sm:p-8">
+    <main className="premium-gate min-h-dvh bg-background px-4 py-12 text-foreground">
+      <div className="mx-auto w-full max-w-md rounded-3xl border border-border bg-card p-6 text-center shadow-sm sm:p-8">
         <div className="mb-5 flex justify-center">
-          <MealMateLogo imageClassName="size-8 rounded-lg border border-border" showName />
+          <MealMateLogo showName />
         </div>
 
-        {statusParam === "canceled" ? (
-          <>
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <XCircle className="h-6 w-6" />
-            </div>
-            <h1 className="text-xl font-semibold tracking-tight">Checkout canceled</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              No charge was made. Return to MealMate Premium whenever you&apos;re ready to start
-              your 3-day free trial.
-            </p>
-            <Button className="mt-6 h-11 w-full rounded-xl" asChild>
-              <Link to="/premium">Choose a plan</Link>
-            </Button>
-          </>
-        ) : statusParam === "failed" ? (
-          <>
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/15 text-destructive">
-              <AlertCircle className="h-6 w-6" />
-            </div>
-            <h1 className="text-xl font-semibold tracking-tight">Payment failed</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Your payment could not be completed. Please try another payment method.
-            </p>
-            <Button className="mt-6 h-11 w-full rounded-xl" asChild>
-              <Link to="/premium">Try again</Link>
-            </Button>
-          </>
-        ) : verifying || sessionLoading ? (
-          <>
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--periwinkle-soft)] text-[var(--periwinkle)]">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
+        {viewState === "verifying" && (
+          <div className="space-y-3 py-6">
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
             <h1 className="text-xl font-semibold tracking-tight">Confirming your subscription</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Verifying your MealMate Premium membership on our server…
+            <p className="text-sm text-muted-foreground">
+              We&apos;re verifying your payment with Whop and unlocking MealMate Premium.
             </p>
-          </>
-        ) : !user ? (
-          <>
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <AlertCircle className="h-6 w-6" />
-            </div>
-            <h1 className="text-xl font-semibold tracking-tight">Sign in to confirm access</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Please sign in to verify your subscription entitlement.
+          </div>
+        )}
+
+        {viewState === "succeeded" && (
+          <div className="space-y-4 py-4">
+            <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500" />
+            <h1 className="text-2xl font-semibold tracking-tight">Welcome to MealMate Premium</h1>
+            <p className="text-sm text-muted-foreground">
+              Your subscription is active. Enjoy unlimited Mia AI coaching, kitchen scanning, and
+              smart meal planning.
             </p>
-            <Button className="mt-6 h-11 w-full rounded-xl" asChild>
-              <Link to="/auth">Sign in</Link>
-            </Button>
-          </>
-        ) : confirmed ? (
-          <>
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="h-6 w-6" />
-            </div>
-            <h1 className="text-xl font-semibold tracking-tight">Welcome to MealMate Premium</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Your subscription is active. Mia AI, Kitchen Scan, and Personalized Planning are now
-              unlocked.
-            </p>
-            <Button
-              className="mt-6 h-11 w-full rounded-xl"
-              onClick={() => void continueAfterConfirm()}
+            <button
+              type="button"
+              onClick={() => void continueToApp()}
+              className="mt-2 flex h-11 w-full items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90"
             >
               Continue into MealMate
-            </Button>
-          </>
-        ) : (
-          <>
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
-              <AlertCircle className="h-6 w-6" />
-            </div>
-            <h1 className="text-xl font-semibold tracking-tight">Confirmation pending</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {errorMessage ||
-                "Your payment is still settling. Tap Check access again in a moment, or return to the paywall."}
+            </button>
+          </div>
+        )}
+
+        {viewState === "canceled" && (
+          <div className="space-y-4 py-4">
+            <XCircle className="mx-auto h-10 w-10 text-amber-500" />
+            <h1 className="text-2xl font-semibold tracking-tight">Checkout canceled</h1>
+            <p className="text-sm text-muted-foreground">
+              You weren&apos;t charged. Return to choose a plan whenever you&apos;re ready to start
+              your 3-day free trial.
             </p>
-            <div className="mt-6 flex flex-col gap-2.5">
-              <Button className="h-11 w-full rounded-xl" onClick={() => window.location.reload()}>
-                Check subscription access
-              </Button>
-              <Button variant="outline" className="h-11 w-full rounded-xl" asChild>
-                <Link to="/premium">Back to plans</Link>
-              </Button>
+            <Link
+              to="/premium"
+              className="mt-2 flex h-11 w-full items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90"
+            >
+              Return to plans
+            </Link>
+          </div>
+        )}
+
+        {viewState === "failed" && (
+          <div className="space-y-4 py-4">
+            <XCircle className="mx-auto h-10 w-10 text-destructive" />
+            <h1 className="text-2xl font-semibold tracking-tight">Payment failed</h1>
+            <p className="text-sm text-muted-foreground">
+              Your payment method could not be charged and your subscription wasn&apos;t activated.
+            </p>
+            <Link
+              to="/premium"
+              className="mt-2 flex h-11 w-full items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90"
+            >
+              Try another payment method
+            </Link>
+          </div>
+        )}
+
+        {viewState === "pending" && (
+          <div className="space-y-4 py-4">
+            <RefreshCw className="mx-auto h-9 w-9 text-primary" />
+            <h1 className="text-xl font-semibold tracking-tight">
+              Waiting for subscription confirmation
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {errorMessage ||
+                "If you just finished checkout, it can take a moment for confirmation to arrive."}
+            </p>
+            <div className="flex flex-col gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={retrying}
+                onClick={() => void verifyAccess()}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {retrying ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Check subscription access"
+                )}
+              </button>
+              <Link
+                to="/premium"
+                className="flex h-11 w-full items-center justify-center rounded-xl border border-border bg-secondary px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                Back to plans
+              </Link>
             </div>
-          </>
+          </div>
         )}
       </div>
     </main>

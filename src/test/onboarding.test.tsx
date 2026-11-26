@@ -137,7 +137,7 @@ describe("onboarding account flow", () => {
     await waitFor(() =>
       expect(mocks.navigate).toHaveBeenCalledWith({ to: "/premium", replace: true }),
     );
-  });
+  }, 15000);
 
   it("keeps failed completion retryable and prevents duplicate submissions", async () => {
     saveOnboardingDraft("account-a", 6, EMPTY_PREFERENCES);

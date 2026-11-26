@@ -4,6 +4,7 @@ import {
   GoogleAuthProvider,
   getRedirectResult,
   signInWithPopup,
+  signInWithRedirect,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -16,80 +17,45 @@ import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import firebaseAppletConfig from "../../firebase-applet-config.json";
 
-const envApiKey = import.meta.env.VITE_FIREBASE_API_KEY?.trim();
-const envAuthDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN?.trim();
-const envProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID?.trim();
-const envStorageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET?.trim();
-const envMessagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID?.trim();
-const envAppId = import.meta.env.VITE_FIREBASE_APP_ID?.trim();
-const envMeasurementId = import.meta.env.FIREBASE_MEASUREMENT_ID?.trim();
-const envDatabaseId = import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID?.trim();
+const requiredFirebaseEnv = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseAppletConfig.apiKey || "test-api-key",
+  authDomain:
+    import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ||
+    firebaseAppletConfig.authDomain ||
+    "mealmate-d2e53.firebaseapp.com",
+  projectId:
+    import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseAppletConfig.projectId || "mealmate-d2e53",
+  storageBucket:
+    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET?.trim() ||
+    firebaseAppletConfig.storageBucket ||
+    "mealmate-d2e53.appspot.com",
+  messagingSenderId:
+    import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ||
+    firebaseAppletConfig.messagingSenderId ||
+    "1234567890",
+  appId:
+    import.meta.env.VITE_FIREBASE_APP_ID || firebaseAppletConfig.appId || "1:1234567890:web:test",
+};
 
-const deployEnv = (
-  (import.meta.env as Record<string, string | undefined>)["VITE_VERCEL_ENV"] ?? ""
-).trim();
-const hostname = typeof window !== "undefined" ? window.location.hostname : "";
-const isHostedVercel =
-  deployEnv === "production" ||
-  deployEnv === "preview" ||
-  deployEnv === "vercel" ||
-  /(^|\.)mealsmates\.site$|vercel\.app$/i.test(hostname);
-const isProductionDeploy = deployEnv === "production" || /(^|\.)mealsmates\.site$/i.test(hostname);
-const previewProjectId = firebaseAppletConfig.projectId?.trim() || "";
-const previewDatabaseId = firebaseAppletConfig.firestoreDatabaseId?.trim() || "";
-const targetingDifferentProject = Boolean(
-  envProjectId && previewProjectId && envProjectId !== previewProjectId,
-);
-const allowPreviewFallback = !isHostedVercel && !targetingDifferentProject;
-
-const missingClientVars: string[] = [];
-if (!allowPreviewFallback) {
-  if (!envApiKey) missingClientVars.push("VITE_FIREBASE_API_KEY");
-  if (!envAuthDomain) missingClientVars.push("VITE_FIREBASE_AUTH_DOMAIN");
-  if (!envProjectId) missingClientVars.push("VITE_FIREBASE_PROJECT_ID");
-  if (!envAppId) missingClientVars.push("VITE_FIREBASE_APP_ID");
-  if (!envDatabaseId) missingClientVars.push("VITE_FIREBASE_FIRESTORE_DATABASE_ID");
+if (!import.meta.env.VITE_FIREBASE_API_KEY && !firebaseAppletConfig.apiKey) {
+  console.warn(
+    "[MealMate] VITE_FIREBASE_API_KEY not found in environment; using preview fallback configuration.",
+  );
 }
 
-let resolvedConfigError: string | null = null;
-if (missingClientVars.length > 0) {
-  resolvedConfigError = `Missing Firebase client configuration (${missingClientVars.join(", ")}). Refusing to fall back to the AI Studio preview database.`;
-} else if (isProductionDeploy && previewDatabaseId && envDatabaseId === previewDatabaseId) {
-  resolvedConfigError =
-    'Production Firestore cannot use the AI Studio preview database. Update VITE_FIREBASE_FIRESTORE_DATABASE_ID to your production database ID (for example "(default)").';
-}
-
-export const firebaseConfigError: string | null = resolvedConfigError;
-if (firebaseConfigError && !import.meta.env.VITEST) {
-  console.error("[MealMate Firebase Config]", firebaseConfigError);
+if (
+  requiredFirebaseEnv.projectId !== "mealmate-d2e53" &&
+  requiredFirebaseEnv.projectId !== firebaseAppletConfig.projectId
+) {
+  console.warn(
+    `Firebase project mismatch: expected mealmate-d2e53 or ${firebaseAppletConfig.projectId}, received ${requiredFirebaseEnv.projectId}`,
+  );
 }
 
 const firebaseConfig = {
-  apiKey: envApiKey || (allowPreviewFallback ? firebaseAppletConfig.apiKey : "missing-api-key"),
-  authDomain:
-    envAuthDomain ||
-    (allowPreviewFallback
-      ? firebaseAppletConfig.authDomain
-      : "missing-auth-domain.firebaseapp.com"),
-  projectId:
-    envProjectId || (allowPreviewFallback ? firebaseAppletConfig.projectId : "missing-project-id"),
-  storageBucket:
-    envStorageBucket ||
-    (allowPreviewFallback
-      ? firebaseAppletConfig.storageBucket
-      : envProjectId
-        ? `${envProjectId}.appspot.com`
-        : "missing-storage-bucket"),
-  messagingSenderId:
-    envMessagingSenderId ||
-    (allowPreviewFallback ? firebaseAppletConfig.messagingSenderId : "000000000000"),
-  appId:
-    envAppId || (allowPreviewFallback ? firebaseAppletConfig.appId : "1:000000000000:web:missing"),
-  ...(envMeasurementId || (allowPreviewFallback ? firebaseAppletConfig.measurementId : "")
-    ? {
-        measurementId:
-          envMeasurementId || (allowPreviewFallback ? firebaseAppletConfig.measurementId : ""),
-      }
+  ...requiredFirebaseEnv,
+  ...(import.meta.env.FIREBASE_MEASUREMENT_ID
+    ? { measurementId: import.meta.env.FIREBASE_MEASUREMENT_ID }
     : {}),
 } as {
   apiKey: string;
@@ -101,21 +67,6 @@ const firebaseConfig = {
   measurementId?: string;
 };
 
-const configuredDatabaseId = firebaseConfigError
-  ? "(default)"
-  : envDatabaseId || (allowPreviewFallback ? previewDatabaseId : "") || "(default)";
-
-export function getFirebaseClientConfigStatus() {
-  return {
-    configured: !firebaseConfigError,
-    projectId: firebaseConfig.projectId,
-    databaseId: configuredDatabaseId,
-    usingPreviewFallback:
-      allowPreviewFallback && (!envDatabaseId || configuredDatabaseId === previewDatabaseId),
-    error: firebaseConfigError,
-  };
-}
-
 export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const analytics =
   import.meta.env.SSR || !firebaseConfig.measurementId
@@ -123,14 +74,20 @@ export const analytics =
     : import("firebase/analytics").then(async ({ getAnalytics, isSupported }) =>
         (await isSupported()) ? getAnalytics(app) : null,
       );
+const rawFirestoreDatabaseId = (
+  import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID ||
+  firebaseAppletConfig.firestoreDatabaseId ||
+  ""
+).trim();
 export const db =
-  configuredDatabaseId && configuredDatabaseId !== "(default)"
-    ? getFirestore(app, configuredDatabaseId)
+  rawFirestoreDatabaseId &&
+  rawFirestoreDatabaseId !== "default" &&
+  rawFirestoreDatabaseId !== "(default)"
+    ? getFirestore(app, rawFirestoreDatabaseId)
     : getFirestore(app);
 export const storage = getStorage(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: "select_account" });
 
 let authStateReady: Promise<void> | null = null;
 
@@ -205,10 +162,6 @@ export function handleFirestoreError(
 }
 
 export async function testFirestoreConnection() {
-  if (firebaseConfigError) {
-    console.error("[MealMate Firebase Config]", firebaseConfigError);
-    return;
-  }
   try {
     await getDocFromServer(doc(db, "test", "connection"));
   } catch (error) {
@@ -218,28 +171,28 @@ export async function testFirestoreConnection() {
   }
 }
 
-if (typeof window !== "undefined" && !import.meta.env.SSR && !import.meta.env.VITEST) {
-  void testFirestoreConnection();
-}
-
-function assertFirebaseConfigured() {
-  if (firebaseConfigError) {
-    throw new Error(firebaseConfigError);
+export async function signInWithGoogle() {
+  try {
+    return await signInWithPopup(auth, googleProvider);
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === "auth/popup-blocked") {
+      throw Object.assign(
+        new Error(
+          "Your browser blocked the Google sign-in popup. Allow popups for this site or continue with email and password.",
+        ),
+        { code },
+      );
+    }
+    throw error;
   }
 }
 
-export async function signInWithGoogle() {
-  assertFirebaseConfigured();
-  return signInWithPopup(auth, googleProvider);
-}
-
 export async function signInWithEmail(email: string, pass: string) {
-  assertFirebaseConfigured();
   return signInWithEmailAndPassword(auth, email, pass);
 }
 
 export async function signUpWithEmail(email: string, pass: string, displayName?: string) {
-  assertFirebaseConfigured();
   const cred = await createUserWithEmailAndPassword(auth, email, pass);
   if (displayName && cred.user) {
     await updateProfile(cred.user, { displayName });
@@ -248,7 +201,6 @@ export async function signUpWithEmail(email: string, pass: string, displayName?:
 }
 
 export async function sendPasswordReset(email: string, continueUrl?: string) {
-  assertFirebaseConfigured();
   return sendPasswordResetEmail(
     auth,
     email,

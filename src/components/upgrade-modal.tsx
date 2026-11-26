@@ -35,13 +35,21 @@ export function useUpgradeModal() {
   return ctx;
 }
 
+export function useOptionalUpgradeModal() {
+  return useContext(UpgradeCtx);
+}
+
 export function useAutoPaywall(reason?: string, when = true) {
   const { open } = useUpgradeModal();
   useEffect(() => {
     if (!when || typeof window === "undefined") return;
-    const key = "mealmate-paywall-seen";
-    if (window.sessionStorage.getItem(key)) return;
-    window.sessionStorage.setItem(key, "1");
+    try {
+      const key = "mealmate-paywall-seen";
+      if (window.sessionStorage.getItem(key)) return;
+      window.sessionStorage.setItem(key, "1");
+    } catch {
+      // Ignore storage access errors in restricted WebViews
+    }
     open(reason);
   }, [when, reason, open]);
 }
@@ -99,7 +107,7 @@ function UpgradeSheet({ reason, onClose }: { reason?: string; onClose: () => voi
           </p>
           <Link to="/premium" onClick={onClose} className="mt-6 block">
             <Button className="h-12 w-full rounded-xl bg-foreground text-background hover:opacity-90">
-              View subscription plans
+              Start 3-day free trial
             </Button>
           </Link>
         </div>

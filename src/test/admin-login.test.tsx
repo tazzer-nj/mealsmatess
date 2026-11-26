@@ -155,6 +155,15 @@ describe("Admin direct login access", () => {
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith({ to: "/", replace: true }));
   });
 
+  it("renders only Google and Email sign-in options on /auth without Whop auth", () => {
+    mocks.pathname = "/auth";
+    mount(<AuthLayout />);
+
+    expect(screen.getByRole("button", { name: /Continue with Google/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Continue with Email/i })).toBeInTheDocument();
+    expect(screen.queryByText(/whop/i)).not.toBeInTheDocument();
+  });
+
   it("navigates straight to / after email login for an admin account", async () => {
     mocks.pathname = "/auth";
     mount(<AuthLayout />);

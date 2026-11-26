@@ -1,5 +1,4 @@
 import { normalizeItemKey } from "@/lib/grocery-categorizer";
-import type { CatalogRecipe } from "@/lib/recipe-catalog";
 
 export type PantryMatchInfo = {
   matchRatio: number;
@@ -9,7 +8,9 @@ export type PantryMatchInfo = {
 };
 
 export function matchRecipeToPantry(
-  recipe: Pick<CatalogRecipe, "ingredients">,
+  recipe: {
+    ingredients?: ReadonlyArray<string | { name?: string | null; quantity?: string | null }> | null;
+  },
   pantryNames: string[],
 ): PantryMatchInfo {
   const pantryTokens = pantryNames

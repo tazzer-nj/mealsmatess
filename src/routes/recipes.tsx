@@ -1,225 +1,326 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Loader2, Sparkles, Compass, Flame, Heart } from "lucide-react";
+import { Loader2, Refrigerator, RotateCcw, Search, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/hooks/use-session";
-import {
-  buildRecipeGenerationPrompt,
-  searchOrGenerateRecipe,
-  toastRecipeGenerationError,
-} from "@/lib/recipe-search";
-import { recipesByCategoryQuery, myFavoritesQuery } from "@/lib/queries";
+import { usePremium } from "@/hooks/use-premium";
+import { useOptionalUpgradeModal } from "@/components/upgrade-modal";
+import { usePreferences } from "@/hooks/use-preferences";
+import { loadRecipeSearchImages } from "@/lib/recipe-search-images";
+import { myPantryQuery, recipesByCategoryQuery } from "@/lib/queries";
 import { generateRecipe, surpriseMe } from "@/lib/ai.functions";
-import { RecipeCard, FeaturedRecipeCard } from "@/components/recipe-card";
+import { evaluateRecipeAllergens, isAvoided, personalize } from "@/lib/preferences";
+import { matchRecipeToPantry } from "@/lib/pantry-matcher";
+import { RecipeCard } from "@/components/recipe-card";
 import { MiaLoadingCard } from "@/components/mia-loading-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { firebaseData } from "@/lib/firebase-data";
 
-const DISCOVERY_CATEGORIES = [
+const CATEGORIES = [
   "All",
-  "Today's Picks",
-  "Trending",
-  "South African Favorites",
-  "Quick",
-  "Budget",
-  "Healthy Meals",
-  "High Protein",
-  "Comfort Food",
   "Breakfast",
+  "Lunch",
+  "Dinner",
   "Dessert",
+  "Snacks",
+  "Drinks",
+  "Vegan",
+  "High Protein",
+  "Quick",
 ];
 
-type RecipeSearch = { c?: string; q?: string };
+const FILTERS_STORAGE_KEY = "mealmate.recipes.filters.v1";
+const PAGE_SIZE = 12;
+
+type RecipeSearch = { c?: string; q?: string; pantry?: string };
+
+type StoredRecipeFilters = {
+  maxTime: "any" | "20" | "35" | "60";
+  difficulty: "any" | "Easy" | "Medium" | "Hard";
+  respectPrefs: boolean;
+  usePantry: boolean;
+};
+
+function readStoredFilters(): StoredRecipeFilters {
+  if (typeof window === "undefined") {
+    return { maxTime: "any", difficulty: "any", respectPrefs: true, usePantry: false };
+  }
+  try {
+    const raw = window.localStorage.getItem(FILTERS_STORAGE_KEY);
+    if (!raw) return { maxTime: "any", difficulty: "any", respectPrefs: true, usePantry: false };
+    const parsed = JSON.parse(raw) as Partial<StoredRecipeFilters>;
+    return {
+      maxTime:
+        parsed.maxTime === "20" || parsed.maxTime === "35" || parsed.maxTime === "60"
+          ? parsed.maxTime
+          : "any",
+      difficulty:
+        parsed.difficulty === "Easy" ||
+        parsed.difficulty === "Medium" ||
+        parsed.difficulty === "Hard"
+          ? parsed.difficulty
+          : "any",
+      respectPrefs: parsed.respectPrefs !== false,
+      usePantry: parsed.usePantry === true,
+    };
+  } catch {
+    return { maxTime: "any", difficulty: "any", respectPrefs: true, usePantry: false };
+  }
+}
 
 export const Route = createFileRoute("/recipes")({
   head: () => ({
     meta: [
-      { title: "Discover recipes & Food Inspiration | MealMate" },
+      { title: "Discover recipes | MealMate" },
       {
         name: "description",
-        content:
-          "Explore trending recipes, South African favourites, quick meals, and AI-crafted dishes.",
+        content: "Browse South African favourites, global classics, and personalised recipe ideas.",
       },
       { property: "og:title", content: "Discover recipes | MealMate" },
       {
         property: "og:description",
-        content:
-          "Explore trending recipes, South African favourites, quick meals, and AI-crafted dishes.",
+        content: "Browse South African favourites, global classics, and personalised recipe ideas.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   validateSearch: (search: Record<string, unknown>): RecipeSearch => ({
     ...(typeof search["c"] === "string" ? { c: search["c"] } : {}),
     ...(typeof search["q"] === "string" ? { q: search["q"] } : {}),
+    ...(typeof search["pantry"] === "string" ? { pantry: search["pantry"] } : {}),
   }),
   ssr: false,
   component: RecipesPage,
 });
 
 function RecipesPage() {
-  const { c, q } = Route.useSearch();
+  const { c, q, pantry: pantryParam } = Route.useSearch();
   const active = c ?? "All";
   const navigate = useNavigate();
   const { user, loading: sessionLoading } = useSession();
+  const { isPremium } = usePremium();
+  const upgradeModal = useOptionalUpgradeModal();
+  const { preferences, hasPreferences } = usePreferences();
+
+  const [storedFilters, setStoredFilters] = useState<StoredRecipeFilters>(() =>
+    readStoredFilters(),
+  );
+  const usePantry =
+    pantryParam === "1" ? true : pantryParam === "0" ? false : storedFilters.usePantry;
+
   const {
     data: recipes,
     isLoading,
     isError,
     refetch,
   } = useQuery({
-    ...recipesByCategoryQuery(
-      active !== "All" && active !== "Today's Picks" && active !== "Trending" ? active : undefined,
-      q,
-    ),
+    ...recipesByCategoryQuery(active !== "All" ? active : undefined, q),
     enabled: !!user,
   });
-  const loadingRecipes = (!user && sessionLoading) || isLoading;
+
+  const { data: pantryItems = [] } = useQuery({
+    ...myPantryQuery(),
+    enabled: !!user && isPremium,
+  });
+
+  const loadingRecipes = sessionLoading || isLoading;
   const [query, setQuery] = useState(q ?? "");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
   useEffect(() => {
     setQuery(q ?? "");
-  }, [q]);
+    setVisibleCount(PAGE_SIZE);
+  }, [q, active]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(storedFilters));
+    } catch {
+      /* ignore */
+    }
+  }, [storedFilters]);
+
   const [busy, setBusy] = useState(false);
-  const [generatingFor, setGeneratingFor] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: favorites } = useQuery({ ...myFavoritesQuery(), enabled: !!user });
-  const favoriteIds = new Set(favorites?.map((f) => f.recipe_id) ?? []);
+  const pantryNames = useMemo(() => pantryItems.map((i) => i.name), [pantryItems]);
 
-  async function toggleFavorite(recipeId: string) {
-    if (!user) {
-      toast.error("Sign in to save favorite recipes.");
-      await navigate({ to: "/auth" });
-      return;
-    }
-    const isFav = favoriteIds.has(recipeId);
-    try {
-      if (isFav) {
-        await firebaseData
-          .from("favorites")
-          .delete()
-          .eq("recipe_id", recipeId)
-          .eq("user_id", user.id);
-      } else {
-        await firebaseData.from("favorites").insert({ recipe_id: recipeId, user_id: user.id });
+  const filteredRecipes = useMemo(() => {
+    const base = recipes ?? [];
+    const maxMins = storedFilters.maxTime !== "any" ? Number(storedFilters.maxTime) : null;
+
+    const afterBasic = base.filter((r) => {
+      if (maxMins !== null && r.cooking_time_minutes && r.cooking_time_minutes > maxMins) {
+        return false;
       }
-      await queryClient.invalidateQueries({ queryKey: ["favorites"] });
-    } catch {
-      toast.error("Couldn't update favorites");
+      if (
+        storedFilters.difficulty !== "any" &&
+        r.difficulty &&
+        r.difficulty.toLowerCase() !== storedFilters.difficulty.toLowerCase()
+      ) {
+        return false;
+      }
+      if (storedFilters.respectPrefs) {
+        const allergySafety = evaluateRecipeAllergens(preferences, {
+          name: r.name,
+          description: r.description,
+          ingredients: r.ingredients as { name?: string }[] | null,
+        });
+        if (!allergySafety.safe) return false;
+        if (
+          isAvoided(
+            preferences,
+            r.name,
+            r.description,
+            r.cuisine,
+            r.category,
+            Array.isArray(r.ingredients)
+              ? r.ingredients.map((i) =>
+                  typeof i === "string" ? i : ((i as { name?: string })?.name ?? ""),
+                )
+              : [],
+          )
+        ) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    const ranked = hasPreferences
+      ? personalize(preferences, afterBasic, (r) => [r.name, r.cuisine, r.category, r.difficulty])
+      : afterBasic;
+
+    if (!usePantry || pantryNames.length === 0) {
+      return ranked.map((r) => ({
+        recipe: r,
+        match: null as ReturnType<typeof matchRecipeToPantry> | null,
+      }));
     }
-  }
+
+    return ranked
+      .map((r) => ({ recipe: r, match: matchRecipeToPantry(r, pantryNames) }))
+      .sort((a, b) => (b.match?.matchRatio ?? 0) - (a.match?.matchRatio ?? 0));
+  }, [hasPreferences, pantryNames, preferences, recipes, storedFilters, usePantry]);
+
+  const visibleRecipes = useMemo(
+    () => filteredRecipes.slice(0, visibleCount),
+    [filteredRecipes, visibleCount],
+  );
+
+  const hasMore = visibleCount < filteredRecipes.length;
+  const activeRestrictionCount =
+    preferences.allergies.length +
+    (preferences.intolerances?.length ?? 0) +
+    preferences.dietary_restrictions.length;
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
+    if (!query.trim() || busy) return;
     const term = query.trim();
-    if (!term || busy) return;
     setBusy(true);
-    setGeneratingFor(null);
-    let startedGeneration = false;
     try {
-      const result = await searchOrGenerateRecipe({
-        query: term,
-        category: active,
-        queryClient,
-        onGenerating: (target) => {
-          startedGeneration = true;
-          setGeneratingFor(target);
-        },
-      });
-      if (result.kind === "generated") {
-        await navigate({ to: "/recipe/$slug", params: { slug: result.slug } });
-        return;
-      }
       await navigate({
         to: "/recipes",
-        search: { ...(active !== "All" ? { c: active } : {}), q: term },
+        search: {
+          ...(active !== "All" ? { c: active } : {}),
+          q: term,
+          ...(usePantry ? { pantry: "1" } : {}),
+        },
       });
-    } catch (err) {
-      if (startedGeneration) {
-        toastRecipeGenerationError(err);
-        await navigate({
-          to: "/recipes",
-          search: { ...(active !== "All" ? { c: active } : {}), q: term },
-        });
-      } else {
-        toast.error("Couldn't complete the search. Please try again.");
-      }
+      const matches = await queryClient.fetchQuery(
+        recipesByCategoryQuery(active !== "All" ? active : undefined, term),
+      );
+      if (isPremium) void loadRecipeSearchImages(matches, queryClient);
+    } catch {
+      toast.error("Couldn't complete the search. Please try again.");
     } finally {
-      setGeneratingFor(null);
       setBusy(false);
     }
   }
 
-  async function handleAiGenerate(overrideTerm?: string) {
-    const raw = (overrideTerm ?? query).trim();
-    if (!raw || busy) return;
+  async function handleAiGenerate() {
+    if (!query.trim() || busy) return;
+    if (!isPremium) {
+      if (upgradeModal) {
+        upgradeModal.open("Start your 3-day free trial to create custom AI recipes.");
+      } else {
+        await navigate({ to: "/premium" });
+      }
+      return;
+    }
     setBusy(true);
-    setGeneratingFor(raw);
     try {
-      const promptQuery = buildRecipeGenerationPrompt(raw, active);
-      const { slug } = await generateRecipe({ data: { query: promptQuery, force: true } });
-      await queryClient.invalidateQueries({ queryKey: ["recipes"] });
-      await navigate({ to: "/recipe/$slug", params: { slug } });
+      const { slug } = await generateRecipe({ data: { query: query.trim() } });
+      navigate({ to: "/recipe/$slug", params: { slug } });
     } catch (err) {
-      toastRecipeGenerationError(err);
+      const message = err instanceof Error ? err.message : "";
+      const authError = /AUTH_REQUIRED|Unauthorized|Invalid user session|No authorization/i.test(
+        message,
+      );
+      toast.error(authError ? "Your session expired" : "Couldn't generate that recipe", {
+        description: authError
+          ? "Please sign in again to cook a recipe."
+          : message || "The kitchen assistant is unavailable right now. Please try again.",
+      });
     } finally {
-      setGeneratingFor(null);
       setBusy(false);
     }
   }
 
   async function handleSurprise() {
     if (busy) return;
+    if (!isPremium) {
+      if (upgradeModal) {
+        upgradeModal.open("Start your 3-day free trial to generate unlimited surprise AI recipes.");
+      } else {
+        await navigate({ to: "/premium" });
+      }
+      return;
+    }
     setBusy(true);
     try {
       const { slug } = await surpriseMe();
-      await queryClient.invalidateQueries({ queryKey: ["recipes"] });
-      await navigate({ to: "/recipe/$slug", params: { slug } });
+      navigate({ to: "/recipe/$slug", params: { slug } });
     } catch (err) {
-      toastRecipeGenerationError(err);
+      const message = err instanceof Error ? err.message : "";
+      const authError = /AUTH_REQUIRED|Unauthorized|Invalid user session|No authorization/i.test(
+        message,
+      );
+      toast.error(authError ? "Your session expired" : "The chef is busy", {
+        description: authError
+          ? "Please sign in again to cook a recipe."
+          : "The kitchen assistant is unavailable right now. Please try again.",
+      });
     } finally {
       setBusy(false);
     }
   }
 
-  const featuredRecipe = recipes && recipes.length > 0 ? recipes[0] : null;
-  const gridRecipes = recipes && recipes.length > 1 ? recipes.slice(1) : [];
+  function resetAllFilters() {
+    setQuery("");
+    setStoredFilters({
+      maxTime: "any",
+      difficulty: "any",
+      respectPrefs: true,
+      usePantry: false,
+    });
+    void navigate({ to: "/recipes", search: {} });
+  }
 
   return (
-    <main className="mx-auto w-full max-w-7xl flex-1 overflow-x-hidden bg-background px-4 py-8 text-foreground sm:px-6 lg:px-8">
-      {/* Editorial Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-border">
-        <div>
-          <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary mb-1">
-            <Compass className="h-4 w-4" /> Editorial Food Discovery
-          </div>
-          <h1 className="font-display text-3xl md:text-4xl tracking-tight text-foreground">
-            Discover culinary inspiration
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
-            Browse hand-crafted recipes, South African classics, and AI-tailored creations designed
-            for every table.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-xl border-border bg-card text-foreground hover:bg-secondary"
-            onClick={handleSurprise}
-            disabled={busy}
-          >
-            <Sparkles className="mr-1.5 h-4 w-4 text-primary" />
-            Surprise Me
-          </Button>
-        </div>
+    <main className="mx-auto w-full max-w-6xl flex-1 overflow-x-hidden bg-background px-3.5 py-6 text-foreground sm:px-4 sm:py-8">
+      <div className="flex flex-col gap-1.5">
+        <h1 className="text-3xl font-medium tracking-tight text-foreground">Discover recipes</h1>
+        <p className="text-sm text-muted-foreground">
+          Search by recipe name, ingredients, or cuisine — or ask Mia to craft a safe custom dish.
+        </p>
       </div>
 
-      {/* Search & AI Bar */}
       <form onSubmit={handleGenerate} className="mt-6 flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -228,7 +329,7 @@ function RecipesPage() {
             onChange={(e) => setQuery(e.target.value)}
             aria-label="Search recipes"
             maxLength={200}
-            placeholder="Search recipes, ingredients, cuisines (e.g. bobotie, creamy pasta)…"
+            placeholder="Search recipes, ingredients, cuisines…"
             className="h-12 rounded-xl border-border bg-card pl-10 text-foreground placeholder:text-muted-foreground"
           />
         </div>
@@ -238,46 +339,44 @@ function RecipesPage() {
           disabled={busy}
           className="h-12 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
         >
-          {busy && !generatingFor ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+          Search
         </Button>
         <Button
           type="button"
           variant="outline"
           size="lg"
-          disabled={busy || !query.trim()}
+          disabled={busy}
           className="h-12 rounded-xl border-border bg-card text-foreground hover:bg-secondary"
-          onClick={() => void handleAiGenerate()}
+          onClick={handleAiGenerate}
         >
-          {busy && generatingFor ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <>
-              <Sparkles className="mr-1.5 h-4 w-4 text-primary" />
-              Ask AI chef
-            </>
-          )}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Ask AI chef"}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="lg"
+          className="h-12 rounded-xl border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
+          onClick={handleSurprise}
+          disabled={busy}
+        >
+          Surprise
         </Button>
       </form>
 
-      {generatingFor && (
-        <div className="mt-6">
-          <MiaLoadingCard
-            delayMs={0}
-            label={`Mia is creating a custom recipe for "${generatingFor}" with professional food photography...`}
-          />
-        </div>
-      )}
-
-      {/* Discovery Category Pills */}
-      <div className="mt-6 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-        {DISCOVERY_CATEGORIES.map((cat) => (
+      {/* Category tabs */}
+      <div className="mt-5 flex flex-wrap gap-2">
+        {CATEGORIES.map((cat) => (
           <Link
             key={cat}
             to="/recipes"
-            search={{ ...(cat === "All" ? {} : { c: cat }), ...(q ? { q } : {}) }}
-            className={`inline-flex shrink-0 min-h-11 items-center rounded-xl border px-4 py-2 text-xs font-medium transition-colors ${
+            search={{
+              ...(cat === "All" ? {} : { c: cat }),
+              ...(q ? { q } : {}),
+              ...(usePantry ? { pantry: "1" } : {}),
+            }}
+            className={`min-h-10 inline-flex items-center rounded-xl border px-3.5 py-2 text-xs font-medium transition-colors ${
               active === cat
-                ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground"
             }`}
           >
@@ -286,126 +385,166 @@ function RecipesPage() {
         ))}
       </div>
 
-      {/* Main Content Area */}
-      <div className="mt-8">
+      {/* Discovery controls: Pantry match, Dietary safeguard, Prep Time, Difficulty */}
+      <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card/70 p-3 text-xs">
+        <button
+          type="button"
+          onClick={() => {
+            const next = !usePantry;
+            setStoredFilters((prev) => ({ ...prev, usePantry: next }));
+            void navigate({
+              to: "/recipes",
+              search: {
+                ...(active !== "All" ? { c: active } : {}),
+                ...(q ? { q } : {}),
+                ...(next ? { pantry: "1" } : {}),
+              },
+            });
+          }}
+          className={`inline-flex min-h-9 items-center gap-1.5 rounded-xl border px-3 font-medium transition-colors ${
+            usePantry
+              ? "border-[var(--periwinkle)] bg-[var(--periwinkle-soft)] text-foreground"
+              : "border-border bg-secondary/70 text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Refrigerator className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
+          Use my pantry ({pantryNames.length})
+        </button>
+
+        {activeRestrictionCount > 0 && (
+          <button
+            type="button"
+            onClick={() =>
+              setStoredFilters((prev) => ({ ...prev, respectPrefs: !prev.respectPrefs }))
+            }
+            className={`inline-flex min-h-9 items-center gap-1.5 rounded-xl border px-3 font-medium transition-colors ${
+              storedFilters.respectPrefs
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                : "border-border bg-secondary/70 text-muted-foreground"
+            }`}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            {storedFilters.respectPrefs
+              ? `Safe filter on (${activeRestrictionCount})`
+              : "Safe filter paused"}
+          </button>
+        )}
+
+        <select
+          aria-label="Filter by max prep time"
+          value={storedFilters.maxTime}
+          onChange={(e) =>
+            setStoredFilters((prev) => ({
+              ...prev,
+              maxTime: e.target.value as StoredRecipeFilters["maxTime"],
+            }))
+          }
+          className="h-9 rounded-xl border border-border bg-secondary px-2.5 text-xs text-foreground"
+        >
+          <option value="any">Any time</option>
+          <option value="20">Under 20 mins</option>
+          <option value="35">Under 35 mins</option>
+          <option value="60">Under 60 mins</option>
+        </select>
+
+        <select
+          aria-label="Filter by difficulty"
+          value={storedFilters.difficulty}
+          onChange={(e) =>
+            setStoredFilters((prev) => ({
+              ...prev,
+              difficulty: e.target.value as StoredRecipeFilters["difficulty"],
+            }))
+          }
+          className="h-9 rounded-xl border border-border bg-secondary px-2.5 text-xs text-foreground"
+        >
+          <option value="any">Any skill</option>
+          <option value="Easy">Easy</option>
+          <option value="Medium">Medium</option>
+          <option value="Hard">Hard</option>
+        </select>
+
+        {(q ||
+          active !== "All" ||
+          storedFilters.maxTime !== "any" ||
+          storedFilters.difficulty !== "any" ||
+          usePantry) && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={resetAllFilters}
+            className="ml-auto h-9 rounded-xl text-xs text-muted-foreground hover:text-foreground"
+          >
+            <RotateCcw className="mr-1 h-3.5 w-3.5" />
+            Reset
+          </Button>
+        )}
+      </div>
+
+      <div className="mt-7">
         {loadingRecipes ? (
-          <div className="space-y-8">
-            <Skeleton className="skeleton-shimmer aspect-[16/9] w-full rounded-3xl bg-secondary" />
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-5">
+            <MiaLoadingCard delayMs={120_000} label="Mia is pulling your recipes together..." />
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton
-                  key={i}
-                  className="skeleton-shimmer aspect-[4/3] w-full rounded-2xl bg-secondary"
-                />
+                <Skeleton key={i} className="aspect-[4/3] w-full rounded-2xl bg-secondary" />
               ))}
             </div>
           </div>
         ) : isError ? (
-          <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center">
+          <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
             <p className="text-sm text-muted-foreground">Recipes couldn&apos;t load right now.</p>
             <Button
               variant="outline"
-              className="mt-4 min-h-11 rounded-xl border-border bg-secondary text-foreground"
+              className="mt-4 rounded-xl border-border bg-secondary text-foreground"
               onClick={() => void refetch()}
             >
               Try again
             </Button>
           </div>
-        ) : recipes && recipes.length > 0 ? (
-          <div className="space-y-10">
-            {q && (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-sm">
-                <p className="text-sm text-muted-foreground">
-                  Showing {recipes.length} {recipes.length === 1 ? "recipe" : "recipes"} for{" "}
-                  <span className="font-medium text-foreground">&ldquo;{q}&rdquo;</span>.
-                </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => void handleAiGenerate(q)}
-                  className="rounded-xl border-border bg-secondary text-foreground hover:bg-muted"
-                >
-                  <Sparkles className="mr-1.5 h-3.5 w-3.5 text-primary" />
-                  Generate new &ldquo;{q}&rdquo; recipe
-                </Button>
-              </div>
-            )}
-
-            {/* Featured Hero Recipe (only shown when not deep in search/filter if desired, or always as spotlight) */}
-            {!q && active === "All" && featuredRecipe && (
-              <div>
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="font-display text-xl tracking-tight text-foreground flex items-center gap-2">
-                    <Flame className="h-5 w-5 text-primary" /> Today&apos;s Featured Masterpiece
-                  </h2>
-                </div>
-                <FeaturedRecipeCard
-                  recipe={featuredRecipe}
-                  isFavorite={featuredRecipe.id ? favoriteIds.has(featuredRecipe.id) : false}
-                  onToggleFavorite={toggleFavorite}
-                />
-              </div>
-            )}
-
-            {/* Grid of Recipes */}
-            <div>
-              {!q && active === "All" && (
-                <div className="mb-4">
-                  <h2 className="font-display text-xl tracking-tight text-foreground">
-                    Explore All Recipes
-                  </h2>
-                </div>
-              )}
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {(!q && active === "All" ? gridRecipes : recipes).map((r, index) => (
-                  <RecipeCard
-                    key={r.id}
-                    recipe={r}
-                    isFavorite={r.id ? favoriteIds.has(r.id) : false}
-                    onToggleFavorite={toggleFavorite}
-                    priority={index < 3}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center">
-            <p className="text-base font-medium text-foreground">No recipes found</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {q
-                ? `No saved recipes matched "${q}" yet. Let Mia create a custom recipe for you!`
-                : "Nothing here yet. Try searching or generating a recipe above!"}
-            </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              {q && (
-                <Button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void handleAiGenerate(q)}
-                  className="min-h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  {busy && generatingFor ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="mr-2 h-4 w-4" />
+        ) : visibleRecipes.length > 0 ? (
+          <>
+            <div className="cv-auto grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {visibleRecipes.map(({ recipe: r, match }, index) => (
+                <div key={r.id} className="flex flex-col gap-1.5">
+                  <RecipeCard recipe={r} priority={index < 2} />
+                  {match && match.totalIngredients > 0 && (
+                    <p className="px-1 text-xs text-muted-foreground tabular-nums">
+                      Pantry match: {match.matchedCount}/{match.totalIngredients} ingredients (
+                      {Math.round(match.matchRatio * 100)}%)
+                    </p>
                   )}
-                  Generate &ldquo;{q}&rdquo; recipe
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                className="min-h-11 rounded-xl border-border bg-secondary text-foreground"
-                onClick={() => {
-                  setQuery("");
-                  void navigate({ to: "/recipes", search: {} });
-                }}
-              >
-                Show all recipes
-              </Button>
+                </div>
+              ))}
             </div>
+
+            {hasMore && (
+              <div className="mt-8 flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                  className="h-11 rounded-xl border-border bg-card px-6 text-xs font-medium text-foreground hover:bg-secondary"
+                >
+                  Load more ({filteredRecipes.length - visibleCount} remaining)
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
+            <p className="text-sm text-muted-foreground">
+              No recipes matched your current filters. Try adjusting time, clearing your search, or
+              asking the AI Chef above.
+            </p>
+            <Button
+              variant="outline"
+              className="mt-4 rounded-xl border-border bg-secondary text-foreground"
+              onClick={resetAllFilters}
+            >
+              Reset all filters
+            </Button>
           </div>
         )}
       </div>

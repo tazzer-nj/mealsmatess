@@ -57,8 +57,8 @@ export const Route = createFileRoute("/api/recipe-image")({
 
           return Response.json(
             await requestRecipeImage(auth.user.userId, input.recipeId),
-            auth.user.setCookieHeader
-              ? { headers: { "Set-Cookie": auth.user.setCookieHeader } }
+            auth.refreshedSetCookie
+              ? { headers: { "Set-Cookie": auth.refreshedSetCookie } }
               : undefined,
           );
         } catch (error) {

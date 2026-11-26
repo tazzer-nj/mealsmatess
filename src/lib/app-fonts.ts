@@ -52,3 +52,24 @@ export function isAppFontId(value: unknown): value is AppFontId {
     value === "fraunces"
   );
 }
+
+const APP_FONT_STYLESHEET_URL =
+  "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=DM+Serif+Display&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap";
+
+export function ensureAppFontLoaded(font: AppFontId): void {
+  if (typeof document === "undefined" || !isAppFontId(font)) return;
+  const linkId = "mealmate-app-fonts";
+  if (document.getElementById(linkId)) return;
+  const existing = document.querySelector<HTMLLinkElement>(
+    'link[href*="fonts.googleapis.com/css2"]',
+  );
+  if (existing) {
+    existing.id ||= linkId;
+    return;
+  }
+  const link = document.createElement("link");
+  link.id = linkId;
+  link.rel = "stylesheet";
+  link.href = APP_FONT_STYLESHEET_URL;
+  document.head.appendChild(link);
+}

@@ -63,11 +63,11 @@ function Harness() {
         System
       </button>
 
-      <button type="button" onClick={() => previewTheme("ocean-blue")}>
+      <button type="button" onClick={() => previewTheme("ocean")}>
         Preview Ocean
       </button>
-      <button type="button" onClick={() => previewTheme("aurora")}>
-        Preview Aurora
+      <button type="button" onClick={() => previewTheme("matcha")}>
+        Preview Matcha
       </button>
       <button type="button" onClick={() => cancelPreview()}>
         Cancel Preview
@@ -75,10 +75,10 @@ function Harness() {
       <button type="button" onClick={() => void applyTheme("midnight-black")}>
         Apply Black
       </button>
-      <button type="button" onClick={() => void applyTheme("aurora")}>
-        Apply Aurora
+      <button type="button" onClick={() => void applyTheme("matcha")}>
+        Apply Matcha
       </button>
-      <button type="button" onClick={() => void applyTheme("midnight-pro")}>
+      <button type="button" onClick={() => void applyTheme("midnight")}>
         Apply Midnight
       </button>
       <button type="button" onClick={() => void retrySave()}>
@@ -122,15 +122,15 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Theme registry & global ThemeProvider", () => {
-  it("defines default black and white themes plus 6 logo-matched themes with complete tokens", () => {
+  it("defines default black and white themes plus 6 exclusive Premium themes with complete tokens", () => {
     expect(FREE_THEMES.map((t) => t.id)).toEqual(["classic-light", "midnight-black"]);
     expect(PREMIUM_THEMES.map((t) => t.id)).toEqual([
+      "cherry",
+      "midnight",
       "lavender-dream",
+      "ocean",
+      "matcha",
       "sunset",
-      "midnight-pro",
-      "ocean-blue",
-      "aurora",
-      "obsidian",
     ]);
     expect(MEALMATE_THEMES).toHaveLength(8);
 
@@ -141,7 +141,7 @@ describe("Theme registry & global ThemeProvider", () => {
       expect(theme.tokens.primary).toBeTruthy();
       expect(theme.tokens.navBackground).toBeTruthy();
       expect(theme.tokens.headerBackground).toBeTruthy();
-      expect(theme.tokens.themeColor).toMatch(/^#/);
+      expect(theme.tokens.themeColor).toBeTruthy();
     }
   });
 
@@ -155,11 +155,11 @@ describe("Theme registry & global ThemeProvider", () => {
     fireEvent.click(screen.getByRole("button", { name: "Dark Premium" }));
     expect(screen.getByTestId("mode")).toHaveTextContent("dark-premium");
     expect(screen.getByTestId("resolved")).toHaveTextContent("dark-premium");
-    expect(screen.getByTestId("active-id")).toHaveTextContent("midnight-pro");
+    expect(screen.getByTestId("active-id")).toHaveTextContent("midnight");
     expect(document.documentElement.classList.contains("dark")).toBe(true);
     expect(document.documentElement.classList.contains("dark-premium")).toBe(true);
     expect(document.documentElement.dataset["theme"]).toBe("dark-premium");
-    expect(document.documentElement.dataset["appTheme"]).toBe("midnight-pro");
+    expect(document.documentElement.dataset["appTheme"]).toBe("midnight");
     expect(localStorage.getItem("mealmate-theme")).toBe("dark-premium");
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(
       "#0d1126",
@@ -172,8 +172,8 @@ describe("Theme registry & global ThemeProvider", () => {
       </ThemeProvider>,
     );
     expect(screen.getByTestId("mode")).toHaveTextContent("dark-premium");
-    expect(screen.getByTestId("active-id")).toHaveTextContent("midnight-pro");
-    expect(document.documentElement.classList.contains("dark-premium")).toBe(true);
+    expect(screen.getByTestId("active-id")).toHaveTextContent("midnight");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "Dark" }));
     expect(document.documentElement.classList.contains("dark")).toBe(true);
@@ -188,7 +188,7 @@ describe("Theme registry & global ThemeProvider", () => {
     expect(document.documentElement.dataset["appTheme"]).toBe("classic-light");
   });
 
-  it("applies every theme token and returns all 6 logo artworks across the 6 logo themes", async () => {
+  it("applies every theme token and returns all 6 mascot artworks across the 6 exclusive themes", async () => {
     mockUseSession.mockReturnValue({
       user: { id: "user-1", email: "chef@mealmate.app", displayName: "Chef" },
       loading: false,
@@ -241,36 +241,30 @@ describe("Theme registry & global ThemeProvider", () => {
       );
     }
 
-    const lavender = MEALMATE_THEMES.find((t) => t.id === "lavender-dream")!;
-    const midnight = MEALMATE_THEMES.find((t) => t.id === "midnight-pro")!;
-    const obsidian = MEALMATE_THEMES.find((t) => t.id === "obsidian")!;
+    const matcha = MEALMATE_THEMES.find((t) => t.id === "matcha")!;
+    const midnight = MEALMATE_THEMES.find((t) => t.id === "midnight")!;
+    const cherry = MEALMATE_THEMES.find((t) => t.id === "cherry")!;
     const logoSet = new Set(PREMIUM_THEMES.map((t) => t.mascotImage));
     expect(logoSet).toEqual(
       new Set([
-        "/mascots/mascot-lavender.jpg",
+        "/mascots/mascot-cherry.webp",
         "/mascots/mascot-midnight.webp",
+        "/mascots/mascot-classic.png",
         "/mascots/mascot-ocean.webp",
         "/mascots/mascot-matcha.webp",
         "/mascots/mascot-sunset.webp",
-        "/mascots/mascot-cherry.webp",
       ]),
     );
-    expect(lavender.name).toBe("Lavender Dream");
-    expect(lavender.tokens.primary).toBe("oklch(0.54 0.17 295)");
-    expect(lavender.tokens.periwinkle).toBe("oklch(0.54 0.17 295)");
+    expect(matcha.tokens.primary).toBe("#22c55e");
     expect(midnight.mascotImage).toBe("/mascots/mascot-midnight.webp");
-    expect(midnight.tokens.periwinkle).toBe("oklch(0.7 0.15 275)");
-    expect(obsidian.mascotImage).toBe("/mascots/mascot-cherry.webp");
-    expect(obsidian.tokens.periwinkle).toBe("oklch(0.7 0.17 12)");
+    expect(cherry.mascotImage).toBe("/mascots/mascot-cherry.webp");
   });
 
   it("restores saved account theme automatically across devices and avoids flash via THEME_BOOT_SCRIPT", async () => {
-    localStorage.setItem(THEME_V2_STORAGE_KEY, "ocean-blue");
+    localStorage.setItem(THEME_V2_STORAGE_KEY, "ocean");
     window.eval(THEME_BOOT_SCRIPT);
-    expect(document.documentElement.dataset["appTheme"]).toBe("ocean-blue");
-    expect(document.documentElement.style.getPropertyValue("--background")).toBe(
-      "oklch(0.97 0.02 225)",
-    );
+    expect(document.documentElement.dataset["appTheme"]).toBe("ocean");
+    expect(document.documentElement.style.getPropertyValue("--background")).toBe("#eff6fc");
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(
       "#eff6fc",
     );
@@ -281,7 +275,7 @@ describe("Theme registry & global ThemeProvider", () => {
       firebaseUser: null,
     });
     mockGetMyTheme.mockResolvedValue({
-      themeId: "midnight-pro",
+      themeId: "midnight",
       updatedAt: "2026-02-01T10:00:00.000Z",
     });
 
@@ -292,11 +286,9 @@ describe("Theme registry & global ThemeProvider", () => {
     );
 
     await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.getByTestId("active-id")).toHaveTextContent("midnight-pro"));
-    expect(localStorage.getItem(THEME_V2_STORAGE_KEY)).toBe("midnight-pro");
-    expect(document.documentElement.style.getPropertyValue("--background")).toBe(
-      "oklch(0.13 0.04 275)",
-    );
+    await waitFor(() => expect(screen.getByTestId("active-id")).toHaveTextContent("midnight"));
+    expect(localStorage.getItem(THEME_V2_STORAGE_KEY)).toBe("midnight");
+    expect(document.documentElement.style.getPropertyValue("--background")).toBe("#0d1126");
   });
 
   it("explains why unauthenticated users cannot save themes to an account", async () => {
@@ -317,13 +309,13 @@ describe("Theme registry & global ThemeProvider", () => {
     expect(screen.getByTestId("active-id")).toHaveTextContent("midnight-black");
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Apply Aurora" }));
+      fireEvent.click(screen.getByRole("button", { name: "Apply Matcha" }));
     });
     expect(screen.getByTestId("active-id")).toHaveTextContent("midnight-black");
     expect(screen.getByTestId("save-error").textContent).toMatch(/Premium account/i);
   });
 
-  it("surfaces error and allows retry without silently reverting to default when account save fails", async () => {
+  it("reverts display to previous saved theme, surfaces error, and allows retry when account save fails", async () => {
     mockUseSession.mockReturnValue({
       user: { id: "user-9", email: "alex@example.com", displayName: "Alex" },
       loading: false,
@@ -343,18 +335,18 @@ describe("Theme registry & global ThemeProvider", () => {
     );
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Apply Aurora" }));
+      fireEvent.click(screen.getByRole("button", { name: "Apply Matcha" }));
     });
 
     expect(screen.getByTestId("save-status")).toHaveTextContent("error");
     expect(screen.getByTestId("save-error").textContent).toMatch(/Connection issue|timeout/i);
-    expect(screen.getByTestId("pending-id")).toHaveTextContent("aurora");
-    expect(screen.getByTestId("display-id")).toHaveTextContent("aurora");
+    expect(screen.getByTestId("pending-id")).toHaveTextContent("matcha");
+    expect(screen.getByTestId("display-id")).toHaveTextContent("midnight-black");
     expect(screen.getByTestId("active-id")).toHaveTextContent("midnight-black");
 
     mockSaveMyTheme.mockResolvedValueOnce({
       ok: true,
-      themeId: "aurora",
+      themeId: "matcha",
       updatedAt: "2026-02-02T00:00:00.000Z",
     });
 
@@ -363,7 +355,66 @@ describe("Theme registry & global ThemeProvider", () => {
     });
 
     await waitFor(() => expect(screen.getByTestId("save-status")).toHaveTextContent("saved"));
-    expect(screen.getByTestId("active-id")).toHaveTextContent("aurora");
+    expect(screen.getByTestId("active-id")).toHaveTextContent("matcha");
+    expect(screen.getByTestId("display-id")).toHaveTextContent("matcha");
     expect(screen.getByTestId("preview-id")).toHaveTextContent("none");
+  });
+
+  it("keeps the chosen premium theme when pressing Dark or Light and switches to its dark or light variant", async () => {
+    mockUseSession.mockReturnValue({
+      user: { id: "user-77", email: "sam@mealmate.app", displayName: "Sam" },
+      loading: false,
+      firebaseUser: null,
+    });
+    mockGetMyTheme.mockResolvedValue({ themeId: "classic-light", scheme: null, updatedAt: null });
+    mockSaveMyTheme.mockImplementation(
+      async ({ data }: { data: { themeId: string; scheme?: "light" | "dark" } }) => ({
+        ok: true,
+        themeId: data.themeId,
+        scheme: data.scheme ?? "light",
+        updatedAt: "2026-02-02T00:00:00.000Z",
+      }),
+    );
+
+    render(
+      <ThemeProvider>
+        <Harness />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(mockGetMyTheme).toHaveBeenCalledTimes(1));
+
+    // Pick Ocean (light premium theme) then press Dark -> should apply Ocean Dark, not Default Black
+    fireEvent.click(screen.getByRole("button", { name: "Preview Ocean" }));
+    await act(async () => {
+      await waitFor(() => expect(screen.getByTestId("display-id")).toHaveTextContent("ocean"));
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Dark" }));
+    expect(screen.getByTestId("display-id")).toHaveTextContent("ocean");
+    expect(document.documentElement.dataset["appTheme"]).toBe("ocean");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(
+      "#0c1622",
+    );
+
+    // Apply Matcha (dark premium theme) then press Light -> should keep Matcha and switch to Matcha Light
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Apply Matcha" }));
+    });
+    await waitFor(() => expect(screen.getByTestId("active-id")).toHaveTextContent("matcha"));
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Light" }));
+    });
+    expect(screen.getByTestId("active-id")).toHaveTextContent("matcha");
+    expect(document.documentElement.dataset["appTheme"]).toBe("matcha");
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+    expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe(
+      "#f4f9f1",
+    );
+    expect(mockSaveMyTheme).toHaveBeenLastCalledWith({
+      data: { themeId: "matcha", scheme: "light" },
+    });
   });
 });

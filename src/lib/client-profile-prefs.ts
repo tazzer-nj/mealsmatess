@@ -36,6 +36,7 @@ export async function readClientProfilePreferences(
 export async function writeClientProfilePreferences(
   userId: string,
   data: FoodPreferences,
+  meta?: { platform?: string; country?: string },
 ): Promise<boolean> {
   if (!userId || auth.currentUser?.uid !== userId) return false;
   const householdSize = data.household_size ?? data.meals_per_day ?? null;
@@ -60,6 +61,8 @@ export async function writeClientProfilePreferences(
       onboarding_step: payload.onboarding_step,
       onboarding_completed: Boolean(payload.onboarding_completed),
       ...(trimmedName ? { displayName: trimmedName } : {}),
+      ...(meta?.platform ? { platform: meta.platform } : {}),
+      ...(meta?.country ? { country: meta.country } : {}),
       updatedAt,
     },
     { merge: true },

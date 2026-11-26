@@ -10,11 +10,183 @@
         "displayName": { "type": "string" },
         "photoURL": { "type": "string" },
         "goal": { "type": "string" },
-        "provider": { "type": "string" },
-        "whop_user_id": { "type": "string" },
+        "theme": { "type": "string" },
+        "theme_updated_at": { "type": "string" },
+        "font": { "type": "string" },
+        "units": { "type": "string" },
+        "locale": { "type": "string" },
+        "currency": { "type": "string" },
+        "voice_preferences": { "type": "object" },
+        "notification_preferences": { "type": "object" },
+        "platform": { "type": "string" },
+        "country": { "type": "string" },
         "createdAt": { "type": "string" }
       },
       "required": ["id", "email"]
+    },
+    "NotificationSettings": {
+      "title": "NotificationSettings",
+      "description": "User notification and trial reminder preferences",
+      "type": "object",
+      "properties": {
+        "productUpdatesEnabled": { "type": "boolean" },
+        "pushEnabled": { "type": "boolean" },
+        "mealReminders": { "type": "boolean" },
+        "recipeAlerts": { "type": "boolean" },
+        "planningReminders": { "type": "boolean" },
+        "promoAlerts": { "type": "boolean" },
+        "trialReminderEnabled": { "type": "boolean" },
+        "trialReminderPlanId": { "type": "string" },
+        "trialReminderAt": { "type": "string" },
+        "trialReminderChannel": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "UserOnboardingProfile": {
+      "title": "UserOnboardingProfile",
+      "description": "Structured onboarding & personalisation summary for a MealMate user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "preferred_name": { "type": "string" },
+        "household_size": { "type": "string" },
+        "goals": { "type": "array" },
+        "primary_goal": { "type": "string" },
+        "challenges": { "type": "array" },
+        "health_goals": { "type": "array" },
+        "age_bracket": { "type": "string" },
+        "balanced_nutrition_safeguard": { "type": "boolean" },
+        "eating_habits": { "type": "string" },
+        "cooking_frequency": { "type": "string" },
+        "primary_challenge": { "type": "string" },
+        "meal_enjoyments": { "type": "array" },
+        "allergies": { "type": "array" },
+        "intolerances": { "type": "array" },
+        "dietary_restrictions": { "type": "array" },
+        "disliked_foods": { "type": "array" },
+        "preferred_cuisines": { "type": "array" },
+        "cooking_time": { "type": "string" },
+        "cooking_level": { "type": "string" },
+        "budget_range_zar": { "type": "string" },
+        "onboarding_completed": { "type": "boolean" },
+        "onboarding_completed_at": { "type": "string" },
+        "personalisation_profile": { "type": "object" },
+        "platform": { "type": "string" },
+        "country": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "onboarding_completed"]
+    },
+    "OnboardingAnswers": {
+      "title": "OnboardingAnswers",
+      "description": "Page-by-page user responses across the 8-page onboarding flow",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "page_1_goals": { "type": "object" },
+        "page_2_challenges": { "type": "object" },
+        "page_3_health_goals": { "type": "object" },
+        "page_4_habits": { "type": "object" },
+        "page_5_preferences": { "type": "object" },
+        "page_6_lifestyle": { "type": "object" },
+        "page_7_discovery": { "type": "object" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "user_id"]
+    },
+    "OnboardingProgress": {
+      "title": "OnboardingProgress",
+      "description": "Step progress, timestamps, and funnel state per user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "current_page": { "type": "number" },
+        "max_page_reached": { "type": "number" },
+        "completed_pages": { "type": "array" },
+        "status": { "type": "string" },
+        "started_at": { "type": "string" },
+        "last_active_at": { "type": "string" },
+        "completed_at": { "type": "string" },
+        "abandoned_at": { "type": "string" },
+        "abandoned_page": { "type": "number" },
+        "completion_duration_seconds": { "type": "number" },
+        "platform": { "type": "string" },
+        "country": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "current_page", "status"]
+    },
+    "UserAcquisitionSource": {
+      "title": "UserAcquisitionSource",
+      "description": "Immutable first-touch self-reported discovery channel and UTM/referrer attribution",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "self_reported_source": { "type": "string" },
+        "other_detail": { "type": "string" },
+        "utm_source": { "type": "string" },
+        "utm_medium": { "type": "string" },
+        "utm_campaign": { "type": "string" },
+        "referrer": { "type": "string" },
+        "platform": { "type": "string" },
+        "country": { "type": "string" },
+        "captured_at": { "type": "string" },
+        "updated_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "captured_at"]
+    },
+    "AnalyticsEvent": {
+      "title": "AnalyticsEvent",
+      "description": "Deduplicated funnel and product analytics events",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "event_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "event_name": { "type": "string" },
+        "page_number": { "type": "number" },
+        "platform": { "type": "string" },
+        "country": { "type": "string" },
+        "channel": { "type": "string" },
+        "metadata": { "type": "object" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "event_id", "user_id", "event_name", "created_at"]
+    },
+    "UserActivity": {
+      "title": "UserActivity",
+      "description": "Meaningful user interactions used for D1/D7/D30 and DAU/WAU/MAU retention",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "activity_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "activity_type": { "type": "string" },
+        "entity_id": { "type": "string" },
+        "platform": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "activity_id", "user_id", "activity_type", "created_at"]
+    },
+    "SubscriptionEvent": {
+      "title": "SubscriptionEvent",
+      "description": "Verified RevenueCat and billing lifecycle events",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "event_type": { "type": "string" },
+        "source": { "type": "string" },
+        "rc_event_id": { "type": "string" },
+        "processed": { "type": "boolean" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "event_type", "source"]
     },
     "Favorite": {
       "title": "Favorite",
@@ -39,47 +211,87 @@
       },
       "required": ["userId", "name"]
     },
-    "PremiumAccess": {
-      "title": "PremiumAccess",
-      "description": "Server-verified premium access lease from RevenueCat or Whop",
+    "MiaConversation": {
+      "title": "MiaConversation",
+      "description": "Persistent conversation history between user and Mia AI assistant",
       "type": "object",
       "properties": {
-        "source": { "type": "string", "enum": ["revenuecat", "whop"] },
-        "entitlement": { "type": "string" },
-        "valid_until": { "type": "string" }
-      },
-      "required": ["source", "entitlement", "valid_until"]
-    },
-    "WhopEntitlement": {
-      "title": "WhopEntitlement",
-      "description": "Server-managed Whop membership/payment state per MealMate user",
-      "type": "object",
-      "properties": {
+        "id": { "type": "string" },
         "user_id": { "type": "string" },
-        "whop_user_id": { "type": "string" },
-        "membership_id": { "type": "string" },
-        "tier": { "type": "string" },
-        "status": { "type": "string" },
-        "active": { "type": "boolean" }
+        "title": { "type": "string" },
+        "turns": { "type": "array" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
       },
-      "required": ["user_id", "active"]
+      "required": ["id", "user_id", "title", "turns"]
     },
-    "WhopUser": {
-      "title": "WhopUser",
-      "description": "Server-only mapping between Whop OAuth subject IDs and MealMate user IDs",
+    "PlannerTemplate": {
+      "title": "PlannerTemplate",
+      "description": "Reusable weekly meal plan templates",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "whopUserId": { "type": "string" },
-        "email": { "type": "string" }
+        "id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "name": { "type": "string" },
+        "slots": { "type": "array" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" }
       },
-      "required": ["userId", "whopUserId"]
+      "required": ["id", "user_id", "name", "slots"]
+    },
+    "FeedbackReport": {
+      "title": "FeedbackReport",
+      "description": "Customer problem reports and product feedback",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "reference_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "category": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "user_id", "category", "title", "description", "status"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "User profiles keyed by auth UID"
+    },
+    "/users/{userId}/notification_settings/{settingId}": {
+      "schema": "NotificationSettings",
+      "description": "Owner-scoped notification & trial reminder preferences"
+    },
+    "/user_onboarding_profiles/{userId}": {
+      "schema": "UserOnboardingProfile",
+      "description": "Structured onboarding & personalisation profiles keyed by auth UID"
+    },
+    "/onboarding_answers/{userId}": {
+      "schema": "OnboardingAnswers",
+      "description": "Structured page responses across the 8 onboarding screens"
+    },
+    "/onboarding_progress/{userId}": {
+      "schema": "OnboardingProgress",
+      "description": "Step progress, completion timestamps, and drop-off state"
+    },
+    "/user_acquisition_sources/{userId}": {
+      "schema": "UserAcquisitionSource",
+      "description": "Immutable first-touch self-reported discovery channel and UTM/referrer attribution"
+    },
+    "/analytics_events/{eventId}": {
+      "schema": "AnalyticsEvent",
+      "description": "Deduplicated funnel and interaction analytics events"
+    },
+    "/user_activity/{activityId}": {
+      "schema": "UserActivity",
+      "description": "Meaningful product actions for retention and active user metrics"
+    },
+    "/subscription_events/{eventId}": {
+      "schema": "SubscriptionEvent",
+      "description": "Server-verified RevenueCat and subscription lifecycle events"
     },
     "/users/{userId}/favorites/{favoriteId}": {
       "schema": "Favorite",
@@ -89,17 +301,17 @@
       "schema": "PantryItem",
       "description": "User pantry items"
     },
-    "/premium_access/{userId}": {
-      "schema": "PremiumAccess",
-      "description": "Server-only premium entitlement leases (RevenueCat and Whop)"
+    "/users/{userId}/conversations/{conversationId}": {
+      "schema": "MiaConversation",
+      "description": "Persistent Mia conversation threads"
     },
-    "/whop_entitlements/{userId}": {
-      "schema": "WhopEntitlement",
-      "description": "Server-only Whop membership entitlements"
+    "/users/{userId}/plannerTemplates/{templateId}": {
+      "schema": "PlannerTemplate",
+      "description": "Saved reusable weekly meal plan templates"
     },
-    "/whop_users/{whopUserId}": {
-      "schema": "WhopUser",
-      "description": "Server-only Whop OAuth user identity map"
+    "/feedback_reports/{reportId}": {
+      "schema": "FeedbackReport",
+      "description": "Customer feedback and issue reports with lifecycle status"
     }
   }
 }

@@ -185,6 +185,16 @@ describe("RevenueCat authority", () => {
         true,
       ).isPremium,
     ).toBe(true);
+    expect(
+      parseRevenueCatAccess(
+        {
+          ...data,
+          subscriptions: { monthly: { ...data.subscriptions.monthly, store: "promotional" } },
+        },
+        now,
+        false,
+      ).isPremium,
+    ).toBe(true);
   });
   it("preserves lifetime entitlements only when the matching transaction is verified", () => {
     const lifetime = subscriber(null);

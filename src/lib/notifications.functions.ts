@@ -208,6 +208,87 @@ export const saveMyNotificationPreferences = createServerFn({ method: "POST" })
     return { productUpdatesEnabled: data.productUpdatesEnabled, pushEnabled };
   });
 
+export const getTrialReminderPreference = createServerFn({ method: "GET" })
+  .middleware([requireFirebaseAuth])
+  .handler(async ({ context }) => {
+    try {
+      const { getFirebaseAdminFirestore } = await loadFirebaseAdmin();
+      const snap = await getFirebaseAdminFirestore()
+        .collection("users")
+        .doc(context.userId)
+        .collection("notification_settings")
+        .doc("trial_reminder")
+        .get();
+      const data = snap.data() ?? {};
+      return {
+        enabled: data["enabled"] === true,
+        planId: typeof data["planId"] === "string" ? data["planId"] : null,
+        remindAt: typeof data["remindAt"] === "string" ? data["remindAt"] : null,
+        channel:
+          data["channel"] === "push" || data["channel"] === "in_app" || data["channel"] === "none"
+            ? (data["channel"] as "push" | "in_app" | "none")
+            : null,
+      };
+    } catch (error) {
+      if (error instanceof Error && /Firebase Admin is not configured/i.test(error.message)) {
+        return { enabled: false, planId: null, remindAt: null, channel: null };
+      }
+      throw error;
+    }
+  });
+
+export const saveTrialReminderPreference = createServerFn({ method: "POST" })
+  .middleware([requireFirebaseAuth])
+  .validator((value: unknown) =>
+    z
+      .object({
+        enabled: z.boolean(),
+        planId: z.string().max(120).nullable().optional(),
+        trialDays: z.number().int().min(0).max(90).optional(),
+        channel: z.enum(["push", "in_app", "none"]).optional(),
+      })
+      .parse(value),
+  )
+  .handler(async ({ data, context }) => {
+    const trialDays = data.trialDays ?? 0;
+    const remindAt =
+      data.enabled && trialDays > 0
+        ? new Date(Date.now() + Math.max(1, trialDays - 1) * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+    const channel = data.enabled ? (data.channel ?? "in_app") : "none";
+
+    try {
+      const { getFirebaseAdminFirestore } = await loadFirebaseAdmin();
+      await getFirebaseAdminFirestore()
+        .collection("users")
+        .doc(context.userId)
+        .collection("notification_settings")
+        .doc("trial_reminder")
+        .set(
+          {
+            enabled: data.enabled,
+            planId: data.planId ?? null,
+            trialDays,
+            channel,
+            remindAt,
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true },
+        );
+    } catch (error) {
+      if (!(error instanceof Error && /Firebase Admin is not configured/i.test(error.message))) {
+        throw error;
+      }
+    }
+
+    return {
+      enabled: data.enabled,
+      planId: data.planId ?? null,
+      remindAt,
+      channel,
+    };
+  });
+
 export const registerMyPushToken = createServerFn({ method: "POST" })
   .middleware([requireFirebaseAuth])
   .validator((value: unknown) => z.object({ token: z.string().min(40).max(4096) }).parse(value))

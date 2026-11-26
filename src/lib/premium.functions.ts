@@ -21,6 +21,48 @@ export const getMyEntitlement = createServerFn({ method: "GET" })
     return verifyAccountAccess(context.userId, undefined, context.claims);
   });
 
+export const getMyMiaQuota = createServerFn({ method: "GET" })
+  .middleware([requireFirebaseAuth])
+  .validator((value: unknown) =>
+    z
+      .object({ deviceFingerprint: z.string().max(128).optional() })
+      .optional()
+      .parse(value),
+  )
+  .handler(async ({ data, context }) => {
+    try {
+      const { data: quotaData, error } = await context.firebase.rpc("get_mia_quota", {
+        _user_id: context.userId,
+        _device_fingerprint: data?.deviceFingerprint ?? null,
+        _email: typeof context.claims?.["email"] === "string" ? context.claims["email"] : null,
+      });
+      if (error || !quotaData) {
+        return {
+          isPremium: false,
+          trialActive: false,
+          freeUsed: 0,
+          freeLimit: 2,
+          freeRemaining: 2,
+        };
+      }
+      return quotaData as {
+        isPremium: boolean;
+        trialActive: boolean;
+        freeUsed: number;
+        freeLimit: number;
+        freeRemaining: number;
+      };
+    } catch {
+      return {
+        isPremium: false,
+        trialActive: false,
+        freeUsed: 0,
+        freeLimit: 2,
+        freeRemaining: 2,
+      };
+    }
+  });
+
 // ---------- Usage ----------
 // Plan allowance summary (server-calculated from the database; limits are configurable in app_settings).
 export const getMyUsage = createServerFn({ method: "GET" })
@@ -160,124 +202,10 @@ export const applyReferralCode = createServerFn({ method: "POST" })
 // ---------- Promo Codes ----------
 export const redeemPromoCode = createServerFn({ method: "POST" })
   .middleware([requireFirebaseAuth])
-  .validator((v: unknown) => z.object({ code: z.string().min(2).max(40) }).parse(v))
+  .validator((v: unknown) => z.object({ code: z.string().trim().min(2).max(40) }).parse(v))
   .handler(async ({ data, context }) => {
-    const { firebaseAdmin } = await loadFirebaseAdmin();
-    const code = data.code.trim().toUpperCase();
-    const { data: promo } = await firebaseAdmin
-      .from("promo_codes")
-      .select("*")
-      .eq("code", code)
-      .maybeSingle();
-    if (!promo || !promo.enabled) throw new Error("Invalid or disabled promo code");
-    if (promo.expires_at && new Date(promo.expires_at).getTime() < Date.now())
-      throw new Error("This promo code has expired");
-    if (promo.max_redemptions && promo.redemption_count >= promo.max_redemptions)
-      throw new Error("This promo code has been fully redeemed");
-
-    // Prevent duplicate redemption
-    const { data: dup } = await firebaseAdmin
-      .from("promo_redemptions")
-      .select("id")
-      .eq("code_id", promo.id)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    if (dup) throw new Error("You've already redeemed this code");
-
-    let grantedDays = 0;
-    let grantedLifetime = false;
-    let tier: "monthly" | "annual" | "lifetime" | "promo" = "promo";
-
-    switch (promo.reward_kind) {
-      case "free_days":
-        grantedDays = Number(promo.reward_value) || 0;
-        break;
-      case "free_month":
-        grantedDays = 30;
-        tier = "monthly";
-        break;
-      case "free_year":
-        grantedDays = 365;
-        tier = "annual";
-        break;
-      case "lifetime":
-        grantedLifetime = true;
-        tier = "lifetime";
-        break;
-      case "percent_discount":
-        // Discount codes are informational only in-app; actual discount applied at native checkout
-        break;
-    }
-
-    // Grant subscription time
-    if (grantedDays > 0 || grantedLifetime) {
-      const { data: current } = await firebaseAdmin
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", context.userId)
-        .order("period_end", { ascending: false, nullsFirst: false })
-        .limit(1)
-        .maybeSingle();
-
-      const baseline =
-        current?.period_end && new Date(current.period_end).getTime() > Date.now()
-          ? new Date(current.period_end).getTime()
-          : Date.now();
-      const newEnd = grantedLifetime
-        ? null
-        : new Date(baseline + grantedDays * 86400000).toISOString();
-
-      if (current) {
-        await firebaseAdmin
-          .from("subscriptions")
-          .update({
-            tier: grantedLifetime ? "lifetime" : tier,
-            status: "active",
-            period_end: newEnd,
-            store: "promo",
-            is_manual: true,
-          })
-          .eq("id", current.id);
-      } else {
-        await firebaseAdmin.from("subscriptions").insert({
-          user_id: context.userId,
-          tier: grantedLifetime ? "lifetime" : tier,
-          status: "active",
-          store: "promo",
-          period_start: new Date().toISOString(),
-          period_end: newEnd,
-          is_manual: true,
-        });
-      }
-    }
-
-    await firebaseAdmin.from("promo_redemptions").insert({
-      code_id: promo.id,
-      user_id: context.userId,
-      granted_days: grantedDays,
-      granted_lifetime: grantedLifetime,
-    });
-    await firebaseAdmin
-      .from("promo_codes")
-      .update({ redemption_count: promo.redemption_count + 1 })
-      .eq("id", promo.id);
-    await firebaseAdmin.from("subscription_events").insert({
-      user_id: context.userId,
-      event_type: `promo:${promo.reward_kind}`,
-      source: "promo",
-      actor_id: context.userId,
-      payload: { code, granted_days: grantedDays, granted_lifetime: grantedLifetime },
-    });
-
-    return {
-      ok: true,
-      message:
-        promo.reward_kind === "percent_discount"
-          ? `${promo.reward_value}% discount saved. It will apply at checkout on mobile.`
-          : grantedLifetime
-            ? "Lifetime Premium unlocked!"
-            : `${grantedDays} days of Premium added to your account.`,
-    };
+    const { redeemPromoCodeForUser } = await import("@/server/promo");
+    return redeemPromoCodeForUser({ userId: context.userId, code: data.code });
   });
 
 // ---------- Admin ----------
@@ -431,7 +359,7 @@ export const adminSavePromo = createServerFn({ method: "POST" })
     }
     const { data: inserted, error } = await firebaseAdmin
       .from("promo_codes")
-      .insert(row)
+      .insert({ ...row, redemption_count: 0 })
       .select("id")
       .single();
     if (error) throw new Error(error.message);

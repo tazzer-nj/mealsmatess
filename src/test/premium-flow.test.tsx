@@ -325,7 +325,7 @@ describe("Consumer route enforcement", () => {
     expect(screen.queryByText("Protected app")).not.toBeInTheDocument();
   });
 
-  it("blocks pending and failed verification, and admits verified subscribers with completed tour", async () => {
+  it("admits users immediately while pending or refreshing subscription status", async () => {
     mocks.session.user = { id: "subscriber" };
     mocks.prefs.mockResolvedValue({ onboarding_completed: true });
     mocks.intro.mockResolvedValue(true);
@@ -335,7 +335,7 @@ describe("Consumer route enforcement", () => {
         <div>Protected app</div>
       </ConsumerAccessGate>,
     );
-    expect(screen.queryByText("Protected app")).not.toBeInTheDocument();
+    expect(screen.getByText("Protected app")).toBeInTheDocument();
     page.unmount();
 
     mocks.access.loading = false;
@@ -345,8 +345,7 @@ describe("Consumer route enforcement", () => {
         <div>Protected app</div>
       </ConsumerAccessGate>,
     );
-    await screen.findByText(/couldn’t verify/);
-    expect(screen.queryByText("Protected app")).not.toBeInTheDocument();
+    expect(screen.getByText("Protected app")).toBeInTheDocument();
     failure.unmount();
 
     mocks.access.error = null;
@@ -392,5 +391,62 @@ describe("Consumer route enforcement", () => {
     );
     expect(screen.getByText("Paywall Screen")).toBeInTheDocument();
     expect(screen.queryByText(/Checking your access/)).not.toBeInTheDocument();
+  });
+
+  it("renders Manage MealMate Premium view instead of redirecting when a signed-in active subscriber opens Premium", async () => {
+    mocks.session.user = { id: "subscriber-1" };
+    mocks.path = "/premium";
+    mocks.access = {
+      isPremium: true,
+      loading: false,
+      error: null,
+      retry: vi.fn(),
+      tier: "annual",
+      entitlement: {
+        isPremium: true,
+        tier: "annual",
+        status: "active",
+        trialActive: false,
+        periodEnd: "2027-01-15T00:00:00.000Z",
+        trialEnd: null,
+        store: "whop",
+        autoRenew: true,
+        isManual: false,
+        verifiedUntil: Date.now() + 60_000,
+      },
+    } as typeof mocks.access;
+
+    mount(<PremiumPaywall />);
+
+    expect(await screen.findByRole("heading", { name: /Yearly Premium/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Restore Purchases/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Refresh status/i })).toBeInTheDocument();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("displays localized ZAR pricing and checkout note when loading Whop store in ZAR", async () => {
+    const { loadBillingStore } =
+      await vi.importActual<typeof import("@/lib/billing-client")>("@/lib/billing-client");
+    const store = await loadBillingStore(
+      {
+        appUserId: "user-za",
+        offering: "default",
+        isActive: false,
+        webApiKey: null,
+        androidApiKey: null,
+        iosApiKey: null,
+        whopEnabled: true,
+        provider: "whop",
+      },
+      "ZAR",
+    );
+
+    const monthly = store.plans.find((p) => p.kind === "monthly");
+    const yearly = store.plans.find((p) => p.kind === "yearly");
+    expect(monthly?.currencyCode).toBe("ZAR");
+    expect(monthly?.price).toContain("189");
+    expect(monthly?.billingNote).toMatch(/Charged at \$9\.99 USD at Whop checkout/i);
+    expect(yearly?.currencyCode).toBe("ZAR");
+    expect(yearly?.price).toContain("1,399");
   });
 });

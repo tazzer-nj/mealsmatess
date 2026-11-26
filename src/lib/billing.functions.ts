@@ -1,14 +1,12 @@
 import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { getCookie, setCookie, getRequest } from "@tanstack/react-start/server";
-import { z } from "zod";
 import { loadFirebaseAdmin } from "@/lib/firebase-admin-access";
 import { requireFirebaseAuth } from "@/lib/firebase-auth-middleware";
 
 const billing = createServerOnlyFn(() => import("@/server/revenuecat"));
-const loadWhop = createServerOnlyFn(() => import("@/server/whop"));
-const loadWhopAuth = createServerOnlyFn(() => import("@/server/whop-auth"));
+const whopModule = createServerOnlyFn(() => import("@/server/whop"));
+const whopSessionModule = createServerOnlyFn(() => import("@/server/whop-session"));
 const COOKIE = "mealmate_purchase";
-
 export const createPurchaseSession = createServerFn({ method: "POST" }).handler(async () => {
   let userId: string | undefined;
   let claims:
@@ -17,12 +15,10 @@ export const createPurchaseSession = createServerFn({ method: "POST" }).handler(
         admin?: unknown;
         isAdmin?: unknown;
         role?: unknown;
-        whopUserId?: string;
+        whopUserId?: string | null;
       }
     | undefined;
   const request = getRequest();
-  const { resolveAuthenticatedRequest, resolveRequestOrigin } = await loadWhopAuth();
-
   const authorization = request.headers.get("authorization");
   if (authorization) {
     const match = /^Bearer\s+(.+)$/i.exec(authorization);
@@ -35,15 +31,22 @@ export const createPurchaseSession = createServerFn({ method: "POST" }).handler(
       throw new Response("Unauthorized", { status: 401 });
     }
   } else {
-    const resolved = await resolveAuthenticatedRequest(request);
-    if (resolved) {
-      userId = resolved.userId;
-      claims = resolved.claims;
+    try {
+      const { getWhopSessionFromRequest } = await whopSessionModule();
+      const { session } = await getWhopSessionFromRequest(request);
+      if (session?.userId) {
+        userId = session.userId;
+        claims = {
+          email: session.email,
+          whopUserId: session.whopUserId,
+        };
+      }
+    } catch {
+      // Proceed as anonymous guest if no session cookie
     }
   }
 
   const service = await billing();
-  const whopService = await loadWhop();
   service.assertBillingOrigin(request);
   const cookieToken = getCookie(COOKIE);
   let identity: { customerId: string; token: string | null } = {
@@ -66,9 +69,10 @@ export const createPurchaseSession = createServerFn({ method: "POST" }).handler(
       maxAge: 90 * 86400,
     });
   let isActive = false;
+  const { isWhopBillingConfigured } = await whopModule();
+  const whopEnabled = isWhopBillingConfigured();
   const hasSecretKey = Boolean((process.env["REVENUECAT_SECRET_API_KEY"] ?? "").trim());
-  const whopEnabled = whopService.isWhopCheckoutConfigured();
-  if (hasSecretKey || whopEnabled) {
+  if (whopEnabled || hasSecretKey) {
     try {
       const checkPromise = userId
         ? service.verifyAccountAccess(userId, cookieToken, claims)
@@ -90,55 +94,18 @@ export const createPurchaseSession = createServerFn({ method: "POST" }).handler(
     appUserId: identity.customerId,
     offering: service.OFFERING,
     isActive,
+    provider: whopEnabled ? ("whop" as const) : ("revenuecat" as const),
     whopEnabled,
-    returnUrl: `${resolveRequestOrigin(request)}/premium/complete`,
     webApiKey: process.env["REVENUECAT_WEB_PUBLIC_KEY"] ?? null,
     androidApiKey: process.env["REVENUECAT_ANDROID_PUBLIC_KEY"] ?? null,
     iosApiKey: process.env["REVENUECAT_IOS_PUBLIC_KEY"] ?? null,
   };
 });
-
-export const createWhopCheckoutSession = createServerFn({ method: "POST" })
-  .middleware([requireFirebaseAuth])
-  .validator((v: unknown) =>
-    z
-      .object({
-        planKind: z.enum(["monthly", "yearly", "family"]),
-        currency: z.enum(["USD", "ZAR"]).optional().default("USD"),
-      })
-      .parse(v),
-  )
-  .handler(async ({ data, context }) => {
-    const request = getRequest();
-    const service = await billing();
-    service.assertBillingOrigin(request);
-    const { resolveRequestOrigin } = await loadWhopAuth();
-    const { createWhopCheckoutConfig } = await loadWhop();
-    const returnUrl = `${resolveRequestOrigin(request)}/premium/complete`;
-    const whopUserId =
-      typeof (context.claims as { whopUserId?: unknown } | undefined)?.whopUserId === "string"
-        ? (context.claims as { whopUserId: string }).whopUserId
-        : null;
-
-    const config = await createWhopCheckoutConfig({
-      userId: context.userId,
-      planKind: data.planKind,
-      currency: data.currency,
-      returnUrl,
-      whopUserId,
-    });
-    return {
-      ...config,
-      returnUrl,
-    };
-  });
-
 export const verifyCheckout = createServerFn({ method: "POST" }).handler(async () => {
   const service = await billing();
   service.assertBillingOrigin(getRequest());
   return service.verifyPurchaseSession(getCookie(COOKIE));
 });
-
 export const verifyMyPremium = createServerFn({ method: "POST" })
   .middleware([requireFirebaseAuth])
   .handler(async ({ context }) => {
@@ -156,7 +123,6 @@ export const getIntroCompletion = createServerFn({ method: "GET" })
       await getFirebaseAdminFirestore().collection("intro_completion").doc(context.userId).get()
     ).exists;
   });
-
 export const completeIntro = createServerFn({ method: "POST" })
   .middleware([requireFirebaseAuth])
   .handler(async ({ context }) => {

@@ -1,31 +1,52 @@
 import { Capacitor } from "@capacitor/core";
 import type { createPurchaseSession } from "@/lib/billing.functions";
-import { detectCurrency, type CurrencyCode } from "@/lib/currency";
+import { detectCurrency, formatPrice, type CurrencyCode } from "@/lib/currency";
 
 type Identity = Omit<
   Awaited<ReturnType<typeof createPurchaseSession>>,
-  "whopEnabled" | "returnUrl"
+  "provider" | "whopEnabled"
 > & {
   iosApiKey?: string | null;
+  provider?: "whop" | "revenuecat";
   whopEnabled?: boolean;
-  returnUrl?: string;
 };
+
 export type PlanKind = "monthly" | "yearly" | "family";
+
 export type BillingPlan = {
   id: string;
+  productId?: string;
+  title?: string;
   kind: PlanKind;
+  whopPlanKind?: "monthly" | "yearly" | "family" | "yearly_exit";
+  provider?: "whop" | "revenuecat";
   price: string;
+  priceAmount?: number | null;
+  currencyCode?: string | null;
+  billingNote?: string | null;
   period: string;
+  periodUnit?: "day" | "week" | "month" | "year" | "once";
   trialDays: number;
   purchase: () => Promise<unknown>;
 };
-export type BillingStore = { plans: BillingPlan[]; restore: () => Promise<unknown> };
+
+export type BillingStore = {
+  offeringId?: string;
+  provider?: "whop" | "revenuecat";
+  plans: BillingPlan[];
+  exitOfferPlan?: BillingPlan | null;
+  restore: () => Promise<unknown>;
+};
 
 const PLAN_ORDER: Record<PlanKind, number> = { monthly: 0, yearly: 1, family: 2 };
 
 export function planKind(identifier: string, product: string, period: string): PlanKind | null {
   const key = `${identifier}_${product}`.toLowerCase();
-  if (/(?:^|[_.-])family(?:$|[_.-])/.test(key) || key.includes("premium_family_monthly")) {
+  if (
+    /(?:^|[_.-])family(?:$|[_.-])/.test(key) ||
+    key.includes("premium_family_monthly") ||
+    key.includes("premium_family")
+  ) {
     return "family";
   }
   if (/(?:^|[_.-])lifetime(?:$|[_.-])/.test(key) || period === "") {
@@ -56,8 +77,108 @@ export function periodLabel(iso: string): string {
   return Number(match[1]) === 1 ? unit : `${match[1]} ${unit}s`;
 }
 
+export function periodUnitFromIso(iso: string): "day" | "week" | "month" | "year" | "once" {
+  if (!iso) return "once";
+  const match = /^P\d+([DWMY])$/.exec(iso);
+  if (!match) return "month";
+  return (
+    ({ D: "day", W: "week", M: "month", Y: "year" } as const)[match[1] as "D" | "W" | "M" | "Y"] ??
+    "month"
+  );
+}
+
+/** Parse an ISO-8601 duration string (e.g., "P7D", "P3D", "P1W", "P1M") into whole days. */
+export function parseTrialDaysFromIso(iso: string | null | undefined): number {
+  if (!iso || typeof iso !== "string") return 0;
+  const match = /^P(\d+)([DWMY])$/i.exec(iso.trim());
+  if (!match) return 0;
+  const count = Number(match[1]);
+  if (!Number.isFinite(count) || count <= 0) return 0;
+  switch (match[2].toUpperCase()) {
+    case "D":
+      return count;
+    case "W":
+      return count * 7;
+    case "M":
+      return count * 30;
+    case "Y":
+      return count * 365;
+    default:
+      return 0;
+  }
+}
+
 export function sevenDayTrial(iso: string | null | undefined, hasIntroPrice: boolean): number {
   return !hasIntroPrice && (iso === "P7D" || iso === "P1W") ? 7 : 0;
+}
+
+export function parseNumericPrice(
+  formattedPrice: string | null | undefined,
+  amountMicros?: number | null,
+): number | null {
+  if (typeof amountMicros === "number" && Number.isFinite(amountMicros) && amountMicros > 0) {
+    return amountMicros / 1_000_000;
+  }
+  if (!formattedPrice) return null;
+  const cleaned = formattedPrice.replace(/[^\d.,]/g, "").trim();
+  if (!cleaned) return null;
+  // Handle both "1,399.00" and "1 399,00" styles cleanly
+  const commaCount = (cleaned.match(/,/g) ?? []).length;
+  const dotCount = (cleaned.match(/\./g) ?? []).length;
+  let normalized = cleaned;
+  if (commaCount > 0 && dotCount > 0) {
+    normalized =
+      cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".")
+        ? cleaned.replace(/\./g, "").replace(",", ".")
+        : cleaned.replace(/,/g, "");
+  } else if (commaCount === 1 && /,\d{2}$/.test(cleaned)) {
+    normalized = cleaned.replace(",", ".");
+  } else {
+    normalized = cleaned.replace(/,/g, "");
+  }
+  const value = Number.parseFloat(normalized);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+/**
+ * Returns the mathematically accurate savings percentage of yearly vs 12x monthly,
+ * or null when monthly/yearly pricing isn't comparable or yields no savings.
+ */
+export function calculateAnnualSavingsPercent(
+  monthly: BillingPlan | undefined,
+  yearly: BillingPlan | undefined,
+): number | null {
+  if (!monthly || !yearly) return null;
+  if (monthly.currencyCode && yearly.currencyCode && monthly.currencyCode !== yearly.currencyCode) {
+    return null;
+  }
+  const monthlyAmt = monthly.priceAmount ?? parseNumericPrice(monthly.price);
+  const yearlyAmt = yearly.priceAmount ?? parseNumericPrice(yearly.price);
+  if (!monthlyAmt || !yearlyAmt || monthlyAmt <= 0 || yearlyAmt <= 0) return null;
+  const annualized = monthlyAmt * 12;
+  if (yearlyAmt >= annualized) return null;
+  const pct = Math.round(((annualized - yearlyAmt) / annualized) * 100);
+  return pct >= 1 ? pct : null;
+}
+
+export function formatZeroToday(currencyCode?: string | null, priceSample?: string): string {
+  const code = currencyCode?.toUpperCase();
+  if (code === "ZAR" || (!code && priceSample?.trim().startsWith("R"))) return "R0";
+  if (code === "USD" || (!code && priceSample?.trim().startsWith("$"))) return "$0";
+  if (code === "EUR" || (!code && priceSample?.trim().startsWith("€"))) return "€0";
+  if (code === "GBP" || (!code && priceSample?.trim().startsWith("£"))) return "£0";
+  if (code) {
+    try {
+      return new Intl.NumberFormat("en-ZA", {
+        style: "currency",
+        currency: code,
+        maximumFractionDigits: 0,
+      }).format(0);
+    } catch {
+      return `${code} 0`;
+    }
+  }
+  return "R0";
 }
 
 export function purchaseWasCancelled(error: unknown): boolean {
@@ -101,8 +222,12 @@ export function purchaseIsPending(error: unknown): boolean {
 function preferredWebCurrency(explicit?: CurrencyCode): string {
   if (explicit) return explicit;
   if (typeof window !== "undefined") {
-    const stored = window.localStorage.getItem("mealmate-currency")?.trim().toUpperCase();
-    if (stored && /^[A-Z]{3}$/.test(stored)) return stored;
+    try {
+      const stored = window.localStorage.getItem("mealmate-currency")?.trim().toUpperCase();
+      if (stored && /^[A-Z]{3}$/.test(stored)) return stored;
+    } catch {
+      // Ignore storage access errors in restricted WebViews
+    }
   }
   return detectCurrency() || "ZAR";
 }
@@ -176,6 +301,22 @@ export function loadBillingStore(
   return task;
 }
 
+function webTrialDays(freeTrialPhase: unknown): number {
+  if (!freeTrialPhase || typeof freeTrialPhase !== "object") return 0;
+  const phase = freeTrialPhase as {
+    periodDuration?: string | null;
+    period?: { number?: number; unit?: string } | null;
+  };
+  if (typeof phase.periodDuration === "string" && phase.periodDuration) {
+    return parseTrialDaysFromIso(phase.periodDuration);
+  }
+  if (phase.period?.number && phase.period?.unit) {
+    const iso = `P${phase.period.number}${phase.period.unit[0].toUpperCase()}`;
+    return parseTrialDaysFromIso(iso);
+  }
+  return 0;
+}
+
 async function configureStore(identity: Identity, currency?: CurrencyCode): Promise<BillingStore> {
   if (Capacitor.isNativePlatform()) {
     const platform = Capacitor.getPlatform();
@@ -198,63 +339,237 @@ async function configureStore(identity: Identity, currency?: CurrencyCode): Prom
     }
     nativeUser = identity.appUserId;
     const offerings = await Purchases.getOfferings();
-    const packages =
-      offerings.all[identity.offering]?.availablePackages ??
-      offerings.current?.availablePackages ??
-      [];
+    const selectedOffering = offerings.all[identity.offering] ?? offerings.current;
+    const packages = selectedOffering?.availablePackages ?? [];
+    const mapNativePackage = (pkg: (typeof packages)[number]): BillingPlan[] => {
+      const product = pkg.product as unknown as {
+        identifier: string;
+        title?: string;
+        priceString: string;
+        price?: number;
+        currencyCode?: string;
+        subscriptionPeriod?: string | null;
+        introPrice?: {
+          price: number;
+          periodNumberOfUnits: number;
+          periodUnit: string;
+        } | null;
+        defaultOption?: {
+          isPrepaid?: boolean;
+          installmentsInfo?: unknown;
+          introPhase?: unknown;
+          freePhase?: { billingPeriod?: { iso8601?: string } | null } | null;
+          billingPeriod?: { iso8601?: string } | null;
+          fullPricePhase?: {
+            price?: { formatted?: string; amountMicros?: number; currencyCode?: string };
+          } | null;
+        } | null;
+      };
+      const option = product.defaultOption;
+      if (option) {
+        if (option.isPrepaid || option.installmentsInfo || option.introPhase) return [];
+        const iso = option.billingPeriod?.iso8601 ?? product.subscriptionPeriod ?? "";
+        const kind = planKind(pkg.identifier, product.identifier, iso);
+        if (!kind) return [];
+        const formatted = option.fullPricePhase?.price?.formatted ?? product.priceString;
+        const amountMicros = option.fullPricePhase?.price?.amountMicros ?? null;
+        const trialIso = option.freePhase?.billingPeriod?.iso8601 ?? null;
+        return [
+          {
+            id: pkg.identifier,
+            productId: product.identifier,
+            title: product.title,
+            kind,
+            price: formatted,
+            priceAmount: parseNumericPrice(formatted, amountMicros) ?? product.price ?? null,
+            currencyCode:
+              option.fullPricePhase?.price?.currencyCode ?? product.currencyCode ?? null,
+            period: periodLabel(iso),
+            periodUnit: periodUnitFromIso(iso),
+            trialDays: parseTrialDaysFromIso(trialIso),
+            purchase: () =>
+              Purchases.purchaseSubscriptionOption({
+                subscriptionOption: option as never,
+              }),
+          },
+        ];
+      }
+      if (platform === "ios") {
+        const iso = product.subscriptionPeriod ?? "";
+        const kind = planKind(pkg.identifier, product.identifier, iso);
+        if (!kind) return [];
+        const intro = product.introPrice;
+        const trialIso =
+          intro && intro.price === 0
+            ? `P${intro.periodNumberOfUnits}${intro.periodUnit.slice(0, 1).toUpperCase()}`
+            : null;
+        return [
+          {
+            id: pkg.identifier,
+            productId: product.identifier,
+            title: product.title,
+            kind,
+            price: product.priceString,
+            priceAmount:
+              typeof product.price === "number" && product.price > 0
+                ? product.price
+                : parseNumericPrice(product.priceString),
+            currencyCode: product.currencyCode ?? null,
+            period: periodLabel(iso),
+            periodUnit: periodUnitFromIso(iso),
+            trialDays: parseTrialDaysFromIso(trialIso),
+            purchase: () => Purchases.purchasePackage({ aPackage: pkg }),
+          },
+        ];
+      }
+      return [];
+    };
+
     const plans = packages
-      .flatMap((pkg): BillingPlan[] => {
-        const product = pkg.product;
-        const option = product.defaultOption;
-        if (option) {
-          if (option.isPrepaid || option.installmentsInfo || option.introPhase) return [];
-          const iso = option.billingPeriod?.iso8601 ?? product.subscriptionPeriod ?? "";
-          const kind = planKind(pkg.identifier, product.identifier, iso);
-          if (!kind) return [];
-          return [
-            {
-              id: pkg.identifier,
-              kind,
-              price: option.fullPricePhase?.price.formatted ?? product.priceString,
-              period: periodLabel(iso),
-              trialDays: 3,
-              purchase: () => Purchases.purchaseSubscriptionOption({ subscriptionOption: option }),
-            },
-          ];
-        }
-        if (platform === "ios") {
-          const iso = product.subscriptionPeriod ?? "";
-          const kind = planKind(pkg.identifier, product.identifier, iso);
-          if (!kind) return [];
-          const intro = product.introPrice;
-          const hasPaidIntro = !!intro && intro.price > 0;
-          const trialIso =
-            intro && intro.price === 0
-              ? `P${intro.periodNumberOfUnits}${intro.periodUnit.slice(0, 1).toUpperCase()}`
-              : null;
-          return [
-            {
-              id: pkg.identifier,
-              kind,
-              price: product.priceString,
-              period: periodLabel(iso),
-              trialDays: 3,
-              purchase: () => Purchases.purchasePackage({ aPackage: pkg }),
-            },
-          ];
-        }
-        return [];
-      })
+      .flatMap(mapNativePackage)
       .sort((a, b) => PLAN_ORDER[a.kind] - PLAN_ORDER[b.kind]);
     if (!plans.length) {
       throw new Error("Subscription plans are temporarily unavailable. Please try again.");
     }
-    return { plans, restore: () => Purchases.restorePurchases() };
+    const exitOffering =
+      offerings.all["exit_offer"] ?? offerings.all["annual_discount"] ?? offerings.all["discount"];
+    const exitPlans = (exitOffering?.availablePackages ?? []).flatMap(mapNativePackage);
+    const exitOfferPlan = exitPlans.find((p) => p.kind === "yearly") ?? exitPlans[0] ?? null;
+
+    return {
+      offeringId: selectedOffering?.identifier ?? identity.offering,
+      plans,
+      exitOfferPlan,
+      restore: () => Purchases.restorePurchases(),
+    };
+  }
+
+  if (identity.provider === "whop" || (identity.whopEnabled && !identity.webApiKey)) {
+    const { verifyWhopCheckoutCompletion } = await import("@/lib/whop-client");
+    const displayCurrency = currency && currency !== "USD" ? currency : "USD";
+    const localizedWhopPrice = (
+      usdAmount: number,
+      usdFormatted: string,
+      zarAmount: number,
+      zarFormatted: string,
+    ) => {
+      if (displayCurrency === "USD") {
+        return {
+          price: usdFormatted,
+          priceAmount: usdAmount,
+          currencyCode: "USD",
+          billingNote: null,
+        };
+      }
+      if (displayCurrency === "ZAR") {
+        return {
+          price: zarFormatted,
+          priceAmount: zarAmount,
+          currencyCode: "ZAR",
+          billingNote: `Charged at ${usdFormatted} USD at Whop checkout`,
+        };
+      }
+      const formatted = formatPrice(usdAmount, displayCurrency);
+      return {
+        price: formatted,
+        priceAmount: parseNumericPrice(formatted) ?? usdAmount,
+        currencyCode: displayCurrency,
+        billingNote: `Charged at ${usdFormatted} USD at Whop checkout`,
+      };
+    };
+
+    const mPrice = localizedWhopPrice(9.99, "$9.99", 189, "R 189");
+    const yPrice = localizedWhopPrice(79.99, "$79.99", 1399, "R 1,399");
+    const fPrice = localizedWhopPrice(119.99, "$119.99", 1899, "R 1,899");
+    const ePrice = localizedWhopPrice(63.99, "$63.99", 1119, "R 1,119");
+
+    const whopPlans: BillingPlan[] = [
+      {
+        id: "whop_monthly",
+        productId: "whop_mealmate_monthly",
+        title: "Monthly Premium",
+        kind: "monthly",
+        whopPlanKind: "monthly",
+        provider: "whop",
+        ...mPrice,
+        period: "month",
+        periodUnit: "month",
+        trialDays: 3,
+        purchase: async () => ({ provider: "whop", planKind: "monthly" }),
+      },
+      {
+        id: "whop_yearly",
+        productId: "whop_mealmate_yearly",
+        title: "Yearly Premium",
+        kind: "yearly",
+        whopPlanKind: "yearly",
+        provider: "whop",
+        ...yPrice,
+        period: "year",
+        periodUnit: "year",
+        trialDays: 3,
+        purchase: async () => ({ provider: "whop", planKind: "yearly" }),
+      },
+      {
+        id: "whop_family",
+        productId: "whop_mealmate_family",
+        title: "Family Premium",
+        kind: "family",
+        whopPlanKind: "family",
+        provider: "whop",
+        ...fPrice,
+        period: "year",
+        periodUnit: "year",
+        trialDays: 3,
+        purchase: async () => ({ provider: "whop", planKind: "family" }),
+      },
+    ];
+    const exitOfferPlan: BillingPlan = {
+      id: "whop_yearly_exit",
+      productId: "whop_mealmate_yearly_exit",
+      title: "Yearly Premium (20% Off Year 1)",
+      kind: "yearly",
+      whopPlanKind: "yearly_exit",
+      provider: "whop",
+      ...ePrice,
+      period: "year",
+      periodUnit: "year",
+      trialDays: 3,
+      purchase: async () => ({ provider: "whop", planKind: "yearly_exit" }),
+    };
+
+    return {
+      offeringId: "whop_default",
+      provider: "whop",
+      plans: whopPlans,
+      exitOfferPlan,
+      restore: async () => {
+        if (identity.webApiKey) {
+          try {
+            const { Purchases } = await import("@revenuecat/purchases-js");
+            const sdk = webUser
+              ? Purchases.getSharedInstance()
+              : Purchases.configure({
+                  apiKey: identity.webApiKey,
+                  appUserId: identity.appUserId,
+                });
+            if (webUser && webUser !== identity.appUserId) {
+              await sdk.changeUser(identity.appUserId);
+            }
+            webUser = identity.appUserId;
+            await sdk.getCustomerInfo();
+          } catch {
+            // Continue with server-side Whop + RevenueCat + Promo verification
+          }
+        }
+        return verifyWhopCheckoutCompletion();
+      },
+    };
   }
 
   if (!identity.webApiKey) {
     throw new Error(
-      "Web subscriptions are not configured yet. Configure REVENUECAT_WEB_PUBLIC_KEY in your production environment.",
+      "Web billing is not configured yet. Configure REVENUECAT_WEB_PUBLIC_KEY or Whop credentials to enable web subscriptions.",
     );
   }
 
@@ -278,35 +593,67 @@ async function configureStore(identity: Identity, currency?: CurrencyCode): Prom
     offerings = await sdk.getOfferings();
   }
 
-  const packages =
-    offerings.all[identity.offering]?.availablePackages ??
-    offerings.current?.availablePackages ??
-    [];
+  const selectedOffering = offerings.all[identity.offering] ?? offerings.current;
+  const packages = selectedOffering?.availablePackages ?? [];
+  const mapWebPackage = (pkg: (typeof packages)[number]): BillingPlan[] => {
+    const product = pkg.product as unknown as {
+      identifier: string;
+      title?: string;
+      price: {
+        formattedPrice: string;
+        amountMicros?: number;
+        amount?: number;
+        currency?: string;
+      };
+      period?: { number: number; unit: string } | null;
+      freeTrialPhase?: unknown;
+      introPricePhase?: unknown;
+    };
+    if (product.introPricePhase && !product.freeTrialPhase) return [];
+    const iso = product.period
+      ? `P${product.period.number}${product.period.unit[0].toUpperCase()}`
+      : "";
+    const kind = planKind(pkg.identifier, product.identifier, iso);
+    if (!kind) return [];
+    const formatted = product.price.formattedPrice;
+    const numeric =
+      typeof product.price.amount === "number" && product.price.amount > 0
+        ? product.price.amount
+        : parseNumericPrice(formatted, product.price.amountMicros);
+    return [
+      {
+        id: pkg.identifier,
+        productId: product.identifier,
+        title: product.title,
+        kind,
+        price: formatted,
+        priceAmount: numeric,
+        currencyCode: product.price.currency ?? targetCurrency,
+        period: periodLabel(iso),
+        periodUnit: periodUnitFromIso(iso),
+        trialDays: webTrialDays(product.freeTrialPhase),
+        purchase: () => sdk.purchase({ rcPackage: pkg, skipSuccessPage: true }),
+      },
+    ];
+  };
+
   const plans = packages
-    .flatMap((pkg): BillingPlan[] => {
-      const product = pkg.product;
-      if (product.introPricePhase) return [];
-      const iso = product.period
-        ? `P${product.period.number}${product.period.unit[0].toUpperCase()}`
-        : "";
-      const kind = planKind(pkg.identifier, product.identifier, iso);
-      if (!kind) return [];
-      return [
-        {
-          id: pkg.identifier,
-          kind,
-          price: product.price.formattedPrice,
-          period: periodLabel(iso),
-          trialDays: 3,
-          purchase: () => sdk.purchase({ rcPackage: pkg, skipSuccessPage: true }),
-        },
-      ];
-    })
+    .flatMap(mapWebPackage)
     .sort((a, b) => PLAN_ORDER[a.kind] - PLAN_ORDER[b.kind]);
 
   if (!plans.length) {
     throw new Error("Subscription plans are temporarily unavailable. Please try again.");
   }
 
-  return { plans, restore: () => sdk.getCustomerInfo() };
+  const exitOffering =
+    offerings.all["exit_offer"] ?? offerings.all["annual_discount"] ?? offerings.all["discount"];
+  const exitPlans = (exitOffering?.availablePackages ?? []).flatMap(mapWebPackage);
+  const exitOfferPlan = exitPlans.find((p) => p.kind === "yearly") ?? exitPlans[0] ?? null;
+
+  return {
+    offeringId: selectedOffering?.identifier ?? identity.offering,
+    plans,
+    exitOfferPlan,
+    restore: () => sdk.getCustomerInfo(),
+  };
 }

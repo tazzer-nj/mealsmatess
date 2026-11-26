@@ -116,9 +116,11 @@ function ScanPage() {
   const [items, setItems] = useState<ScannedItem[] | null>(null);
   const [dish, setDish] = useState<ScannedDish | null>(null);
   const [busy, setBusy] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [generatingRecipe, setGeneratingRecipe] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(false);
+  const lastDataUrlRef = useRef<string | null>(null);
 
   const [newItemName, setNewItemName] = useState("");
   const [newItemQty, setNewItemQty] = useState("");
@@ -143,19 +145,26 @@ function ScanPage() {
     setItems(null);
     setDish(null);
     setPreview(null);
+    setScanError(null);
+    lastDataUrlRef.current = null;
     setNewItemName("");
     setNewItemQty("");
     if (cameraInputRef.current) cameraInputRef.current.value = "";
     if (galleryInputRef.current) galleryInputRef.current.value = "";
   }
 
-  async function processImageFile(file: File) {
+  async function runScan(dataUrl: string) {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      const msg = "You're offline. Connect to the internet and tap Retry scan.";
+      setScanError(msg);
+      toast.error("Scan failed", { description: msg });
+      return;
+    }
     setBusy(true);
+    setScanError(null);
     setItems(null);
     setDish(null);
     try {
-      const dataUrl = await compressImage(await fileToDataUrl(file));
-      setPreview(dataUrl);
       if (mode === "dish") {
         const found = await scanDish({ data: { imageDataUrl: dataUrl } });
         if (!found.is_food) {
@@ -163,6 +172,7 @@ function ScanPage() {
             description: "Try a clear photo of a plated meal.",
           });
           setPreview(null);
+          lastDataUrlRef.current = null;
           return;
         }
         setDish(found);
@@ -185,11 +195,33 @@ function ScanPage() {
         }
       }
     } catch (err) {
+      const msg =
+        err instanceof Error && err.message
+          ? err.message
+          : "Scan failed. Check your connection and try again.";
+      setScanError(msg);
       toast.error("Couldn't scan that photo", {
-        description: err instanceof Error ? err.message : "Please try again.",
+        description: msg,
       });
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function processImageFile(file: File) {
+    setScanError(null);
+    setItems(null);
+    setDish(null);
+    try {
+      const dataUrl = await compressImage(await fileToDataUrl(file));
+      lastDataUrlRef.current = dataUrl;
+      setPreview(dataUrl);
+      await runScan(dataUrl);
+    } catch (err) {
+      const msg =
+        err instanceof Error && err.message ? err.message : "Could not read that photo file.";
+      setScanError(msg);
+      toast.error("Couldn't read that photo", { description: msg });
     }
   }
 
@@ -468,6 +500,28 @@ function ScanPage() {
               </>
             )}
           </div>
+          {scanError && !busy && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-3 border-t border-destructive/30 bg-destructive/10 px-4 py-3 text-xs text-destructive"
+            >
+              <span className="min-w-0 flex-1 font-medium">{scanError}</span>
+              <div className="flex shrink-0 items-center gap-2">
+                {lastDataUrlRef.current && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => lastDataUrlRef.current && void runScan(lastDataUrlRef.current)}
+                    className="h-8 rounded-full border-destructive/30 bg-background px-3 text-xs text-foreground"
+                  >
+                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                    Retry scan
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

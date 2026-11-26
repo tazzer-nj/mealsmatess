@@ -220,6 +220,7 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
     previewThemeId,
     displayTheme,
     isPreviewing,
+    accountSynced,
     loadingAccount,
     saveStatus,
     saveError,
@@ -235,6 +236,8 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
 
   const displayLocked = displayTheme.premium && !isPremium;
   const isSaving = saveStatus === "saving";
+  const syncedConfirmed =
+    isAuthenticated && (accountSynced ?? saveStatus !== "error") && saveStatus !== "error";
 
   function handleSelectTheme(theme: MealMateTheme) {
     if (theme.id === activeThemeId && previewThemeId === null) {
@@ -263,9 +266,13 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
               <div className="truncate text-[11px] text-muted-foreground">
                 {loadingAccount
                   ? "Checking your account theme…"
-                  : isAuthenticated
-                    ? "Synced to your MealMate account across devices"
-                    : "Device preview only · Sign in to save to your account"}
+                  : saveStatus === "error"
+                    ? "Account sync failed · Restored previous theme"
+                    : syncedConfirmed
+                      ? "Synced to your MealMate account across devices"
+                      : isAuthenticated
+                        ? "Account sync pending · Saved on this device"
+                        : "Device preview only · Sign in to save to your account"}
               </div>
             </div>
           </div>
@@ -436,13 +443,13 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
         </div>
       </div>
 
-      {/* 6 Logo Themes */}
+      {/* 6 Exclusive Premium Themes */}
       <div className="space-y-2.5 pt-1">
         <div className="flex items-center justify-between gap-2 px-0.5">
           <div className="flex items-center gap-1.5">
             <Crown className="h-3.5 w-3.5 text-[var(--periwinkle)]" />
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Logo Themes
+              Premium Themes
             </h3>
           </div>
           {isPremium ? (
@@ -460,7 +467,7 @@ export function ThemeGallery({ compact = false }: { compact?: boolean }) {
         </div>
         <div
           role="radiogroup"
-          aria-label="Logo themes"
+          aria-label="Premium themes"
           className={cn(
             "grid grid-cols-2 gap-2.5",
             compact ? "sm:grid-cols-3" : "sm:grid-cols-3 sm:gap-3",

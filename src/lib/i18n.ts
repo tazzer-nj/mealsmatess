@@ -222,10 +222,14 @@ void i18n.use(initReactI18next).init({
     ss: { translation: { onboarding: ONBOARDING_TRANSLATIONS.ss } },
     nr: { translation: { onboarding: ONBOARDING_TRANSLATIONS.nr } },
   },
-  lng:
-    typeof window !== "undefined"
-      ? normalizeAppLanguage(window.localStorage.getItem("mealmate-lang"))
-      : "en",
+  lng: (() => {
+    if (typeof window === "undefined") return "en";
+    try {
+      return normalizeAppLanguage(window.localStorage.getItem("mealmate-lang"));
+    } catch {
+      return "en";
+    }
+  })(),
   fallbackLng: "en",
   interpolation: { escapeValue: false },
   returnNull: false,

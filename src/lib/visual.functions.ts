@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireAiCredit } from "@/lib/ai-credits.server";
 import { generateAiImage, generateAiObject, generateAiSpeech } from "@/lib/ai-engine.server";
 import { z } from "zod";
-import { requireFirebaseAuth } from "@/lib/firebase-auth-middleware";
+import { requirePremium } from "@/lib/premium-middleware";
 import { enforceRateLimit, trackEvent } from "@/lib/security.server";
 
 const VisualInput = z.object({
@@ -75,7 +75,7 @@ async function b64Speech(text: string): Promise<string | null> {
  * visual explanation (scene script + AI illustrations + voice narration).
  */
 export const generateVisualExplanation = createServerFn({ method: "POST" })
-  .middleware([requireFirebaseAuth])
+  .middleware([requirePremium])
   .validator((v: unknown) => VisualInput.parse(v))
   .handler(async ({ data, context }): Promise<VisualExplanation> => {
     await requireAiCredit(context.userId);

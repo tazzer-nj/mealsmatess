@@ -9,11 +9,16 @@ function getSpeechPreferences() {
   if (typeof window === "undefined") {
     return { muted: false, enabled: true, rate: 1 };
   }
-  const muted = localStorage.getItem("mealmate_voice_muted") === "true";
-  const enabled = localStorage.getItem("mealmate_voice_responses") !== "false";
-  const parsedRate = Number.parseFloat(localStorage.getItem("mealmate_speech_speed") ?? "1");
-  const rate = Number.isFinite(parsedRate) && parsedRate >= 0.5 && parsedRate <= 2 ? parsedRate : 1;
-  return { muted, enabled, rate };
+  try {
+    const muted = localStorage.getItem("mealmate_voice_muted") === "true";
+    const enabled = localStorage.getItem("mealmate_voice_responses") !== "false";
+    const parsedRate = Number.parseFloat(localStorage.getItem("mealmate_speech_speed") ?? "1");
+    const rate =
+      Number.isFinite(parsedRate) && parsedRate >= 0.5 && parsedRate <= 2 ? parsedRate : 1;
+    return { muted, enabled, rate };
+  } catch {
+    return { muted: false, enabled: true, rate: 1 };
+  }
 }
 
 /** Device TTS, preferring a local English voice. No microphone data is passed to TTS. */

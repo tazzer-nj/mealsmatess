@@ -40,13 +40,17 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   // Initial local-storage hydration (guests).
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("mealmate-lang");
-    if (stored) {
-      document.documentElement.lang = stored;
-      if (stored !== i18n.language) {
-        void i18n.changeLanguage(stored);
-        applyLangTransition(stored);
+    try {
+      const stored = window.localStorage.getItem("mealmate-lang");
+      if (stored) {
+        document.documentElement.lang = stored;
+        if (stored !== i18n.language) {
+          void i18n.changeLanguage(stored);
+          applyLangTransition(stored);
+        }
       }
+    } catch {
+      // Ignore storage access errors in restricted WebViews
     }
   }, [i18n]);
 
