@@ -1,13 +1,13 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { RecipeRecord } from "@/lib/queries";
-import { curatedRecipeImageUrl } from "@/lib/recipe-image";
+import { curatedRecipeImageUrl, hasUsableStoredImage } from "@/lib/recipe-image";
 import { ensureRecipeImage } from "@/lib/recipe-images.functions";
 
 /** Explicit search submissions only: reuse existing photos, then fill missing ones. */
 export async function loadRecipeSearchImages(recipes: RecipeRecord[], queryClient: QueryClient) {
   for (const recipe of recipes.slice(0, 6)) {
-    if ((recipe.image_source && recipe.image_url) || curatedRecipeImageUrl(recipe)) continue;
+    if (hasUsableStoredImage(recipe) || curatedRecipeImageUrl(recipe)) continue;
     const result = await ensureRecipeImage({ data: { recipeId: recipe.id } }).catch(() => {
       toast.error("Couldn't create a recipe photo", {
         description: "Please try again from the recipe page.",

@@ -14,12 +14,18 @@ try {
     dereference: true,
   });
   const serverFiles = await readdir(join(artifact, "_ssr"));
-  const catalogFile = serverFiles.find((name) => name.startsWith("recipe-catalog.functions-"));
-  if (!catalogFile) throw new Error("Recipe catalog is missing from the server artifact.");
-  const catalogSource = await readFile(join(artifact, "_ssr", catalogFile), "utf8");
+  const catalogFiles = serverFiles.filter((name) => name.startsWith("recipe-catalog.functions-"));
+  if (!catalogFiles.length) throw new Error("Recipe catalog is missing from the server artifact.");
+  const catalogSources = await Promise.all(
+    catalogFiles.map((name) => readFile(join(artifact, "_ssr", name), "utf8")),
+  );
   const catalogFunctionIds = [
-    catalogSource.match(/id: "([a-f0-9]+)",\s*name: "listRecipeCatalog"/)?.[1],
-    catalogSource.match(/id: "([a-f0-9]+)",\s*name: "getRecipeCatalogEntry"/)?.[1],
+    catalogSources
+      .map((src) => src.match(/id:\s*"([a-f0-9]+)",\s*name:\s*"listRecipeCatalog"/)?.[1])
+      .find(Boolean),
+    catalogSources
+      .map((src) => src.match(/id:\s*"([a-f0-9]+)",\s*name:\s*"getRecipeCatalogEntry"/)?.[1])
+      .find(Boolean),
   ];
   if (catalogFunctionIds.some((id) => !id)) throw new Error("Catalog function IDs are missing.");
   const billingFiles = serverFiles.filter((name) => name.startsWith("billing.functions-"));

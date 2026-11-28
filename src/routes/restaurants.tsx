@@ -51,6 +51,7 @@ import { cn } from "@/lib/utils";
 import { AdSlot } from "@/components/ad-slot";
 import { usePreferences } from "@/hooks/use-preferences";
 import { personalize } from "@/lib/preferences";
+import { ResilientImage } from "@/components/resilient-image";
 
 export const Route = createFileRoute("/restaurants")({
   head: () => ({
@@ -451,7 +452,13 @@ function RestaurantsPage() {
                     )}
                   >
                     {image ? (
-                      <img src={image} alt="" className="h-full w-full object-cover" />
+                      <ResilientImage
+                        src={image}
+                        fallbackSrc={FALLBACKS[index % FALLBACKS.length]}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        fallback={item.label.slice(0, 1)}
+                      />
                     ) : (
                       item.label.slice(0, 1)
                     )}
@@ -533,10 +540,15 @@ function RestaurantsPage() {
                   >
                     <span className="mx-auto grid h-18 w-18 place-items-center overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
                       {restaurant.logo_url ? (
-                        <img
+                        <ResilientImage
                           src={restaurant.logo_url}
                           alt={`${restaurant.name} logo`}
                           className="h-full w-full object-cover"
+                          fallback={
+                            <span className="text-xl font-black text-primary">
+                              {restaurant.name.slice(0, 2).toUpperCase()}
+                            </span>
+                          }
                         />
                       ) : (
                         <span className="text-xl font-black text-primary">
@@ -666,8 +678,9 @@ function PromoCarousel({
           return (
             <article key={promo.id} className="w-full shrink-0 snap-center px-4">
               <div className="relative h-52 overflow-hidden rounded-3xl border border-border bg-card">
-                <img
-                  src={restaurant?.cover_image_url || FALLBACKS[(index + 3) % FALLBACKS.length]}
+                <ResilientImage
+                  src={restaurant?.cover_image_url}
+                  fallbackSrc={FALLBACKS[(index + 3) % FALLBACKS.length]}
                   alt="Promotional food"
                   className="h-full w-full object-cover"
                 />
@@ -755,8 +768,9 @@ function DishSection({
             >
               <Link to="/restaurant/$slug" params={{ slug: restaurant.slug }} className="block">
                 <div className="relative h-32 overflow-hidden bg-muted">
-                  <img
-                    src={dish.image_url || FALLBACKS[index % FALLBACKS.length]}
+                  <ResilientImage
+                    src={dish.image_url}
+                    fallbackSrc={FALLBACKS[index % FALLBACKS.length]}
                     alt={dish.name}
                     loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
@@ -845,8 +859,9 @@ function RestaurantSection({
             >
               <div className="relative h-40 overflow-hidden bg-muted">
                 <Link to="/restaurant/$slug" params={{ slug: restaurant.slug }}>
-                  <img
-                    src={restaurant.cover_image_url || FALLBACKS[(index + 5) % FALLBACKS.length]}
+                  <ResilientImage
+                    src={restaurant.cover_image_url}
+                    fallbackSrc={FALLBACKS[(index + 5) % FALLBACKS.length]}
                     alt={`${restaurant.name} food`}
                     loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"

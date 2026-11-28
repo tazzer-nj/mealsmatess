@@ -53,6 +53,7 @@ import {
 } from "@/lib/preferences.functions";
 import { saveUserProfile } from "@/lib/profile-avatar";
 import { ProfileAvatarUploader } from "@/components/profile-avatar-uploader";
+import { UserAvatar } from "@/components/resilient-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1202,10 +1203,15 @@ function SettingsPage() {
             <div className="flex items-center justify-between gap-4 p-4 sm:p-5">
               <div className="flex min-w-0 items-center gap-3.5">
                 {user?.photoURL ? (
-                  <img
+                  <UserAvatar
                     src={user.photoURL}
                     alt={user.displayName || "Profile avatar"}
                     className="h-12 w-12 shrink-0 rounded-full border border-border object-cover"
+                    fallback={
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--periwinkle-soft)] text-sm font-semibold text-[var(--periwinkle)]">
+                        {formatInitials(user?.displayName, user?.email)}
+                      </div>
+                    }
                   />
                 ) : (
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-[var(--periwinkle-soft)] text-sm font-semibold text-[var(--periwinkle)]">

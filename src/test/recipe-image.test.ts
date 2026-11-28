@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { RECIPE_PHOTOS } from "@/assets/recipes/manifest";
+import { DISH_RENDITIONS, RECIPE_PHOTOS } from "@/assets/recipes/manifest";
+import { CURATED_RECIPES } from "@/lib/curated-recipes";
 import {
   recipeImageUrl,
   photoRendition,
   recipePhotoSources,
   categoryFallbackUrl,
+  curatedRecipeImageUrl,
+  isValidImageUrl,
   NEUTRAL_RECIPE_PLACEHOLDER,
 } from "@/lib/recipe-image";
 
@@ -18,6 +21,16 @@ describe("Recipe image safety", () => {
 
     expect(urls).toHaveLength(45);
     expect(urls.every((url) => typeof url === "string" && !url.includes("/__l5e/"))).toBe(true);
+  });
+
+  it("includes a dedicated bundled dish photo for every curated recipe including Spiced Rooibos Iced Tea", () => {
+    expect(DISH_RENDITIONS["spiced-rooibos-iced-tea"]).toBeDefined();
+    expect(curatedRecipeImageUrl({ name: "Spiced Rooibos Iced Tea" }, "card")).toContain(
+      "spiced-rooibos-iced-tea",
+    );
+    expect(CURATED_RECIPES.every((r) => Boolean(r.image_url && r.image_source === "Curated"))).toBe(
+      true,
+    );
   });
 
   it("matches the audited Neapolitan margherita photo across generated slug suffixes", () => {
@@ -44,6 +57,24 @@ describe("Recipe image safety", () => {
       }),
     ).toBe("https://example.com/ramen.jpg");
   });
+
+  it("rejects legacy /__l5e/ URLs and trusts MealMate storage hosts even without image_source", () => {
+    expect(isValidImageUrl("/__l5e/assets-v1/missing.jpg")).toBe(false);
+    expect(
+      recipeImageUrl({
+        name: "Greek Chicken Salad",
+        image_source: "AI",
+        image_url: "/__l5e/assets-v1/missing.jpg",
+      }),
+    ).toContain("greek-chicken-salad");
+    expect(
+      recipeImageUrl({
+        name: "Custom Soup",
+        image_url: "https://firebasestorage.googleapis.com/v0/b/app/o/soup.png?alt=media",
+      }),
+    ).toContain("firebasestorage.googleapis.com");
+  });
+
   it("does not replace an unknown dish with random food", () => {
     expect(categoryFallbackUrl({ name: "Spicy chicken ramen" })).toBe(NEUTRAL_RECIPE_PLACEHOLDER);
   });
@@ -56,9 +87,22 @@ describe("Recipe image safety", () => {
 
 describe("responsive recipe delivery", () => {
   it("uses genuinely distinct local files for each size", () => {
-    for (const photo of Object.values(RECIPE_PHOTOS)) {
+    for (const photo of [...Object.values(RECIPE_PHOTOS), ...Object.values(DISH_RENDITIONS)]) {
       expect(new Set(Object.values(photo)).size).toBe(3);
     }
+  });
+  it("uses responsive local webp renditions for Curated recipes even when hero jpg is stored", () => {
+    const sources = recipePhotoSources(
+      {
+        name: "Spiced Rooibos Iced Tea",
+        slug: "spiced-rooibos-iced-tea",
+        image_source: "Curated",
+        image_url: DISH_RENDITIONS["spiced-rooibos-iced-tea"]!.hero,
+      },
+      "thumb",
+    );
+    expect(sources.src).toContain("spiced-rooibos-iced-tea-thumb.webp");
+    expect(sources.srcSet).toContain("spiced-rooibos-iced-tea-card.webp");
   });
   it("resizes supported providers while preserving attribution parameters", () => {
     const url = new URL(

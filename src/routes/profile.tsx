@@ -43,6 +43,7 @@ import { Switch } from "@/components/ui/switch";
 import { GamificationCard } from "@/components/gamification-card";
 import { ThemePicker } from "@/components/theme-picker";
 import { ProfileAvatarUploader } from "@/components/profile-avatar-uploader";
+import { UserAvatar } from "@/components/resilient-image";
 import {
   Select,
   SelectContent,
@@ -377,10 +378,15 @@ function SettingsPage() {
         <div className="flex items-center justify-between gap-3.5 sm:gap-4">
           <div className="flex items-center gap-3.5 sm:gap-4">
             {user?.photoURL ? (
-              <img
+              <UserAvatar
                 src={user.photoURL}
                 alt={user.displayName ?? "Profile"}
                 className="h-14 w-14 shrink-0 rounded-2xl border border-primary/25 object-cover shadow-xs ring-2 ring-primary/10 transition-transform duration-200 hover:scale-105"
+                fallback={
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border bg-secondary text-foreground">
+                    <UserIcon className="h-6 w-6" />
+                  </div>
+                }
               />
             ) : (
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border bg-secondary text-foreground">

@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { RecipeImage } from "@/components/recipe-image";
+import { ResilientImage, UserAvatar } from "@/components/resilient-image";
 
 afterEach(cleanup);
 describe("recipe photo lifecycle", () => {
@@ -35,5 +36,32 @@ describe("recipe photo lifecycle", () => {
     render(<RecipeImage recipe={{ name: "Greek chicken salad" }} generating />);
     expect(screen.getByRole("img")).toHaveAttribute("loading", "lazy");
     expect(screen.queryByText("Plating your photo…")).not.toBeInTheDocument();
+  });
+  it("recovers gracefully in ResilientImage and UserAvatar when external URLs fail", () => {
+    render(
+      <ResilientImage
+        src="https://example.com/broken-cover.jpg"
+        fallbackSrc="/assets/fallback-cover.webp"
+        alt="Restaurant"
+        fallback={<span>Initials</span>}
+      />,
+    );
+    const first = screen.getByRole("img");
+    expect(first).toHaveAttribute("referrerpolicy", "no-referrer");
+    fireEvent.error(first);
+    expect(screen.getByRole("img")).toHaveAttribute("src", "/assets/fallback-cover.webp");
+    fireEvent.error(screen.getByRole("img"));
+    expect(screen.getByText("Initials")).toBeInTheDocument();
+
+    cleanup();
+    render(
+      <UserAvatar
+        src="https://lh3.googleusercontent.com/expired"
+        alt="Profile"
+        fallback={<span>TM</span>}
+      />,
+    );
+    fireEvent.error(screen.getByRole("img"));
+    expect(screen.getByText("TM")).toBeInTheDocument();
   });
 });

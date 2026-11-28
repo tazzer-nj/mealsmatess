@@ -88,11 +88,13 @@ function imageUrlFor(r: GeneratedRecipe): string | null {
 
 function toDbRecipe(r: GeneratedRecipe, userId: string | null) {
   const slug = `${slugify(r.name)}-${Math.random().toString(36).slice(2, 7)}`;
+  const curatedUrl = imageUrlFor(r);
   return {
     slug,
     name: r.name,
     description: r.description,
-    image_url: imageUrlFor(r),
+    image_url: curatedUrl,
+    image_source: curatedUrl ? "Curated" : null,
     cuisine: r.cuisine ?? null,
     category: r.category ?? null,
     country: r.country ?? null,
@@ -147,6 +149,19 @@ export const surpriseMe = createServerFn({ method: "POST" })
         .select("id,slug")
         .single();
       if (error) throw new Error(error.message);
+      if (!row.image_url) {
+        const { ensureCreatedRecipeImage } = await import("@/lib/recipe-creation-service.server");
+        await ensureCreatedRecipeImage(data.id, {
+          name: recipe.name,
+          cuisine: recipe.cuisine,
+          category: recipe.category,
+          meal_type: recipe.meal_type,
+          description: recipe.description,
+          diet_tags: recipe.diet_tags,
+          ingredients: recipe.ingredients,
+          steps: recipe.steps,
+        });
+      }
       const { invalidateRecipeCatalogCache } = await import("@/lib/recipe-catalog.functions");
       invalidateRecipeCatalogCache();
       void trackEvent({
@@ -273,20 +288,19 @@ export const generateRecipe = createServerFn({ method: "POST" })
           .select("id,slug")
           .single();
         if (error) throw new Error(error.message);
-        void import("@/lib/recipe-creation-service.server")
-          .then((m) =>
-            m.triggerRecipeImageGenerationAfterCreation(inserted.id, {
-              name: recipe.name,
-              cuisine: recipe.cuisine,
-              category: recipe.category,
-              meal_type: recipe.meal_type,
-              description: recipe.description,
-              diet_tags: recipe.diet_tags,
-              ingredients: recipe.ingredients,
-              steps: recipe.steps,
-            }),
-          )
-          .catch(() => {});
+        if (!row.image_url) {
+          const { ensureCreatedRecipeImage } = await import("@/lib/recipe-creation-service.server");
+          await ensureCreatedRecipeImage(inserted.id, {
+            name: recipe.name,
+            cuisine: recipe.cuisine,
+            category: recipe.category,
+            meal_type: recipe.meal_type,
+            description: recipe.description,
+            diet_tags: recipe.diet_tags,
+            ingredients: recipe.ingredients,
+            steps: recipe.steps,
+          });
+        }
         const { invalidateRecipeCatalogCache } = await import("@/lib/recipe-catalog.functions");
         invalidateRecipeCatalogCache();
         await auditLog({

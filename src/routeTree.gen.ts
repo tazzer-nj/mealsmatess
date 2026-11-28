@@ -36,18 +36,33 @@ import { Route as ScanRouteImport } from './routes/scan'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SupportRouteImport } from './routes/support'
 import { Route as WelcomeRouteImport } from './routes/welcome'
+import { Route as ApiEmailRouteImport } from './routes/api/email'
 import { Route as ApiMiaRouteImport } from './routes/api/mia'
 import { Route as ApiRecipeImageRouteImport } from './routes/api/recipe-image'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthFounderRouteImport } from './routes/auth.founder'
+import { Route as DevQaRouteImport } from './routes/dev.qa'
 import { Route as LegalPrivacyRouteImport } from './routes/legal.privacy'
 import { Route as LegalTermsRouteImport } from './routes/legal.terms'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as PartnerDashboardRouteImport } from './routes/partner.dashboard'
+import { Route as PremiumCompleteRouteImport } from './routes/premium.complete'
 import { Route as RecipeSlugRouteImport } from './routes/recipe.$slug'
 import { Route as RestaurantSlugRouteImport } from './routes/restaurant.$slug'
+import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth.callback'
+import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth.logout'
+import { Route as ApiAuthSessionRouteImport } from './routes/api/auth.session'
+import { Route as ApiAuthWhopRouteImport } from './routes/api/auth.whop'
+import { Route as ApiDevQaReportRouteImport } from './routes/api/dev/qa-report'
 import { Route as ApiPublicAnnouncementsCronRouteImport } from './routes/api/public/announcements-cron'
 import { Route as ApiPublicFirebaseMessagingConfigRouteImport } from './routes/api/public/firebase-messaging-config'
+import { Route as ApiPublicHealthRouteImport } from './routes/api/public/health'
+import { Route as ApiWebhooksContactRouteImport } from './routes/api/webhooks.contact'
+import { Route as ApiWebhooksWhopRouteImport } from './routes/api/webhooks.whop'
+import { Route as ApiWhopCancelRouteImport } from './routes/api/whop.cancel'
+import { Route as ApiWhopCheckoutRouteImport } from './routes/api/whop.checkout'
+import { Route as ApiWhopVerifyRouteImport } from './routes/api/whop.verify'
+import { Route as ApiPublicWebhooksContactRouteImport } from './routes/api/public/webhooks.contact'
 import { Route as ApiPublicWebhooksRevenuecatRouteImport } from './routes/api/public/webhooks.revenuecat'
 
 const IndexRoute = IndexRouteImport.update({
@@ -185,6 +200,11 @@ const WelcomeRoute = WelcomeRouteImport.update({
   path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEmailRoute = ApiEmailRouteImport.update({
+  id: '/api/email',
+  path: '/api/email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMiaRoute = ApiMiaRouteImport.update({
   id: '/api/mia',
   path: '/api/mia',
@@ -204,6 +224,11 @@ const AuthFounderRoute = AuthFounderRouteImport.update({
   id: '/founder',
   path: '/founder',
   getParentRoute: () => AuthRoute,
+} as any)
+const DevQaRoute = DevQaRouteImport.update({
+  id: '/dev/qa',
+  path: '/dev/qa',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const LegalPrivacyRoute = LegalPrivacyRouteImport.update({
   id: '/legal/privacy',
@@ -225,6 +250,11 @@ const PartnerDashboardRoute = PartnerDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => PartnerRoute,
 } as any)
+const PremiumCompleteRoute = PremiumCompleteRouteImport.update({
+  id: '/complete',
+  path: '/complete',
+  getParentRoute: () => PremiumRoute,
+} as any)
 const RecipeSlugRoute = RecipeSlugRouteImport.update({
   id: '/recipe/$slug',
   path: '/recipe/$slug',
@@ -233,6 +263,31 @@ const RecipeSlugRoute = RecipeSlugRouteImport.update({
 const RestaurantSlugRoute = RestaurantSlugRouteImport.update({
   id: '/restaurant/$slug',
   path: '/restaurant/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
+  id: '/api/auth/callback',
+  path: '/api/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
+  id: '/api/auth/logout',
+  path: '/api/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSessionRoute = ApiAuthSessionRouteImport.update({
+  id: '/api/auth/session',
+  path: '/api/auth/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthWhopRoute = ApiAuthWhopRouteImport.update({
+  id: '/api/auth/whop',
+  path: '/api/auth/whop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDevQaReportRoute = ApiDevQaReportRouteImport.update({
+  id: '/api/dev/qa-report',
+  path: '/api/dev/qa-report',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicAnnouncementsCronRoute =
@@ -245,6 +300,42 @@ const ApiPublicFirebaseMessagingConfigRoute =
   ApiPublicFirebaseMessagingConfigRouteImport.update({
     id: '/api/public/firebase-messaging-config',
     path: '/api/public/firebase-messaging-config',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHealthRoute = ApiPublicHealthRouteImport.update({
+  id: '/api/public/health',
+  path: '/api/public/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebhooksContactRoute = ApiWebhooksContactRouteImport.update({
+  id: '/api/webhooks/contact',
+  path: '/api/webhooks/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebhooksWhopRoute = ApiWebhooksWhopRouteImport.update({
+  id: '/api/webhooks/whop',
+  path: '/api/webhooks/whop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWhopCancelRoute = ApiWhopCancelRouteImport.update({
+  id: '/api/whop/cancel',
+  path: '/api/whop/cancel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWhopCheckoutRoute = ApiWhopCheckoutRouteImport.update({
+  id: '/api/whop/checkout',
+  path: '/api/whop/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWhopVerifyRoute = ApiWhopVerifyRouteImport.update({
+  id: '/api/whop/verify',
+  path: '/api/whop/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWebhooksContactRoute =
+  ApiPublicWebhooksContactRouteImport.update({
+    id: '/api/public/webhooks/contact',
+    path: '/api/public/webhooks/contact',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicWebhooksRevenuecatRoute =
@@ -273,7 +364,7 @@ export interface FileRoutesByFullPath {
   '/pantry': typeof PantryRoute
   '/partner': typeof PartnerRouteWithChildren
   '/planner': typeof PlannerRoute
-  '/premium': typeof PremiumRoute
+  '/premium': typeof PremiumRouteWithChildren
   '/profile': typeof ProfileRoute
   '/recipes': typeof RecipesRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -282,18 +373,33 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/welcome': typeof WelcomeRoute
+  '/api/email': typeof ApiEmailRoute
   '/api/mia': typeof ApiMiaRoute
   '/api/recipe-image': typeof ApiRecipeImageRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/founder': typeof AuthFounderRoute
+  '/dev/qa': typeof DevQaRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/order/$id': typeof OrderIdRoute
   '/partner/dashboard': typeof PartnerDashboardRoute
+  '/premium/complete': typeof PremiumCompleteRoute
   '/recipe/$slug': typeof RecipeSlugRoute
   '/restaurant/$slug': typeof RestaurantSlugRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/auth/whop': typeof ApiAuthWhopRoute
+  '/api/dev/qa-report': typeof ApiDevQaReportRoute
   '/api/public/announcements-cron': typeof ApiPublicAnnouncementsCronRoute
   '/api/public/firebase-messaging-config': typeof ApiPublicFirebaseMessagingConfigRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/webhooks/contact': typeof ApiWebhooksContactRoute
+  '/api/webhooks/whop': typeof ApiWebhooksWhopRoute
+  '/api/whop/cancel': typeof ApiWhopCancelRoute
+  '/api/whop/checkout': typeof ApiWhopCheckoutRoute
+  '/api/whop/verify': typeof ApiWhopVerifyRoute
+  '/api/public/webhooks/contact': typeof ApiPublicWebhooksContactRoute
   '/api/public/webhooks/revenuecat': typeof ApiPublicWebhooksRevenuecatRoute
 }
 export interface FileRoutesByTo {
@@ -315,7 +421,7 @@ export interface FileRoutesByTo {
   '/pantry': typeof PantryRoute
   '/partner': typeof PartnerRouteWithChildren
   '/planner': typeof PlannerRoute
-  '/premium': typeof PremiumRoute
+  '/premium': typeof PremiumRouteWithChildren
   '/profile': typeof ProfileRoute
   '/recipes': typeof RecipesRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -324,18 +430,33 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/welcome': typeof WelcomeRoute
+  '/api/email': typeof ApiEmailRoute
   '/api/mia': typeof ApiMiaRoute
   '/api/recipe-image': typeof ApiRecipeImageRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/founder': typeof AuthFounderRoute
+  '/dev/qa': typeof DevQaRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/order/$id': typeof OrderIdRoute
   '/partner/dashboard': typeof PartnerDashboardRoute
+  '/premium/complete': typeof PremiumCompleteRoute
   '/recipe/$slug': typeof RecipeSlugRoute
   '/restaurant/$slug': typeof RestaurantSlugRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/auth/whop': typeof ApiAuthWhopRoute
+  '/api/dev/qa-report': typeof ApiDevQaReportRoute
   '/api/public/announcements-cron': typeof ApiPublicAnnouncementsCronRoute
   '/api/public/firebase-messaging-config': typeof ApiPublicFirebaseMessagingConfigRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/webhooks/contact': typeof ApiWebhooksContactRoute
+  '/api/webhooks/whop': typeof ApiWebhooksWhopRoute
+  '/api/whop/cancel': typeof ApiWhopCancelRoute
+  '/api/whop/checkout': typeof ApiWhopCheckoutRoute
+  '/api/whop/verify': typeof ApiWhopVerifyRoute
+  '/api/public/webhooks/contact': typeof ApiPublicWebhooksContactRoute
   '/api/public/webhooks/revenuecat': typeof ApiPublicWebhooksRevenuecatRoute
 }
 export interface FileRoutesById {
@@ -358,7 +479,7 @@ export interface FileRoutesById {
   '/pantry': typeof PantryRoute
   '/partner': typeof PartnerRouteWithChildren
   '/planner': typeof PlannerRoute
-  '/premium': typeof PremiumRoute
+  '/premium': typeof PremiumRouteWithChildren
   '/profile': typeof ProfileRoute
   '/recipes': typeof RecipesRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -367,18 +488,33 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/support': typeof SupportRoute
   '/welcome': typeof WelcomeRoute
+  '/api/email': typeof ApiEmailRoute
   '/api/mia': typeof ApiMiaRoute
   '/api/recipe-image': typeof ApiRecipeImageRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/founder': typeof AuthFounderRoute
+  '/dev/qa': typeof DevQaRoute
   '/legal/privacy': typeof LegalPrivacyRoute
   '/legal/terms': typeof LegalTermsRoute
   '/order/$id': typeof OrderIdRoute
   '/partner/dashboard': typeof PartnerDashboardRoute
+  '/premium/complete': typeof PremiumCompleteRoute
   '/recipe/$slug': typeof RecipeSlugRoute
   '/restaurant/$slug': typeof RestaurantSlugRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/auth/whop': typeof ApiAuthWhopRoute
+  '/api/dev/qa-report': typeof ApiDevQaReportRoute
   '/api/public/announcements-cron': typeof ApiPublicAnnouncementsCronRoute
   '/api/public/firebase-messaging-config': typeof ApiPublicFirebaseMessagingConfigRoute
+  '/api/public/health': typeof ApiPublicHealthRoute
+  '/api/webhooks/contact': typeof ApiWebhooksContactRoute
+  '/api/webhooks/whop': typeof ApiWebhooksWhopRoute
+  '/api/whop/cancel': typeof ApiWhopCancelRoute
+  '/api/whop/checkout': typeof ApiWhopCheckoutRoute
+  '/api/whop/verify': typeof ApiWhopVerifyRoute
+  '/api/public/webhooks/contact': typeof ApiPublicWebhooksContactRoute
   '/api/public/webhooks/revenuecat': typeof ApiPublicWebhooksRevenuecatRoute
 }
 export interface FileRouteTypes {
@@ -411,18 +547,33 @@ export interface FileRouteTypes {
     | '/settings'
     | '/support'
     | '/welcome'
+    | '/api/email'
     | '/api/mia'
     | '/api/recipe-image'
     | '/auth/callback'
     | '/auth/founder'
+    | '/dev/qa'
     | '/legal/privacy'
     | '/legal/terms'
     | '/order/$id'
     | '/partner/dashboard'
+    | '/premium/complete'
     | '/recipe/$slug'
     | '/restaurant/$slug'
+    | '/api/auth/callback'
+    | '/api/auth/logout'
+    | '/api/auth/session'
+    | '/api/auth/whop'
+    | '/api/dev/qa-report'
     | '/api/public/announcements-cron'
     | '/api/public/firebase-messaging-config'
+    | '/api/public/health'
+    | '/api/webhooks/contact'
+    | '/api/webhooks/whop'
+    | '/api/whop/cancel'
+    | '/api/whop/checkout'
+    | '/api/whop/verify'
+    | '/api/public/webhooks/contact'
     | '/api/public/webhooks/revenuecat'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -453,18 +604,33 @@ export interface FileRouteTypes {
     | '/settings'
     | '/support'
     | '/welcome'
+    | '/api/email'
     | '/api/mia'
     | '/api/recipe-image'
     | '/auth/callback'
     | '/auth/founder'
+    | '/dev/qa'
     | '/legal/privacy'
     | '/legal/terms'
     | '/order/$id'
     | '/partner/dashboard'
+    | '/premium/complete'
     | '/recipe/$slug'
     | '/restaurant/$slug'
+    | '/api/auth/callback'
+    | '/api/auth/logout'
+    | '/api/auth/session'
+    | '/api/auth/whop'
+    | '/api/dev/qa-report'
     | '/api/public/announcements-cron'
     | '/api/public/firebase-messaging-config'
+    | '/api/public/health'
+    | '/api/webhooks/contact'
+    | '/api/webhooks/whop'
+    | '/api/whop/cancel'
+    | '/api/whop/checkout'
+    | '/api/whop/verify'
+    | '/api/public/webhooks/contact'
     | '/api/public/webhooks/revenuecat'
   id:
     | '__root__'
@@ -495,18 +661,33 @@ export interface FileRouteTypes {
     | '/settings'
     | '/support'
     | '/welcome'
+    | '/api/email'
     | '/api/mia'
     | '/api/recipe-image'
     | '/auth/callback'
     | '/auth/founder'
+    | '/dev/qa'
     | '/legal/privacy'
     | '/legal/terms'
     | '/order/$id'
     | '/partner/dashboard'
+    | '/premium/complete'
     | '/recipe/$slug'
     | '/restaurant/$slug'
+    | '/api/auth/callback'
+    | '/api/auth/logout'
+    | '/api/auth/session'
+    | '/api/auth/whop'
+    | '/api/dev/qa-report'
     | '/api/public/announcements-cron'
     | '/api/public/firebase-messaging-config'
+    | '/api/public/health'
+    | '/api/webhooks/contact'
+    | '/api/webhooks/whop'
+    | '/api/whop/cancel'
+    | '/api/whop/checkout'
+    | '/api/whop/verify'
+    | '/api/public/webhooks/contact'
     | '/api/public/webhooks/revenuecat'
   fileRoutesById: FileRoutesById
 }
@@ -529,7 +710,7 @@ export interface RootRouteChildren {
   PantryRoute: typeof PantryRoute
   PartnerRoute: typeof PartnerRouteWithChildren
   PlannerRoute: typeof PlannerRoute
-  PremiumRoute: typeof PremiumRoute
+  PremiumRoute: typeof PremiumRouteWithChildren
   ProfileRoute: typeof ProfileRoute
   RecipesRoute: typeof RecipesRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -538,15 +719,29 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SupportRoute: typeof SupportRoute
   WelcomeRoute: typeof WelcomeRoute
+  ApiEmailRoute: typeof ApiEmailRoute
   ApiMiaRoute: typeof ApiMiaRoute
   ApiRecipeImageRoute: typeof ApiRecipeImageRoute
+  DevQaRoute: typeof DevQaRoute
   LegalPrivacyRoute: typeof LegalPrivacyRoute
   LegalTermsRoute: typeof LegalTermsRoute
   OrderIdRoute: typeof OrderIdRoute
   RecipeSlugRoute: typeof RecipeSlugRoute
   RestaurantSlugRoute: typeof RestaurantSlugRoute
+  ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
+  ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
+  ApiAuthSessionRoute: typeof ApiAuthSessionRoute
+  ApiAuthWhopRoute: typeof ApiAuthWhopRoute
+  ApiDevQaReportRoute: typeof ApiDevQaReportRoute
   ApiPublicAnnouncementsCronRoute: typeof ApiPublicAnnouncementsCronRoute
   ApiPublicFirebaseMessagingConfigRoute: typeof ApiPublicFirebaseMessagingConfigRoute
+  ApiPublicHealthRoute: typeof ApiPublicHealthRoute
+  ApiWebhooksContactRoute: typeof ApiWebhooksContactRoute
+  ApiWebhooksWhopRoute: typeof ApiWebhooksWhopRoute
+  ApiWhopCancelRoute: typeof ApiWhopCancelRoute
+  ApiWhopCheckoutRoute: typeof ApiWhopCheckoutRoute
+  ApiWhopVerifyRoute: typeof ApiWhopVerifyRoute
+  ApiPublicWebhooksContactRoute: typeof ApiPublicWebhooksContactRoute
   ApiPublicWebhooksRevenuecatRoute: typeof ApiPublicWebhooksRevenuecatRoute
 }
 
@@ -741,6 +936,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/email': {
+      id: '/api/email'
+      path: '/api/email'
+      fullPath: '/api/email'
+      preLoaderRoute: typeof ApiEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/mia': {
       id: '/api/mia'
       path: '/api/mia'
@@ -768,6 +970,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/founder'
       preLoaderRoute: typeof AuthFounderRouteImport
       parentRoute: typeof AuthRoute
+    }
+    '/dev/qa': {
+      id: '/dev/qa'
+      path: '/dev/qa'
+      fullPath: '/dev/qa'
+      preLoaderRoute: typeof DevQaRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/legal/privacy': {
       id: '/legal/privacy'
@@ -797,6 +1006,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PartnerDashboardRouteImport
       parentRoute: typeof PartnerRoute
     }
+    '/premium/complete': {
+      id: '/premium/complete'
+      path: '/complete'
+      fullPath: '/premium/complete'
+      preLoaderRoute: typeof PremiumCompleteRouteImport
+      parentRoute: typeof PremiumRoute
+    }
     '/recipe/$slug': {
       id: '/recipe/$slug'
       path: '/recipe/$slug'
@@ -811,6 +1027,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RestaurantSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/callback': {
+      id: '/api/auth/callback'
+      path: '/api/auth/callback'
+      fullPath: '/api/auth/callback'
+      preLoaderRoute: typeof ApiAuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/logout': {
+      id: '/api/auth/logout'
+      path: '/api/auth/logout'
+      fullPath: '/api/auth/logout'
+      preLoaderRoute: typeof ApiAuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/session': {
+      id: '/api/auth/session'
+      path: '/api/auth/session'
+      fullPath: '/api/auth/session'
+      preLoaderRoute: typeof ApiAuthSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/whop': {
+      id: '/api/auth/whop'
+      path: '/api/auth/whop'
+      fullPath: '/api/auth/whop'
+      preLoaderRoute: typeof ApiAuthWhopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dev/qa-report': {
+      id: '/api/dev/qa-report'
+      path: '/api/dev/qa-report'
+      fullPath: '/api/dev/qa-report'
+      preLoaderRoute: typeof ApiDevQaReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/announcements-cron': {
       id: '/api/public/announcements-cron'
       path: '/api/public/announcements-cron'
@@ -823,6 +1074,55 @@ declare module '@tanstack/react-router' {
       path: '/api/public/firebase-messaging-config'
       fullPath: '/api/public/firebase-messaging-config'
       preLoaderRoute: typeof ApiPublicFirebaseMessagingConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/health': {
+      id: '/api/public/health'
+      path: '/api/public/health'
+      fullPath: '/api/public/health'
+      preLoaderRoute: typeof ApiPublicHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhooks/contact': {
+      id: '/api/webhooks/contact'
+      path: '/api/webhooks/contact'
+      fullPath: '/api/webhooks/contact'
+      preLoaderRoute: typeof ApiWebhooksContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhooks/whop': {
+      id: '/api/webhooks/whop'
+      path: '/api/webhooks/whop'
+      fullPath: '/api/webhooks/whop'
+      preLoaderRoute: typeof ApiWebhooksWhopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/whop/cancel': {
+      id: '/api/whop/cancel'
+      path: '/api/whop/cancel'
+      fullPath: '/api/whop/cancel'
+      preLoaderRoute: typeof ApiWhopCancelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/whop/checkout': {
+      id: '/api/whop/checkout'
+      path: '/api/whop/checkout'
+      fullPath: '/api/whop/checkout'
+      preLoaderRoute: typeof ApiWhopCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/whop/verify': {
+      id: '/api/whop/verify'
+      path: '/api/whop/verify'
+      fullPath: '/api/whop/verify'
+      preLoaderRoute: typeof ApiWhopVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/webhooks/contact': {
+      id: '/api/public/webhooks/contact'
+      path: '/api/public/webhooks/contact'
+      fullPath: '/api/public/webhooks/contact'
+      preLoaderRoute: typeof ApiPublicWebhooksContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/webhooks/revenuecat': {
@@ -858,6 +1158,17 @@ const PartnerRouteChildren: PartnerRouteChildren = {
 const PartnerRouteWithChildren =
   PartnerRoute._addFileChildren(PartnerRouteChildren)
 
+interface PremiumRouteChildren {
+  PremiumCompleteRoute: typeof PremiumCompleteRoute
+}
+
+const PremiumRouteChildren: PremiumRouteChildren = {
+  PremiumCompleteRoute: PremiumCompleteRoute,
+}
+
+const PremiumRouteWithChildren =
+  PremiumRoute._addFileChildren(PremiumRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
@@ -877,7 +1188,7 @@ const rootRouteChildren: RootRouteChildren = {
   PantryRoute: PantryRoute,
   PartnerRoute: PartnerRouteWithChildren,
   PlannerRoute: PlannerRoute,
-  PremiumRoute: PremiumRoute,
+  PremiumRoute: PremiumRouteWithChildren,
   ProfileRoute: ProfileRoute,
   RecipesRoute: RecipesRoute,
   ResetPasswordRoute: ResetPasswordRoute,
@@ -886,15 +1197,29 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SupportRoute: SupportRoute,
   WelcomeRoute: WelcomeRoute,
+  ApiEmailRoute: ApiEmailRoute,
   ApiMiaRoute: ApiMiaRoute,
   ApiRecipeImageRoute: ApiRecipeImageRoute,
+  DevQaRoute: DevQaRoute,
   LegalPrivacyRoute: LegalPrivacyRoute,
   LegalTermsRoute: LegalTermsRoute,
   OrderIdRoute: OrderIdRoute,
   RecipeSlugRoute: RecipeSlugRoute,
   RestaurantSlugRoute: RestaurantSlugRoute,
+  ApiAuthCallbackRoute: ApiAuthCallbackRoute,
+  ApiAuthLogoutRoute: ApiAuthLogoutRoute,
+  ApiAuthSessionRoute: ApiAuthSessionRoute,
+  ApiAuthWhopRoute: ApiAuthWhopRoute,
+  ApiDevQaReportRoute: ApiDevQaReportRoute,
   ApiPublicAnnouncementsCronRoute: ApiPublicAnnouncementsCronRoute,
   ApiPublicFirebaseMessagingConfigRoute: ApiPublicFirebaseMessagingConfigRoute,
+  ApiPublicHealthRoute: ApiPublicHealthRoute,
+  ApiWebhooksContactRoute: ApiWebhooksContactRoute,
+  ApiWebhooksWhopRoute: ApiWebhooksWhopRoute,
+  ApiWhopCancelRoute: ApiWhopCancelRoute,
+  ApiWhopCheckoutRoute: ApiWhopCheckoutRoute,
+  ApiWhopVerifyRoute: ApiWhopVerifyRoute,
+  ApiPublicWebhooksContactRoute: ApiPublicWebhooksContactRoute,
   ApiPublicWebhooksRevenuecatRoute: ApiPublicWebhooksRevenuecatRoute,
 }
 export const routeTree = rootRouteImport

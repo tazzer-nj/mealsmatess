@@ -30,9 +30,21 @@ if (supplied) zip = await readFile(supplied);
 else if (existsSync(cachedZip)) zip = await readFile(cachedZip);
 else {
   console.log("Downloading the pinned 40 MB English voice model for same-origin hosting…");
-  const response = await fetch(sourceUrl, { signal: AbortSignal.timeout(360_000) });
-  if (!response.ok) throw new Error(`Voice model download failed: HTTP ${response.status}`);
-  zip = Buffer.from(await response.arrayBuffer());
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await fetch(sourceUrl, { signal: AbortSignal.timeout(360_000) });
+      if (!response.ok) throw new Error(`Voice model download failed: HTTP ${response.status}`);
+      zip = Buffer.from(await response.arrayBuffer());
+      break;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
+      }
+    }
+  }
+  if (!zip) throw lastError;
 }
 if (hash(zip) !== sourceHash)
   throw new Error("Voice model checksum mismatch. Refusing to package it.");

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import mealmateChef from "@/assets/mealmate-chef.png";
 import { MASCOT_THEMES } from "@/lib/mascot-theme";
 import { compressAvatarFile } from "@/lib/profile-avatar";
+import { ResilientImage } from "@/components/resilient-image";
 
 const MIA_DEFAULT_AVATARS = [
   ...MASCOT_THEMES.map((t) => ({ name: t.name, url: t.image })),
@@ -41,11 +42,16 @@ export function ProfileAvatarUploader({ value, onChange }: ProfileAvatarUploader
       <div className="flex flex-col items-center justify-center gap-3">
         <div className="group relative h-24 w-24 overflow-hidden rounded-full border-2 border-primary/30 bg-secondary shadow-md ring-4 ring-primary/10 transition-transform duration-200 hover:scale-105">
           {value ? (
-            <img
+            <ResilientImage
               key={value}
               src={value}
               alt="Profile Avatar"
               className="h-full w-full object-cover animate-pop-bounce"
+              fallback={
+                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                  <UserIcon className="h-10 w-10" />
+                </div>
+              }
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-muted-foreground">

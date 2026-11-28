@@ -121,11 +121,58 @@ const DISH_PHOTOS: Record<string, string> = {
   "pizza-napoletana-margherita": "pizza-margherita",
   "pizza-napoletana": "pizza-margherita",
   "pizza-margherita": "pizza-margherita",
+  "spiced-rooibos-iced-tea": "spiced-rooibos-iced-tea",
+  "rooibos-iced-tea": "spiced-rooibos-iced-tea",
 };
 
 /** Strip the random "-ab12c" suffix some slugs carry. */
 function stripSuffix(key: string): string {
   return key.replace(/-(?=[a-z0-9]{0,4}[0-9])[a-z0-9]{5}$/, "");
+}
+
+const TRUSTED_IMAGE_HOSTS = [
+  ".public.blob.vercel-storage.com",
+  "firebasestorage.googleapis.com",
+  "storage.googleapis.com",
+  "images.unsplash.com",
+  "images.pexels.com",
+];
+
+/** Reject empty, malformed, or legacy missing bundle URLs such as /__l5e/... */
+export function isValidImageUrl(url: string | null | undefined): url is string {
+  if (typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.includes("/__l5e/")) return false;
+  if (trimmed.startsWith("/")) return trimmed.length > 1;
+  if (/^data:image\/(png|jpeg|jpg|webp|gif|svg\+xml);base64,/i.test(trimmed)) return true;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+/** True for first-party MealMate assets, inline image data URLs, or known storage/CDN hosts. */
+export function isTrustedImageUrl(url: string | null | undefined): boolean {
+  if (!isValidImageUrl(url)) return false;
+  if (url.startsWith("/assets/") || url.startsWith("data:image/")) return true;
+  try {
+    const { hostname } = new URL(url);
+    return TRUSTED_IMAGE_HOSTS.some((suffix) =>
+      suffix.startsWith(".") ? hostname.endsWith(suffix) : hostname === suffix,
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function hasUsableStoredImage(
+  r: Pick<ImageRecipeLike, "image_source" | "image_url">,
+): boolean {
+  return (
+    isValidImageUrl(r.image_url) && (Boolean(r.image_source) || isTrustedImageUrl(r.image_url))
+  );
 }
 
 export function curatedRecipeImageUrl(
@@ -152,8 +199,14 @@ export function generatedImageUrl(_r: ImageRecipeLike, _size: ImageSize = "card"
   return NEUTRAL_RECIPE_PLACEHOLDER;
 }
 export function recipeImageUrl(r: ImageRecipeLike, size: ImageSize = "card"): string {
+  if (r.image_source === "Curated") {
+    return (
+      curatedRecipeImageUrl(r, size) ??
+      (isValidImageUrl(r.image_url) ? r.image_url : NEUTRAL_RECIPE_PLACEHOLDER)
+    );
+  }
   return (
-    (r.image_source && r.image_url ? r.image_url : null) ??
+    (hasUsableStoredImage(r) ? r.image_url : null) ??
     curatedRecipeImageUrl(r, size) ??
     NEUTRAL_RECIPE_PLACEHOLDER
   );
@@ -204,7 +257,10 @@ export function photoRendition(url: string, width: number): string {
 }
 
 export function recipePhotoSources(recipe: ImageRecipeLike, size: ImageSize, useCurated = false) {
-  const stored = !useCurated && recipe.image_source && recipe.image_url;
+  const preferCuratedRendition =
+    useCurated ||
+    (recipe.image_source === "Curated" && Boolean(curatedRecipeImageUrl(recipe, size)));
+  const stored = !preferCuratedRendition && hasUsableStoredImage(recipe) ? recipe.image_url! : null;
   const widths = [256, 512, 1024] as const;
   const sizes = ["thumb", "card", "hero"] as const;
   const urls = sizes.map((rendition, i) =>

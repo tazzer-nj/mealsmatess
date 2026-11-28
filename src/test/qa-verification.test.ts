@@ -7,7 +7,7 @@ import { CURATED_RECIPES } from "@/lib/curated-recipes";
 import { ENTITLEMENT } from "@/server/revenuecat";
 import { planKind } from "@/lib/billing-client";
 import { PRICES_ZAR } from "@/lib/currency";
-import { evaluateRecipeAllergens, isAvoided } from "@/lib/preferences";
+import { EMPTY_PREFERENCES, evaluateRecipeAllergens, isAvoided } from "@/lib/preferences";
 
 describe("Final QA Verification", () => {
   it("exposes exactly 6 exclusive premium themes including Lavender Dream alongside 2 free themes", () => {
@@ -96,20 +96,11 @@ describe("Final QA Verification", () => {
     } as const;
     const unsafe = evaluateRecipeAllergens(
       {
+        ...EMPTY_PREFERENCES,
         ...prefs,
         allergies: [...prefs.allergies],
         dietary_restrictions: [...prefs.dietary_restrictions],
-        disliked_foods: [],
-        favorite_foods: [],
-        goal: null,
-        cooking_level: null,
-        cooking_time: null,
-        food_budget: null,
-        preferred_features: [],
-        discovery_source: null,
-        onboarding_step: null,
         onboarding_completed: true,
-        updated_at: null,
       },
       {
         name: "Thai Peanut Prawn Noodles",
@@ -121,19 +112,9 @@ describe("Final QA Verification", () => {
 
     const uncertain = evaluateRecipeAllergens(
       {
+        ...EMPTY_PREFERENCES,
         allergies: ["soy"],
-        dietary_restrictions: [],
-        disliked_foods: [],
-        favorite_foods: [],
-        goal: null,
-        cooking_level: null,
-        cooking_time: null,
-        food_budget: null,
-        preferred_features: [],
-        discovery_source: null,
-        onboarding_step: null,
         onboarding_completed: true,
-        updated_at: null,
       },
       { name: "Crispy Veggie Stir Fry", ingredients: [{ name: "mystery stir fry sauce" }] },
     );
@@ -142,19 +123,9 @@ describe("Final QA Verification", () => {
 
     const soyTofu = evaluateRecipeAllergens(
       {
+        ...EMPTY_PREFERENCES,
         allergies: ["soy"],
-        dietary_restrictions: [],
-        disliked_foods: [],
-        favorite_foods: [],
-        goal: null,
-        cooking_level: null,
-        cooking_time: null,
-        food_budget: null,
-        preferred_features: [],
-        discovery_source: null,
-        onboarding_step: null,
         onboarding_completed: true,
-        updated_at: null,
       },
       { name: "Crispy Tofu Stir Fry", ingredients: [{ name: "firm tofu" }] },
     );
@@ -162,19 +133,10 @@ describe("Final QA Verification", () => {
     expect(
       isAvoided(
         {
+          ...EMPTY_PREFERENCES,
           allergies: [...prefs.allergies],
           dietary_restrictions: [...prefs.dietary_restrictions],
-          disliked_foods: [],
-          favorite_foods: [],
-          goal: null,
-          cooking_level: null,
-          cooking_time: null,
-          food_budget: null,
-          preferred_features: [],
-          discovery_source: null,
-          onboarding_step: null,
           onboarding_completed: true,
-          updated_at: null,
         },
         "Beef Burger",
         "American",

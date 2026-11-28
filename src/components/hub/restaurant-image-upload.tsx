@@ -6,6 +6,7 @@ import { uploadRestaurantMedia } from "@/lib/restaurants.functions";
 import { MAX_RESTAURANT_IMAGE_BYTES, RESTAURANT_IMAGE_TYPES } from "@/lib/restaurant-media";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { ResilientImage } from "@/components/resilient-image";
 
 export function RestaurantImageUpload({
   restaurantId,
@@ -29,11 +30,16 @@ export function RestaurantImageUpload({
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
       {value ? (
-        <img
+        <ResilientImage
           src={value}
           alt={label}
           className="h-28 w-full rounded-xl bg-muted object-cover"
           loading="lazy"
+          fallback={
+            <div className="grid h-20 place-items-center rounded-xl border border-dashed border-border">
+              <ImagePlus className="size-6 text-muted-foreground" aria-hidden="true" />
+            </div>
+          }
         />
       ) : (
         <div className="grid h-20 place-items-center rounded-xl border border-dashed border-border">

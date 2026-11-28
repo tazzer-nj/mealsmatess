@@ -45,7 +45,12 @@ export const RECIPE_PHOTOS: Record<string, { thumb: string; card: string; hero: 
 
 export const DISH_RENDITIONS: Record<string, { thumb: string; card: string; hero: string }> =
   Object.fromEntries(
-    ["ackee-and-saltfish", "quinoa-harissa-chicken", "pizza-margherita"].map((slug) => [
+    [
+      "ackee-and-saltfish",
+      "quinoa-harissa-chicken",
+      "pizza-margherita",
+      "spiced-rooibos-iced-tea",
+    ].map((slug) => [
       slug,
       {
         thumb: recipeImageAssets[`./dishes/${slug}-thumb.webp`]!,

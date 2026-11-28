@@ -129,15 +129,63 @@ export const recipeBySlugQuery = (slug: string) =>
     ...defaultSWROptions,
   });
 
+async function hydrateLinkedRecipes<
+  T extends { recipe_id?: string | null; recipes?: RecipeRecord | null },
+>(rows: T[]): Promise<T[]> {
+  const missingIds = Array.from(
+    new Set(
+      rows
+        .filter((row) => !row.recipes && typeof row.recipe_id === "string" && row.recipe_id.trim())
+        .map((row) => String(row.recipe_id)),
+    ),
+  );
+  if (missingIds.length === 0) return rows;
+
+  const { findCuratedRecipeById } = await import("@/lib/curated-recipes");
+  const resolved = new Map<string, RecipeRecord>();
+  const toFetch: string[] = [];
+
+  for (const id of missingIds) {
+    const curated = findCuratedRecipeById(id);
+    if (curated) {
+      resolved.set(id, curated as unknown as RecipeRecord);
+    } else {
+      toFetch.push(id);
+    }
+  }
+
+  if (toFetch.length > 0) {
+    await Promise.all(
+      toFetch.map(async (id) => {
+        try {
+          const snap = await getDoc(doc(db, "recipes", id));
+          if (snap.exists()) {
+            resolved.set(id, { id: snap.id, ...snap.data() } as unknown as RecipeRecord);
+          }
+        } catch {
+          // Ignore individual missing/inaccessible recipe reads
+        }
+      }),
+    );
+  }
+
+  return rows.map((row) => {
+    if (row.recipes || !row.recipe_id) return row;
+    const recipe = resolved.get(String(row.recipe_id)) ?? null;
+    return { ...row, recipes: recipe };
+  });
+}
+
 export const myFavoritesQuery = () =>
   queryOptions({
     queryKey: ["favorites"],
     queryFn: async (): Promise<FavoriteRecord[]> => {
       const user = auth.currentUser;
       if (!user) return [];
-      return (await list(`users/${user.uid}/favorites`, [
+      const rows = (await list(`users/${user.uid}/favorites`, [
         orderBy("created_at", "desc"),
       ])) as FavoriteRecord[];
+      return hydrateLinkedRecipes(rows);
     },
     ...defaultSWROptions,
   });
@@ -169,14 +217,15 @@ export const myPantryQuery = () =>
 export const myPlannerQuery = (fromISO: string, toISO: string) =>
   queryOptions({
     queryKey: ["planner", fromISO, toISO],
-    queryFn: async (): Promise<MealPlanRecord[]> =>
-      auth.currentUser
-        ? ((await list(`users/${auth.currentUser.uid}/mealPlans`, [
-            where("plan_date", ">=", fromISO),
-            where("plan_date", "<=", toISO),
-            orderBy("plan_date"),
-          ])) as MealPlanRecord[])
-        : [],
+    queryFn: async (): Promise<MealPlanRecord[]> => {
+      if (!auth.currentUser) return [];
+      const rows = (await list(`users/${auth.currentUser.uid}/mealPlans`, [
+        where("plan_date", ">=", fromISO),
+        where("plan_date", "<=", toISO),
+        orderBy("plan_date"),
+      ])) as MealPlanRecord[];
+      return hydrateLinkedRecipes(rows);
+    },
     ...defaultSWROptions,
   });
 

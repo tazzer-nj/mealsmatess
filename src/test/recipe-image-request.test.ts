@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   generate: vi.fn(),
   findBest: vi.fn(),
   save: vi.fn(),
+  providers: vi.fn(() => [] as string[]),
 }));
 vi.mock("@/server/firebase-admin", () => ({
   firebaseAdmin: {
@@ -19,9 +20,10 @@ vi.mock("@/server/firebase-admin", () => ({
 vi.mock("@/server/ai-rate-limit", () => ({ enforceAiRateLimit: mocks.rateLimit }));
 vi.mock("@/lib/recipe-images.server", () => ({
   recipeSignature: () => "signature",
-  needsSearch: (recipe: { image_source: string }) => !recipe.image_source,
+  needsSearch: (recipe: { image_source: string; image_url?: string | null }) =>
+    !recipe.image_source || !recipe.image_url || recipe.image_url.includes("/__l5e/"),
   generateAndSaveAiImage: mocks.generate,
-  configuredProviders: () => [],
+  configuredProviders: mocks.providers,
   findBestImage: mocks.findBest,
   saveImage: mocks.save,
 }));
@@ -36,6 +38,7 @@ const recipe = {
 describe("recipe photo requests", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.providers.mockReturnValue([]);
     mocks.load.mockResolvedValue({ data: recipe, error: null });
     mocks.rpc.mockResolvedValue({ data: { allowed: true }, error: null });
     mocks.generate.mockResolvedValue("https://example.com/stored-toast.png");
@@ -80,6 +83,36 @@ describe("recipe photo requests", () => {
     expect((await requestRecipeImage("user-a", recipe.id)).imageUrl).toContain("cached.png");
     expect(mocks.rpc).not.toHaveBeenCalled();
     expect(mocks.generate).not.toHaveBeenCalled();
+  });
+
+  it("repairs broken legacy /__l5e/ stored URLs and falls back to stock providers if AI fails", async () => {
+    mocks.load.mockResolvedValue({
+      data: { ...recipe, image_source: "AI", image_url: "/__l5e/assets-v1/dead.jpg" },
+      error: null,
+    });
+    mocks.providers.mockReturnValue(["Unsplash"]);
+    mocks.generate.mockRejectedValueOnce(new Error("AI credits unavailable"));
+    mocks.findBest.mockResolvedValueOnce({
+      best: {
+        provider: "Unsplash",
+        id: "u1",
+        url: "https://images.unsplash.com/photo-toast",
+        thumb: "https://images.unsplash.com/photo-toast-thumb",
+        width: 1200,
+        height: 800,
+        title: "Tomato toast",
+        score: 88,
+      },
+      query: "Tomato toast",
+      tried: ["Tomato toast"],
+    });
+    const result = await requestRecipeImage("user-a", recipe.id);
+    expect(result).toMatchObject({
+      imageUrl: "https://images.unsplash.com/photo-toast",
+      source: "Unsplash",
+      searched: true,
+    });
+    expect(mocks.save).toHaveBeenCalledOnce();
   });
 
   it("allows a failed generation to be retried", async () => {

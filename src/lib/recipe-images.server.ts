@@ -4,6 +4,7 @@
 // Candidates are ranked by metadata, then verified visually by Lovable AI.
 import { firebaseAdmin } from "@/server/firebase-admin";
 import { generateAiImage, generateAiObject } from "@/lib/ai-engine.server";
+import { isValidImageUrl } from "@/lib/recipe-image";
 import { z } from "zod";
 import {
   assertRecipePhotoStorageConfigured,
@@ -259,22 +260,41 @@ const SEARCHERS: Record<ProviderName, (q: string) => Promise<ImageCandidate[]>> 
 /** Search with a shared database cache so the same query never hits the API twice in a week. */
 export async function searchProvider(provider: ProviderName, q: string): Promise<ImageCandidate[]> {
   const cacheKey = `${provider}:${q.toLowerCase()}`;
-  const { data: cached } = await firebaseAdmin
-    .from("image_search_cache")
-    .select("results,created_at")
-    .eq("cache_key", cacheKey)
-    .maybeSingle();
-  if (cached && Date.now() - new Date(cached.created_at).getTime() < CACHE_TTL_MS) {
-    return cached.results as unknown as ImageCandidate[];
+  try {
+    const { data: cached } = await firebaseAdmin
+      .from("image_search_cache")
+      .select("results,created_at")
+      .eq("cache_key", cacheKey)
+      .maybeSingle();
+    if (cached && Date.now() - new Date(cached.created_at).getTime() < CACHE_TTL_MS) {
+      return (cached.results as unknown as ImageCandidate[]) ?? [];
+    }
+  } catch (cacheReadError) {
+    console.warn("[MealMate images] Cache read failed; querying provider directly.", {
+      provider,
+      errorName: cacheReadError instanceof Error ? cacheReadError.name : "UnknownError",
+    });
   }
+
   const results = (await SEARCHERS[provider](q)).filter((c) => c.url && c.thumb);
-  await firebaseAdmin.from("image_search_cache").upsert({
-    cache_key: cacheKey,
-    provider,
-    query: q,
-    results: results as any,
-    created_at: new Date().toISOString(),
-  });
+
+  try {
+    await firebaseAdmin.from("image_search_cache").upsert(
+      {
+        cache_key: cacheKey,
+        provider,
+        query: q,
+        results: results as any,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: "cache_key" },
+    );
+  } catch (cacheWriteError) {
+    console.warn("[MealMate images] Cache write failed.", {
+      provider,
+      errorName: cacheWriteError instanceof Error ? cacheWriteError.name : "UnknownError",
+    });
+  }
   return results;
 }
 
@@ -399,11 +419,11 @@ async function rank(
   return top
     .map((c, i) => {
       const aiS = ai ? ai[i]! : undefined;
-      // AI judgement dominates; without AI, metadata must be very strong.
+      // AI judgement dominates; without AI, high-confidence metadata matches still remain eligible.
       const score =
         aiS !== undefined
           ? Math.round(aiS * 0.8 + (c.metaScore ?? 0) * 0.2)
-          : Math.round((c.metaScore ?? 0) * 0.85);
+          : Math.min(100, Math.round((c.metaScore ?? 0) * 1.05));
       return { ...c, aiScore: aiS, score };
     })
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
@@ -425,12 +445,23 @@ export async function findBestImage(r: RecipeForImage, maxQueries = 4): Promise<
   for (const q of buildQueries(r).slice(0, maxQueries)) {
     tried.push(q);
     for (const p of providers) {
-      const ranked = await rank(r, await searchProvider(p, q));
-      const top = ranked[0];
-      if (top && (!bestSoFar || (top.score ?? 0) > (bestSoFar.c.score ?? 0)))
-        bestSoFar = { c: top, q };
-      if (top && (top.score ?? 0) >= ACCEPT_THRESHOLD) return { best: top, query: q, tried };
+      try {
+        const ranked = await rank(r, await searchProvider(p, q));
+        const top = ranked[0];
+        if (top && (!bestSoFar || (top.score ?? 0) > (bestSoFar.c.score ?? 0)))
+          bestSoFar = { c: top, q };
+        if (top && (top.score ?? 0) >= ACCEPT_THRESHOLD) return { best: top, query: q, tried };
+      } catch (providerError) {
+        console.warn("[MealMate images] Provider search failed; trying next provider.", {
+          provider: p,
+          query: q,
+          errorName: providerError instanceof Error ? providerError.name : "UnknownError",
+        });
+      }
     }
+  }
+  if (bestSoFar && bestSoFar.c.aiScore === undefined && (bestSoFar.c.metaScore ?? 0) >= 60) {
+    return { best: bestSoFar.c, query: bestSoFar.q, tried };
   }
   return { best: null, query: bestSoFar?.q ?? null, tried, reason: "low_confidence" };
 }
@@ -440,7 +471,17 @@ export async function findAlternatives(r: RecipeForImage, limit = 8): Promise<Im
   const providers = configuredProviders();
   const pool: ImageCandidate[] = [];
   for (const q of buildQueries(r).slice(0, 2)) {
-    for (const p of providers) pool.push(...(await searchProvider(p, q)));
+    for (const p of providers) {
+      try {
+        pool.push(...(await searchProvider(p, q)));
+      } catch (providerError) {
+        console.warn("[MealMate images] Alternatives search provider failed.", {
+          provider: p,
+          query: q,
+          errorName: providerError instanceof Error ? providerError.name : "UnknownError",
+        });
+      }
+    }
   }
   const ranked = await rank(r, pool, 12);
   return ranked.filter((c) => (c.score ?? 0) >= 40).slice(0, limit);
@@ -485,9 +526,10 @@ export async function markChecked(recipeId: string, signature: string) {
     .eq("id", recipeId);
 }
 
-/** True when the stored image is trustworthy and current. */
+/** True when the stored image is missing, broken, or stale. */
 export function needsSearch(
   row: {
+    image_url?: string | null;
     image_source: string | null;
     image_confidence: number | null;
     image_locked: boolean;
@@ -496,6 +538,7 @@ export function needsSearch(
   },
   signature: string,
 ): boolean {
+  if ("image_url" in row && !isValidImageUrl(row.image_url)) return true;
   if (row.image_locked) return false;
   const verified = !!row.image_source && (row.image_confidence ?? 0) >= ACCEPT_THRESHOLD;
   if (verified && row.image_signature === signature) return false;

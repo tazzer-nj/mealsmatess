@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { RecipeIdSchema } from "@/lib/recipe-id";
+import { findCuratedRecipeById } from "@/lib/curated-recipes";
 import { authenticateApiRequest } from "@/server/authenticated-api";
 import { requestRecipeImage } from "@/lib/recipe-image-request.server";
 
@@ -51,7 +52,8 @@ export const Route = createFileRoute("/api/recipe-image")({
             .select("id")
             .eq("id", input.recipeId)
             .maybeSingle();
-          if (accessError || !accessible) {
+          const curated = findCuratedRecipeById(input.recipeId);
+          if ((accessError || !accessible) && !curated) {
             return Response.json({ error: "Recipe not found." }, { status: 404 });
           }
 

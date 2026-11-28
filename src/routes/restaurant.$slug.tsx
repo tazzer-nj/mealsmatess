@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { waitForFirebaseAuth } from "@/lib/firebase";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ResilientImage } from "@/components/resilient-image";
 
 export const Route = createFileRoute("/restaurant/$slug")({
   ssr: false,
@@ -113,10 +114,15 @@ function RestaurantPage() {
     <div className="page-enter mx-auto max-w-3xl pb-32">
       <div className="relative h-44 w-full overflow-hidden bg-muted sm:rounded-b-3xl">
         {restaurant.cover_image_url ? (
-          <img
+          <ResilientImage
             src={restaurant.cover_image_url}
             alt={`${restaurant.name} cover photo`}
             className="h-full w-full object-cover"
+            fallback={
+              <div className="flex h-full items-center justify-center text-muted-foreground">
+                <Utensils className="h-12 w-12" aria-hidden="true" />
+              </div>
+            }
           />
         ) : (
           <div className="flex h-full items-center justify-center text-muted-foreground">
@@ -129,7 +135,7 @@ function RestaurantPage() {
         <div className="md3-surface -mt-10 rounded-3xl border border-border/60 bg-card p-4 shadow-sm">
           <div className="flex items-start gap-3">
             {restaurant.logo_url && (
-              <img
+              <ResilientImage
                 src={restaurant.logo_url}
                 alt={`${restaurant.name} logo`}
                 className="h-14 w-14 rounded-2xl object-cover"
@@ -208,11 +214,19 @@ function RestaurantPage() {
                       className="md3-surface flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-3"
                     >
                       {item.image_url ? (
-                        <img
+                        <ResilientImage
                           src={item.image_url}
                           alt={item.name}
                           loading="lazy"
                           className="h-16 w-16 shrink-0 rounded-xl object-cover"
+                          fallback={
+                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">
+                              <Utensils
+                                className="h-6 w-6 text-muted-foreground"
+                                aria-hidden="true"
+                              />
+                            </div>
+                          }
                         />
                       ) : (
                         <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-muted text-xl">

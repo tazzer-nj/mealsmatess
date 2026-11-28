@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/prepare-mia-voice.mjs && vite dev --host 0.0.0.0 --port 3000",
-    "build": "node scripts/prepare-mia-voice.mjs && vite build",
+    "build": "node scripts/prepare-mia-voice.mjs && NODE_ENV=production vite build",
     "build:dev": "node scripts/prepare-mia-voice.mjs && vite build --mode development",
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
@@ -18,6 +18,9 @@
     "test:rules": "firebase emulators:exec --only firestore --project demo-mealmate-paywall --config firebase.rules-test.json \"node --test scripts/test-premium-rules.mjs\"",
     "voice:prepare": "node scripts/prepare-mia-voice.mjs",
     "test:voice:browser": "node scripts/test-mia-voice-browser.mjs"
+  },
+  "engines": {
+    "node": "22.x"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -102,7 +105,7 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@firebase/eslint-plugin-security-rules": "^0.0.2",
-    "@firebase/rules-unit-testing": "5.0.1",
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",
     "@types/node": "^22.16.5",

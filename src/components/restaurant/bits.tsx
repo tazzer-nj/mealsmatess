@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatDistance, isOpenNow } from "@/lib/geo";
 import { ORDER_STATUS_LABEL, TRACKING_STEPS, type OrderStatus } from "@/lib/restaurants.schemas";
 import type { PublicRestaurant } from "@/lib/restaurant-queries";
+import { ResilientImage } from "@/components/resilient-image";
 
 export function money(value: number | string | null | undefined, currency = "ZAR") {
   const n = Number(value ?? 0);
@@ -39,11 +40,16 @@ export function RestaurantCard({
     >
       <div className="relative h-36 w-full overflow-hidden bg-muted">
         {restaurant.cover_image_url ? (
-          <img
+          <ResilientImage
             src={restaurant.cover_image_url}
             alt={`${restaurant.name} cover`}
             loading="lazy"
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            fallback={
+              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                <Utensils className="h-8 w-8" aria-hidden="true" />
+              </div>
+            }
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-muted-foreground">

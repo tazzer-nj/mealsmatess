@@ -1,11 +1,12 @@
 import { firebaseAdmin } from "@/server/firebase-admin";
 import { aiRequestFingerprint, deduplicateAiRequest } from "@/lib/ai-engine.server";
 import { enforceAiRateLimit } from "@/server/ai-rate-limit";
-import { curatedRecipeImageUrl } from "@/lib/recipe-image";
+import { findCuratedRecipeById } from "@/lib/curated-recipes";
+import { curatedRecipeImageUrl, hasUsableStoredImage } from "@/lib/recipe-image";
 import * as images from "@/lib/recipe-images.server";
 
 const RECIPE_COLS =
-  "id,name,cuisine,category,meal_type,description,diet_tags,ingredients,steps,image_url,image_source,image_confidence,image_locked,image_signature,image_checked_at";
+  "id,name,slug,cuisine,category,meal_type,description,diet_tags,ingredients,steps,image_url,image_source,image_confidence,image_locked,image_signature,image_checked_at";
 
 type ImageResult = {
   imageUrl: string | null;
@@ -25,22 +26,23 @@ export function requestRecipeImage(userId: string, recipeId: string): Promise<Im
   return deduplicateAiRequest(
     aiRequestFingerprint("shared", "recipe.image", recipeId),
     async () => {
-      const { data: recipe, error } = await firebaseAdmin
+      const { data: row, error } = await firebaseAdmin
         .from("recipes")
         .select(RECIPE_COLS)
         .eq("id", recipeId)
         .maybeSingle();
       if (error) throw error;
+      const recipe = row ?? findCuratedRecipeById(recipeId);
       if (!recipe) throw new Error("Recipe not found");
       const curated = curatedRecipeImageUrl(recipe, "hero");
       if (curated) {
         return { imageUrl: curated, source: "Curated", confidence: 100, searched: false };
       }
       const signature = images.recipeSignature(recipe);
-      if (recipe.image_url && !images.needsSearch(recipe, signature)) {
+      if (hasUsableStoredImage(recipe) && !images.needsSearch(recipe, signature)) {
         return {
-          imageUrl: recipe.image_source ? recipe.image_url : null,
-          source: recipe.image_source ?? null,
+          imageUrl: recipe.image_url ?? null,
+          source: recipe.image_source ?? "Stored",
           confidence: recipe.image_confidence ?? null,
           searched: false,
         };

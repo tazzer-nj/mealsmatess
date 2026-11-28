@@ -192,9 +192,21 @@ export default defineConfig(({ command }) => ({
           },
         ],
       },
+      outDir: process.env["NITRO_PRESET"] === "vercel" ? ".vercel/output/static" : ".output/public",
       workbox: {
         navigateFallback: null,
+        globDirectory:
+          process.env["NITRO_PRESET"] === "vercel" ? ".vercel/output/static" : ".output/public",
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+        globIgnores: [
+          "**/node_modules/**/*",
+          "sw.js",
+          "workbox-*.js",
+          "mia/**",
+          "assets/aistudio/**",
+          "assets/vosk-*.js",
+        ],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

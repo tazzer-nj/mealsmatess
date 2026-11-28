@@ -155,11 +155,13 @@ export const importRecipeFromUrl = createServerFn({ method: "POST" })
     const userId = context.userId;
 
     const slug = `${slugify(parsed.name)}-${Math.random().toString(36).slice(2, 7)}`;
+    const curatedUrl = imageUrlFor(parsed.name);
     const row = {
       slug,
       name: parsed.name,
       description: parsed.description ?? null,
-      image_url: imageUrlFor(parsed.name),
+      image_url: curatedUrl,
+      image_source: curatedUrl ? "Curated" : null,
       cuisine: parsed.cuisine ?? null,
       category: parsed.category ?? null,
       country: parsed.country ?? null,
@@ -184,6 +186,19 @@ export const importRecipeFromUrl = createServerFn({ method: "POST" })
       .select("id,slug")
       .single();
     if (error) throw new Error(error.message);
+    if (!curatedUrl) {
+      const { ensureCreatedRecipeImage } = await import("@/lib/recipe-creation-service.server");
+      await ensureCreatedRecipeImage(inserted.id, {
+        name: parsed.name,
+        cuisine: parsed.cuisine,
+        category: parsed.category,
+        meal_type: parsed.meal_type,
+        description: parsed.description,
+        diet_tags: parsed.diet_tags,
+        ingredients: parsed.ingredients,
+        steps: parsed.steps,
+      });
+    }
     const { invalidateRecipeCatalogCache } = await import("@/lib/recipe-catalog.functions");
     invalidateRecipeCatalogCache();
 

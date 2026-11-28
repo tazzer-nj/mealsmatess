@@ -1,5 +1,6 @@
 import { HubHome } from "@/components/hub/hub-home";
 import { RecipeImage } from "@/components/recipe-image";
+import { UserAvatar } from "@/components/resilient-image";
 import { searchOrGenerateRecipe, toastRecipeGenerationError } from "@/lib/recipe-search";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -367,10 +368,11 @@ function Index() {
             aria-label="Profile"
           >
             {user?.photoURL ? (
-              <img
+              <UserAvatar
                 src={user.photoURL}
                 alt={user.displayName || "Profile"}
                 className="h-full w-full object-cover"
+                fallback={<UserIcon className="h-4 w-4" />}
               />
             ) : (
               <UserIcon className="h-4 w-4" />

@@ -24,6 +24,19 @@ export function decodeRestaurantImage(base64: string, contentType: string) {
 }
 
 const memoryRestaurantMedia = new Map<string, string>();
+const MAX_INLINE_DATA_URL_BYTES = 650_000;
+
+function hasVercelBlobConfig() {
+  return Boolean(process.env["BLOB_READ_WRITE_TOKEN"] || process.env["BLOB_STORE_ID"]);
+}
+
+function hasFirebaseStorageConfig() {
+  return Boolean(
+    process.env["FIREBASE_STORAGE_BUCKET"] ||
+    process.env["VITE_FIREBASE_STORAGE_BUCKET"] ||
+    process.env["FIREBASE_SERVICE_ACCOUNT_JSON"],
+  );
+}
 
 /** Only public food/restaurant photos. Membership must be checked before calling. */
 export async function storeRestaurantImage(
@@ -33,21 +46,52 @@ export async function storeRestaurantImage(
   contentType: string,
 ) {
   const { bytes, extension } = decodeRestaurantImage(base64, contentType);
-  if (!process.env["BLOB_READ_WRITE_TOKEN"] && !process.env["BLOB_STORE_ID"]) {
-    if (process.env["VITEST"]) {
-      throw new Error("Restaurant photo storage is not configured.");
+  const objectPath = `${restaurantId}/${kind}-${Date.now()}.${extension}`;
+  const pathname = `restaurant-media/${restaurantId}/${kind}.${extension}`;
+
+  if (hasVercelBlobConfig()) {
+    try {
+      const blob = await put(pathname, bytes, {
+        access: "public",
+        contentType,
+        addRandomSuffix: true,
+        allowOverwrite: false,
+        cacheControlMaxAge: 31536000,
+      });
+      return { url: blob.url, path: blob.pathname };
+    } catch (blobError) {
+      if (!hasFirebaseStorageConfig()) throw blobError;
     }
-    const pathname = `restaurant-media/${restaurantId}/${kind}.${extension}`;
+  }
+
+  if (hasFirebaseStorageConfig()) {
+    try {
+      const { firebaseAdmin } = await import("@/server/firebase-admin");
+      const bucket = firebaseAdmin.storage.from("restaurant-media");
+      const { error: uploadError } = await bucket.upload(objectPath, bytes, {
+        contentType,
+        upsert: true,
+      });
+      if (uploadError) throw uploadError;
+      const { data, error: urlError } = await bucket.createDownloadUrl(objectPath);
+      if (urlError || !data?.downloadUrl) {
+        throw urlError ?? new Error("Failed to create restaurant photo download URL.");
+      }
+      return { url: data.downloadUrl, path: `restaurant-media/${objectPath}` };
+    } catch (firebaseError) {
+      if (process.env["VITEST"]) throw firebaseError;
+    }
+  }
+
+  if (process.env["VITEST"]) {
+    throw new Error("Restaurant photo storage is not configured.");
+  }
+
+  if (bytes.byteLength <= MAX_INLINE_DATA_URL_BYTES) {
     const url = `data:${contentType};base64,${bytes.toString("base64")}`;
     memoryRestaurantMedia.set(pathname, url);
     return { url, path: pathname };
   }
-  const blob = await put(`restaurant-media/${restaurantId}/${kind}.${extension}`, bytes, {
-    access: "public",
-    contentType,
-    addRandomSuffix: true,
-    allowOverwrite: false,
-    cacheControlMaxAge: 31536000,
-  });
-  return { url: blob.url, path: blob.pathname };
+
+  throw new Error("Restaurant photo storage is not configured.");
 }

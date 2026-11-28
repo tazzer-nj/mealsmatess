@@ -1,6 +1,6 @@
 import { createFileRoute, notFound, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
   Clock,
   Users,
@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { recipeBySlugQuery, myFavoritesQuery, trendingRecipesQuery } from "@/lib/queries";
-import { curatedRecipeImageUrl } from "@/lib/recipe-image";
+import { curatedRecipeImageUrl, hasUsableStoredImage } from "@/lib/recipe-image";
 import { waitForFirebaseAuth } from "@/lib/firebase";
 import { firebaseData } from "@/lib/firebase-data";
 import { useSession } from "@/hooks/use-session";
@@ -223,6 +223,7 @@ function RecipePage() {
   const [makingImage, setMakingImage] = useState(false);
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(() => new Set());
+  const attemptedImageIdsRef = useRef<Set<string>>(new Set());
   const baseServings = r?.servings && r.servings > 0 ? r.servings : 2;
   const [targetServings, setTargetServings] = useState<number>(baseServings);
 
@@ -231,36 +232,47 @@ function RecipePage() {
     setCheckedIngredients(new Set());
   }, [r?.id, r?.servings]);
 
-  const requestRecipeImage = useCallback(async () => {
-    if (!r?.id || !user) return;
-    setMakingImage(true);
-    try {
-      const result = await postAuthenticatedAi<{
-        imageUrl: string | null;
-        reason?: string;
-        limit?: number | null;
-        resetsAt?: string | null;
-      }>("/api/recipe-image", { recipeId: r.id }, { timeoutMs: 120_000 });
-      if (result.imageUrl) {
-        await queryClient.invalidateQueries({ queryKey: ["recipe", r.slug] });
-      } else if (result.reason === "limit") {
-        toast.message("Daily photo allowance reached", {
-          description:
-            "Try creating this photo again when your allowance resets. Premium includes more.",
-        });
+  const requestRecipeImage = useCallback(
+    async (silent = false) => {
+      if (!r?.id || !user) return;
+      setMakingImage(true);
+      try {
+        const result = await postAuthenticatedAi<{
+          imageUrl: string | null;
+          reason?: string;
+          limit?: number | null;
+          resetsAt?: string | null;
+        }>("/api/recipe-image", { recipeId: r.id }, { timeoutMs: 120_000 });
+        if (result.imageUrl) {
+          await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ["recipe", r.slug] }),
+            queryClient.invalidateQueries({ queryKey: ["recipes"] }),
+          ]);
+        } else if (result.reason === "limit" && !silent) {
+          toast.message("Daily photo allowance reached", {
+            description:
+              "Try creating this photo again when your allowance resets. Premium includes more.",
+          });
+        }
+      } catch (error) {
+        if (!silent) {
+          toast.error("Couldn't create a recipe photo", {
+            description: error instanceof Error ? error.message : "Please try again.",
+          });
+        }
+      } finally {
+        setMakingImage(false);
       }
-    } catch (error) {
-      toast.error("Couldn't create a recipe photo", {
-        description: error instanceof Error ? error.message : "Please try again.",
-      });
-    } finally {
-      setMakingImage(false);
-    }
-  }, [queryClient, r?.id, r?.slug, user]);
+    },
+    [queryClient, r?.id, r?.slug, user],
+  );
 
   useEffect(() => {
-    if (!user || !r?.id || r.image_url || curatedRecipeImageUrl(r)) return;
-    void requestRecipeImage();
+    if (!user || !r?.id) return;
+    if (hasUsableStoredImage(r) || curatedRecipeImageUrl(r)) return;
+    if (attemptedImageIdsRef.current.has(r.id)) return;
+    attemptedImageIdsRef.current.add(r.id);
+    void requestRecipeImage(true);
   }, [user, r, requestRecipeImage]);
 
   async function regenerateImage() {
@@ -276,7 +288,10 @@ function RecipePage() {
     setRegen(true);
     try {
       await regenerateRecipeImage({ data: { slug: r.slug } });
-      await queryClient.invalidateQueries({ queryKey: ["recipe", r.slug] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["recipe", r.slug] }),
+        queryClient.invalidateQueries({ queryKey: ["recipes"] }),
+      ]);
       toast.success("New image generated");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to regenerate");

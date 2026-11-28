@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { chooseRecipeImage, getImageAlternatives } from "@/lib/recipe-images.functions";
+import { ResilientImage } from "@/components/resilient-image";
 
 type Attribution = {
   photographer?: string | null;
@@ -152,11 +153,16 @@ export function ChangeImageButton({
                   onClick={() => pick(o)}
                   className="group relative overflow-hidden rounded-2xl border border-border bg-muted text-left focus:outline-none focus:ring-2 focus:ring-ring"
                 >
-                  <img
+                  <ResilientImage
                     src={o.thumb}
                     alt={o.title || "Food photo"}
                     loading="lazy"
                     className="aspect-square w-full object-cover"
+                    fallback={
+                      <div className="grid aspect-square w-full place-items-center text-muted-foreground">
+                        <ImageIcon className="h-6 w-6" aria-hidden="true" />
+                      </div>
+                    }
                   />
                   <span className="absolute bottom-1 left-1 rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-medium">
                     {o.score}% · {o.provider}
